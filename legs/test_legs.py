@@ -127,3 +127,20 @@ def test_pose_out_estimate():
     m = msgs[-1]
     assert m["yaw"] == approx(np.pi / 2, abs=1e-3) and m["pitch"] == approx(0.1, abs=1e-3) and m["roll"] == approx(0.0, abs=1e-3)
     assert m["x"] == approx(0.0, abs=0.02) and m["y"] == approx(0.5 * 0.2, abs=0.03)  # 0.2 s at 0.5 m/s along +y
+
+
+def test_sysid_finds_model_values():
+    """sysid.py: a swing test and a step test on the fake drives give back the armature, the friction and the torque
+    scale of the model."""
+    import sysid
+    sysid.self_check()
+
+
+def test_imu_level_fix():
+    """imu.level_fix: an IMU mounted 3 deg off gives a 3 deg tilt, and the new matrix brings gravity straight down."""
+    from scipy.spatial.transform import Rotation
+    off = Rotation.from_euler("xy", [2.0, -2.2], degrees=True)
+    g = off.apply([0.0, 0.0, -1.0])               # the gravity that the torso frame reads on a level table
+    tilt, rot = imu.level_fix(g, np.eye(3))
+    assert tilt == approx(np.degrees(np.arccos(-g[2])), abs=1e-9) and 2.9 < tilt < 3.1
+    assert np.allclose(rot @ g, [0.0, 0.0, -1.0]) and np.allclose(rot @ rot.T, np.eye(3))

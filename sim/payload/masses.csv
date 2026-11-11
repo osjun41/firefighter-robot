@@ -1,0 +1,76 @@
+body,item,model_g,measured_g,note
+base,Left hip roll actuator (6512 module with its drive board),,,body total in the model 2278 g
+base,Right hip roll actuator (6512 module with its drive board),,,body total in the model 2278 g
+base,"Torso frame: extrusions, plates, brackets, handles and screws, without the hip roll actuators and the payload rows",,,body total in the model 2278 g
+leg_left_hip_roll,Left hip yaw actuator (6512 module with its drive board),,,body total in the model 838 g
+leg_left_hip_roll,"Left hip roll link: printed parts, bearings and screws (no actuator)",,,body total in the model 838 g
+leg_left_hip_yaw,Left hip pitch actuator (6512 module with its drive board),,,body total in the model 838 g
+leg_left_hip_yaw,"Left hip yaw link: printed parts, bearings and screws (no actuator)",,,body total in the model 838 g
+leg_left_hip_pitch,Left knee actuator (6512 module with its drive board),,,body total in the model 948 g
+leg_left_hip_pitch,"Left thigh: printed parts, bearings and screws (no actuator)",,,body total in the model 948 g
+leg_left_hip_pitch,Left leg cables (power and CAN) and cable ties,,,body total in the model 948 g
+leg_left_knee_pitch,Left ankle pitch actuator (5010 module with its drive board),,,body total in the model 654 g
+leg_left_knee_pitch,"Left shin: printed parts, bearings and screws (no actuator)",,,body total in the model 654 g
+leg_left_ankle_pitch,Left ankle link between the two ankle joints: printed parts and screws,,,body total in the model 106 g
+leg_left_ankle_roll,Left ankle roll actuator (5010 module with its drive board),,,body total in the model 706 g
+leg_left_ankle_roll,"Left foot: printed foot, sole and screws (no actuator)",,,body total in the model 706 g
+leg_right_hip_roll,Right hip yaw actuator (6512 module with its drive board),,,body total in the model 838 g
+leg_right_hip_roll,"Right hip roll link: printed parts, bearings and screws (no actuator)",,,body total in the model 838 g
+leg_right_hip_yaw,Right hip pitch actuator (6512 module with its drive board),,,body total in the model 838 g
+leg_right_hip_yaw,"Right hip yaw link: printed parts, bearings and screws (no actuator)",,,body total in the model 838 g
+leg_right_hip_pitch,Right knee actuator (6512 module with its drive board),,,body total in the model 948 g
+leg_right_hip_pitch,"Right thigh: printed parts, bearings and screws (no actuator)",,,body total in the model 948 g
+leg_right_hip_pitch,Right leg cables (power and CAN) and cable ties,,,body total in the model 948 g
+leg_right_knee_pitch,Right ankle pitch actuator (5010 module with its drive board),,,body total in the model 654 g
+leg_right_knee_pitch,"Right shin: printed parts, bearings and screws (no actuator)",,,body total in the model 654 g
+leg_right_ankle_pitch,Right ankle link between the two ankle joints: printed parts and screws,,,body total in the model 106 g
+leg_right_ankle_roll,Right ankle roll actuator (5010 module with its drive board),,,body total in the model 706 g
+leg_right_ankle_roll,"Right foot: printed foot, sole and screws (no actuator)",,,body total in the model 706 g
+shelf_acrylic,shelf acrylic,91.0,,CAD or datasheet value
+relay_aep18024,relay aep18024,400.0,,CAD or datasheet value
+estop_contacts,estop contacts,60.0,,CAD or datasheet value
+boost_ham5925,boost ham5925,45.0,,CAD or datasheet value
+wiring_small,wiring small,300.0,,CAD or datasheet value
+lipo_6s_a,lipo 6s a,603.0,,CAD or datasheet value
+lipo_6s_b,lipo 6s b,603.0,,CAD or datasheet value
+lipo_3s,lipo 3s,362.0,,CAD or datasheet value
+diode_mbrt400100,diode mbrt400100,75.0,,CAD or datasheet value
+rock3c,rock3c,45.0,,CAD or datasheet value
+shunt_100a,shunt 100a,80.0,,CAD or datasheet value
+canable_1,canable 1,8.0,,CAD or datasheet value
+canable_2,canable 2,8.0,,CAD or datasheet value
+buck_5v,buck 5v,7.0,,CAD or datasheet value
+meter_hav6001,meter hav6001,20.0,,CAD or datasheet value
+meter_hav1808,meter hav1808,15.0,,CAD or datasheet value
+meter_hav1625a,meter hav1625a,20.0,,CAD or datasheet value
+switch_pushlock_24v,switch pushlock 24v,25.0,,CAD or datasheet value
+switch_pushlock_12v,switch pushlock 12v,15.0,,CAD or datasheet value
+imu_im10a,imu im10a,50.0,,CAD or datasheet value
+brake_resistor_1,brake resistor 1,31.0,,CAD or datasheet value
+brake_resistor_2,brake resistor 2,31.0,,CAD or datasheet value
+relay_k2,relay k2,30.0,,CAD or datasheet value
+battery_holder,battery holder,114.7,,CAD or datasheet value
+pod_spacer_left,pod spacer left,14.8,,CAD or datasheet value
+pod_spacer_right,pod spacer right,14.6,,CAD or datasheet value
+pod_basket,pod basket,118.1,,CAD or datasheet value
+pod_cover,pod cover,150.9,,CAD or datasheet value
+imu_mount,imu mount,22.4,,CAD or datasheet value
+pod_plate_al2,pod plate al2,157.0,,CAD or datasheet value
+resistor_mount_left,resistor mount left,14.8,,CAD or datasheet value
+resistor_mount_right,resistor mount right,14.8,,CAD or datasheet value
+frame_clips,frame clips,24.0,,CAD or datasheet value
+deck_f1,deck f1,85.2,,CAD or datasheet value
+pan_base,pan base,42.6,,CAD or datasheet value
+pan_yoke,pan yoke,34.1,,CAD or datasheet value
+tilt_u,tilt u,27.8,,CAD or datasheet value
+head_f1,head f1,54.0,,CAD or datasheet value
+hose_anchor,hose anchor,32.2,,CAD or datasheet value
+ref_pan_servo,ref pan servo,89.0,,CAD or datasheet value
+ref_tilt_servo,ref tilt servo,89.0,,CAD or datasheet value
+ref_pan_bearing,ref pan bearing,26.0,,CAD or datasheet value
+camera_b0201,camera b0201,25.0,,CAD or datasheet value
+nozzle_brass,nozzle brass,30.0,,CAD or datasheet value
+hose_clips,hose clips,5.2,,CAD or datasheet value
+hose_and_water,hose and water,20.0,,CAD or datasheet value
+signal_plug,signal plug,10.0,,CAD or datasheet value
+whole_robot,"Whole robot on a scale, everything mounted",14600,,check only

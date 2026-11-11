@@ -82,15 +82,24 @@ VIDEO_WORST, VIDEO_REC = "7c", "7b"
 COURSE_IDS = ("2", "2b", "3", "7c")
 
 
+def load_model(name):
+    """A model of sim/payload/models at the run.py physics rate, for the drive model."""
+    m = mujoco.MjModel.from_xml_path(str(s2s.MODELS / f"{name}.xml"))
+    m.opt.timestep = s2s.PHYSICS_DT
+    m.actuator_forcerange[:] = [-30.0, 30.0]  # the model stops at 20 Nm; the drive limit below does the clipping
+    return m
+
+
+def session(path):
+    so = ort.SessionOptions()
+    so.intra_op_num_threads = 1  # one thread per worker process
+    return ort.InferenceSession(str(path), so, providers=["CPUExecutionProvider"])
+
+
 @lru_cache(maxsize=1)
 def load():
     """Model and policy, once per worker process."""
-    m = mujoco.MjModel.from_xml_path(str(s2s.MODELS / f"{MODEL}.xml"))
-    m.opt.timestep = s2s.PHYSICS_DT
-    m.actuator_forcerange[:] = [-30.0, 30.0]  # the model stops at 20 Nm; the drive limit below does the clipping
-    so = ort.SessionOptions()
-    so.intra_op_num_threads = 1  # one thread per worker process
-    return m, ort.InferenceSession(str(s2s.POLICY), so, providers=["CPUExecutionProvider"])
+    return load_model(MODEL), session(s2s.POLICY)
 
 
 def trap_step(p, v, goal, dt):
@@ -102,12 +111,20 @@ def trap_step(p, v, goal, dt):
     return p + v * dt, v
 
 
-def simulate(cfg, command, seed, seconds=20.0, push=None, frames=None, log=None):
+NOZZLE = np.array([0.03, 0.0, 0.944])  # m, base frame: the nozzle, where the hose pulls (as sim/rl/f1_env.py)
+HOSE_PERIOD = 4.0  # s, period of the slowly varying hose pull
+
+
+def simulate(cfg, command, seed, seconds=20.0, push=None, frames=None, log=None, env=None):
     """One run of the shipped policy on MODEL with the drive model cfg, with the training observation noise.
     push = (t0 s, impulse N s, direction rad in the heading frame): a horizontal force on the torso for 0.1 s.
     Returns the fall time and the metrics. The torque metrics start at 1 s, after the BHL start drop.
-    log: optional list that gets [12 joint torques, 12 joint speeds] per physics step from 1 s."""
-    m, policy = load()
+    log: optional list that gets [12 joint torques, 12 joint speeds] per physics step from 1 s.
+    env: optional (MjModel, ONNX session) instead of load(), for other models and policies (gap_study.py).
+    Optional cfg keys of gap_study.py, off when missing: imu_deg (IMU mounting tilt about a horizontal axis that the
+    seed sets), backlash_deg (gear play at the joint), hose_n (backward pull at NOZZLE, N), hose_var (the pull goes
+    from 0 to hose_n and back in HOSE_PERIOD s)."""
+    m, policy = env or load()
     d = mujoco.MjData(m)
     d.qpos[7:19] = s2s.DEFAULT  # BHL reset, as run.py start="bhl"
     mujoco.mj_forward(m, d)
@@ -118,9 +135,19 @@ def simulate(cfg, command, seed, seconds=20.0, push=None, frames=None, log=None)
     cmd_steps, obs_steps = round(cfg["cmd_ms"] / 1000 / dt), round(cfg["obs_ms"] / 1000 / dt)
     base, z0 = m.body("base").id, d.site("imu").xpos[2]
     c = np.array(command, dtype=np.float32)
+    mount, az = math.radians(cfg.get("imu_deg", 0.0)), np.random.default_rng([seed, 2]).uniform(0, 2 * math.pi)
+    q_imu = np.array([math.cos(mount / 2), math.sin(mount / 2) * math.cos(az), math.sin(mount / 2) * math.sin(az), 0.0])
+    h = math.radians(cfg.get("backlash_deg", 0.0)) / 2  # half of the gear play, at the joint
+    qr, vr = d.qpos[7:19].copy(), np.zeros(12)  # with play: rotor position and speed, joint units (the encoder)
+    hose, phase = cfg.get("hose_n", 0.0), np.random.default_rng([seed, 3]).uniform(0, 2 * math.pi)
+    assert not (h and cfg["trap"]), "the gear play model needs PASSTHROUGH"
 
     def reading():
-        return (d.sensor("imu_quat").data.copy(), d.sensor("imu_gyro").data.copy(), d.qpos[7:19] + off, d.qvel[6:18].copy())
+        quat, gyro = d.sensor("imu_quat").data.copy(), d.sensor("imu_gyro").data.copy()
+        if mount:  # the IMU frame is the base frame turned by q_imu
+            mujoco.mju_mulQuat(quat, d.sensor("imu_quat").data, q_imu)
+            gyro = s2s.quat_rotate_inverse(q_imu, gyro)
+        return (quat, gyro) + ((qr + off, vr.copy()) if h else (d.qpos[7:19] + off, d.qvel[6:18].copy()))
     hist = deque([reading()], maxlen=obs_steps + 1)  # hist[0] is the reading of obs_steps physics steps ago
     queue = deque()  # (physics step when the drive gets it, joint target)
     goal = s2s.DEFAULT.astype(float)  # the drive holds the stand pose until the first command arrives
@@ -128,6 +155,7 @@ def simulate(cfg, command, seed, seconds=20.0, push=None, frames=None, log=None)
     action = np.zeros(12, dtype=np.float32)
     n, fall, vx, wz = 0, None, [], []
     tau_sum, tau_n, peak, sat, qd_peak, p_min, p_max, rate_sq, rate_n = 0.0, 0, 0.0, 0, 0.0, 0.0, 0.0, 0.0, 0
+    sat_j, peak_j = np.zeros(12), np.zeros(12)  # per joint: steps at the torque limit, peak torque
     for _ in range(round(seconds / s2s.POLICY_DT)):
         obs = s2s.observation(c, *hist[0], action)
         obs += (rng.uniform(-1, 1, 45) * s2s.NOISE).astype(np.float32)
@@ -142,13 +170,20 @@ def simulate(cfg, command, seed, seconds=20.0, push=None, frames=None, log=None)
             if cfg["trap"]:
                 sp_p, sp_v = trap_step(sp_p, sp_v, goal, dt)
                 tau = K * (sp_p - qm) + D * (sp_v - qd)
+            elif h:  # gear play: the drive turns the rotor, and the rotor pushes the joint only at a wall of the play
+                gap = qr - d.qpos[7:19]
+                tau = K * (goal - qr - off) - D * qd  # drive torque when the rotor turns with the joint
+                touch = ((gap >= h - 1e-9) & (tau > 0)) | ((gap <= 1e-9 - h) & (tau < 0))
+                tau = np.where(touch, tau, 0.0)
             else:
                 tau = K * (goal - qm) - D * qd
             d.ctrl[:] = np.clip(tau, -lim, lim)
             if d.time >= 1.0:
                 a = np.abs(d.ctrl)
                 tau_sum, tau_n, peak = tau_sum + a.sum(), tau_n + 12, max(peak, float(a.max()))
-                sat += bool(np.any(np.abs(tau) > lim))
+                clipped = np.abs(tau) > lim
+                sat += bool(np.any(clipped))
+                sat_j, peak_j = sat_j + clipped, np.maximum(peak_j, a)
                 pw = d.ctrl * qd  # mechanical power at each joint, W
                 qd_peak, p_min, p_max = max(qd_peak, float(np.abs(qd).max())), min(p_min, pw.min()), max(p_max, pw.max())
                 if log is not None:
@@ -158,7 +193,17 @@ def simulate(cfg, command, seed, seconds=20.0, push=None, frames=None, log=None)
                 R = d.xmat[base].reshape(3, 3)
                 ang = math.atan2(R[1, 0], R[0, 0]) + push[2]
                 d.xfrc_applied[base, :2] = push[1] / 0.1 * np.array([math.cos(ang), math.sin(ang)])
+            if hose:  # horizontal, backward in the heading frame, at the nozzle point
+                R = d.xmat[base].reshape(3, 3)
+                ang = math.atan2(R[1, 0], R[0, 0])
+                f = hose * ((1 - math.cos(2 * math.pi * d.time / HOSE_PERIOD + phase)) / 2 if cfg.get("hose_var") else 1)
+                F = -f * np.array([math.cos(ang), math.sin(ang), 0.0])
+                d.xfrc_applied[base, :3] += F
+                d.xfrc_applied[base, 3:] = np.cross(d.xpos[base] + R @ NOZZLE - d.xipos[base], F)  # about the CoM
             mujoco.mj_step(m, d)
+            if h:  # a rotor at a wall turns with the joint. A free rotor turns at the speed where the drive torque is 0
+                vr = np.where(touch, d.qvel[6:18], K / D * (goal - qr - off))
+                qr = np.clip(np.where(touch, d.qpos[7:19] + gap, qr + vr * dt), d.qpos[7:19] - h, d.qpos[7:19] + h)
             n += 1
             hist.append(reading())
             if frames and d.time * 30 >= frames.n:
@@ -180,7 +225,8 @@ def simulate(cfg, command, seed, seconds=20.0, push=None, frames=None, log=None)
                 vx=float(np.mean(vx)) if ok else None, wz=float(np.mean(wz)) if ok else None,
                 tau_mean=tau_sum / max(tau_n, 1), peak=peak, sat=100.0 * sat / max(tau_n // 12, 1),
                 rate=s2s.ACTION_SCALE * math.sqrt(rate_sq / max(rate_n, 1)), qd_peak=qd_peak,
-                p_regen=float(-p_min), p_drive=float(p_max))
+                p_regen=float(-p_min), p_drive=float(p_max),
+                sat_j=(100.0 * sat_j / max(tau_n // 12, 1)).tolist(), peak_j=peak_j.tolist())
 
 
 def walk_job(cid, cmd_name, seed):

@@ -28,19 +28,20 @@ WATCHDOG = 1.0      # s, axis0.config.watchdog_timeout of bringup.py settings
 
 
 class FakeRobot:
-    def __init__(self, torque_limit=TORQUE_LIMIT, seed=0):
+    def __init__(self, torque_limit=TORQUE_LIMIT, seed=0, hoist_z=HOIST_Z):
         spec = mujoco.MjSpec.from_file(str(sim2sim.MODEL_PATH))
         sim2sim.add_payload(spec)
         hoist = spec.add_equality()
         hoist.type, hoist.objtype, hoist.name1 = mujoco.mjtEq.mjEQ_WELD, mujoco.mjtObj.mjOBJ_BODY, "base"
-        hoist.data = [0, 0, 0, 0, 0, -HOIST_Z, 1, 0, 0, 0, 1]  # pose of the world in the torso frame
+        hoist.data = [0, 0, 0, 0, 0, -hoist_z, 1, 0, 0, 0, 1]  # pose of the world in the torso frame
         m = self.m = spec.compile()
         m.opt.timestep = sim2sim.PHYSICS_DT
         sim2sim.configure_torque_actuators(m, torque_limit)
         d = self.d = mujoco.MjData(m)
         assert [m.joint(f"leg_{n}_joint").qposadr[0] for n in NAMES] == list(range(7, 19))
         assert np.allclose(m.jnt_range[1:13], sim2sim.JOINT_LIMITS, atol=1e-4), "fake model limits differ from ASMR MJCF"
-        d.qpos[2], d.qpos[7:19] = HOIST_Z, ZERO_POSE
+        self.hoist_z = hoist_z
+        d.qpos[2], d.qpos[7:19] = hoist_z, ZERO_POSE
         mujoco.mj_forward(m, d)
 
         base_rot = d.xmat[m.body("base").id].reshape(3, 3)
@@ -98,7 +99,7 @@ class FakeRobot:
         if self.t_release is None:
             self.t_release = now
         fraction = min(1.0, now - self.t_release)
-        height = HOIST_Z + fraction * (sim2sim.DEFAULT_BASE_POSITION[2] - HOIST_Z)
+        height = self.hoist_z + fraction * (sim2sim.DEFAULT_BASE_POSITION[2] - self.hoist_z)
         with self.lock:
             self.m.eq_data[0, 5] = -height
             if fraction >= 1.0:

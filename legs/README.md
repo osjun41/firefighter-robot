@@ -27,6 +27,7 @@ and the fake-drive bring-up passes the leg tests. The physical robot and onboard
 | `imu.py` | IM10A IMU reader, and its one-time setup |
 | `odrive_can.py` | CAN messages of the drive firmware (ODrive v0.5.1), and a small bus class over python-can |
 | `fake_bus.py` | 12 fake drives that move the ASMR MuJoCo model. Each script takes `--fake`. |
+| `sysid.py` | Joint identification: swing and step tests of one joint, and the fit of the rotor inertia, the friction and the torque scale |
 | `test_legs.py` | The tests |
 | `calibration.json` | Written by `bringup.py calibrate`. It belongs to one robot. |
 
@@ -190,29 +191,83 @@ odrv0.reboot()
 
 23. Show the IMU values with `.venv/bin/python legs/imu.py`. Tilt the robot forward: "gravity x" must become positive. Tilt it to its left: "gravity y" must become positive.
 24. When a sign is wrong, edit `IMU_TO_BODY` in `legs/imu.py`. Column k is the direction of the IMU axis k (X, Y, Z marks) in the torso frame.
+25. Put the torso on a level table and run `.venv/bin/python legs/imu.py --level`. Above 1° of tilt, copy the printed `IMU_TO_BODY` into `legs/imu.py`. A tilt of 4° makes the policy fall ([walking plan](../docs/plan/walking.md)).
 
 ### F. Policy
 
-25. In odrivetool, set the policy torque limit of 6 N·m at the joint: `current_lim = 5.97` in each hip and knee drive, `4.78` in each ankle drive. Then `odrv0.save_configuration()`.
-26. Hang the robot from the gantry and put the legs in the zero pose.
-27. **CAUTION:** `run_policy.py` moves all joints to the default pose, then the policy moves the legs. Ctrl+C puts the legs in damping mode, and the motors turn off 3 s later.
+26. In odrivetool, set the policy torque limit of 6 N·m at the joint: `current_lim = 5.97` in each hip and knee drive, `4.78` in each ankle drive. Then `odrv0.save_configuration()`.
+27. Hang the robot from the gantry and put the legs in the zero pose.
+28. **CAUTION:** `run_policy.py` moves all joints to the default pose, then the policy moves the legs. Ctrl+C puts the legs in damping mode, and the motors turn off 3 s later.
 
 ```sh
 .venv/bin/python legs/run_policy.py --seconds 20 --knee-max 1.4
 ```
 
-28. When the program prints "Ramp to the default pose", lower the robot until it stands. Keep the chains on, but slack.
-29. Press Enter. The policy starts with a zero velocity command, so the robot stands. Press Ctrl+C to stop.
-30. When the robot stands well, walk slowly with `--vx 0.2`. The training range is -0.5 to 0.5 m/s.
+29. When the program prints "Ramp to the default pose", lower the robot until it stands. Keep the chains on, but slack.
+30. Press Enter. The policy starts with a zero velocity command, so the robot stands. Press Ctrl+C to stop.
+31. When the robot stands well, walk slowly with `--vx 0.2`. The training range is -0.5 to 0.5 m/s.
 
-- F2 needs `--knee-max 1.4`: at full knee range the foot touches a tank. `robot/launch.py` passes `[legs] knee_max` of `robot/config.toml`.
+- F3 needs `--knee-max 1.4`: at full knee range the foot touches the battery ends and the pod. `robot/launch.py` passes `[legs] knee_max` of `robot/config.toml`.
 - The policy file is `[legs] policy` of `robot/config.toml`: `policies/baseline/policy.onnx`, trained for the ASMR robot configuration.
-- Our policy `sim/rl/policies/f1_v1.onnx` was trained on the F1 model and evaluated on F2. It has the same inputs and outputs, so `[legs] policy` can point to it.
-- f1_v1 has not run on the robot yet ([sim/rl/README.md](../sim/rl/README.md)).
+- Our policies `sim/rl/policies/f3_v1.onnx` (trained on the F3 model of the BHL simulation, with wide ranges for the real robot) and `sim/rl/policies/f1_v1.onnx` (trained on F1) have the same inputs and outputs, so `[legs] policy` can point to them.
+- f1_v1 and f3_v1 have not run on the robot yet ([sim/rl/README.md](../sim/rl/README.md)).
+- From a quiet stand, the policies start to step only after a short forward command. `actuators/walk_bridge.py` sends 0.45 m/s for 0.5 s when a forward command follows a stand (`robot/config.toml`, `[walk]`).
+  With `--vx` or `--yaw`, the command is there from the first policy tick, so the robot starts without it.
 - At the stop, `run_policy.py` prints the time of each policy tick. Each tick must stay below 40 ms.
 - `run_policy.py` stops by itself on a drive error, a drive out of closed loop, no heartbeat for 0.5 s, no encoder reply 3 times,
   a joint more than 0.2 rad beyond its limits, or a torso tilt above 0.78 rad (the training limit).
 - Each stop puts all drives in damping mode for 3 s. Then the motors turn off.
+
+### G. Joint identification (for the simulation)
+
+The simulation needs the real torque per amp, the rotor inertia and the joint friction of the actuators.
+The gap study ranks the torque per amp first: 15 % less torque than in the model makes the policy fall often ([walking plan](../docs/plan/walking.md)).
+
+Bench torque test of each actuator, before you mount it:
+
+32. Clamp the actuator housing to the bench. Bolt a stiff lever to the output, with a hole 0.20 m from the axis.
+33. Put a kitchen scale under the hole, with a short post between the lever and the scale. The lever is horizontal.
+34. Connect the drive by USB. Set the policy current limit of step 26, then the torque mode: `odrv0.axis0.controller.config.control_mode = CONTROL_MODE_TORQUE_CONTROL`.
+35. **CAUTION:** in torque mode the lever turns freely when it does not press on the scale. Start with `odrv0.axis0.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL` and `odrv0.axis0.controller.input_torque = 0.02`. When the lever lifts, use negative values.
+36. Set `input_torque = 0.2` (3.0 N·m at the joint). Read the scale in grams, tap the lever and read again. Use the mean.
+37. Set `input_torque = 0` and `requested_state = AXIS_STATE_IDLE`. Set the control mode back to `CONTROL_MODE_POSITION_CONTROL`, then `odrv0.save_configuration()`.
+
+- The joint torque is mass (kg) × 9.81 × 0.20 m. The torque scale is this torque divided by 3.0 N·m.
+- When the scale is not between 0.95 and 1.05, set `current_lim` = 5.97 / scale in each 6512 drive and 4.78 / scale in each 5010 drive. Then the joint really gets 6 N·m.
+- Give the scale of each actuator to the simulation team.
+
+Swing and step tests on the hanging robot (`sysid.py`):
+
+38. Hang the robot from the gantry. The feet must not touch the floor, also when a foot swings.
+39. **CAUTION:** `sysid.py record` moves the 6 joints of one leg to a test pose in 2 s. Then the joint moves 0.3 rad (17°), and its drive turns off, so the link swings freely. Keep your hands and the cables away from the leg.
+
+```sh
+.venv/bin/python legs/sysid.py record left_knee_pitch
+```
+
+40. Type `yes`. Do steps 39 and 40 for `left_ankle_pitch`, `right_knee_pitch` and `right_ankle_pitch`. The knees have the 6512 motor, and the ankles have the 5010 motor.
+41. Fit each log. The program prints the best rotor inertia (armature, kg·m²) and friction (N·m), and it draws a figure next to the log:
+
+```sh
+.venv/bin/python legs/sysid.py fit legs/logs/sysid_left_knee_pitch_swing.csv
+```
+
+42. Record a step test of the same joint. Then fit it with the armature and the friction of step 41. This gives a second value of the torque scale:
+
+```sh
+.venv/bin/python legs/sysid.py record left_knee_pitch --step
+```
+
+```sh
+.venv/bin/python legs/sysid.py fit legs/logs/sysid_left_knee_pitch_step.csv --armature 0.012 --friction 0.2
+```
+
+43. Give the logs and the printed values to the simulation team. They set the training ranges of the next policy.
+
+- The BHL training used an armature of 0.007 kg·m² (hip and knee) and 0.002 kg·m² (ankle), and a friction of 0.1 N·m. The BHL motor page gives about 0.022 and 0.007 kg·m². In the gap study, these values change the falls little, so this test comes after the torque test.
+- The fake drives have an armature of 0.005 kg·m². On them, the swing fit error is 0.3° with 0.005 and 0.9° with 0.022 at the knee, and 0.6° and 6.8° at the ankle. A friction of 0.3 instead of 0.1 N·m gives 3° to 16°.
+- A best value at the edge of the grid means that the log is strange: a cable pulls, a foot touches something, or a part is loose.
+- `.venv/bin/python legs/sysid.py --check` runs both tests on the fake drives. The fit must find the values of the ASMR model (knee: armature 0.0228, friction 0.377, torque scale 1).
 
 ## Zeroing
 

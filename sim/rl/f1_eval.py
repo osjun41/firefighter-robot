@@ -2,6 +2,8 @@
 
     uv run python sim/rl/f1_eval.py sim/rl/policies/f1_<name>.onnx           full table -> sim/rl/results/f2_eval_<name>.*
     ... --limit=9                                                            9 Nm leg limit -> results/..._<name>_9nm.*
+    ... --model=F3 --compare=sim/rl/policies/f1_v1.onnx                      model bhl_F3, a third policy, the gap cases
+                                                                             -> results/f3_eval_<name>.*
     uv run python sim/rl/f1_eval.py <policy.onnx> --quick [--limit=9]        short check of one policy (2 seeds)
     MUJOCO_GL=egl uv run python sim/rl/f1_eval.py <policy.onnx> --video      three videos -> sim/rl/results/
 
@@ -9,6 +11,8 @@ The loop is the one of sim/sim2sim/run.py: 25 Hz policy, 2 kHz physics, PD 20 / 
 training observation noise, BHL start drop. It adds the joint target clip of legs/robot.py (knee <= 1.4 rad),
 seeds, foot contact metrics, a moving pan-tilt and a recoil force at the nozzle.
 The push test calls sim/payload/torso_tank.py, the drive cases call sim/sim2sim/hw_risks.py (MODEL = bhl_F2).
+The gap cases (GAP) run the hw_risks.py loop with a changed model and drive: armature x3, friction loss 0.3-0.5 Nm,
+torque constant error (K, D and limit x0.85), and 20 ms observation and 40 ms command latency, alone and all together.
 """
 import json
 import math
@@ -32,6 +36,8 @@ import report  # noqa: E402  sim/payload/report.py: palette and plot style
 
 DESIGN = next((a.split("=")[1] for a in sys.argv if a.startswith("--model=")), "F2")  # model file bhl_<name>.xml
 MODEL = f"bhl_{DESIGN}"
+COMPARE = [a.split("=", 1)[1] for a in sys.argv if a.startswith("--compare=")]  # more policies for the table
+LIGHT = {"F2": {"empty tank": "_empty"}, "F3": {"one 6S pack": "_1pack", "power by cable": "_tether"}}.get(DESIGN, {})
 hw.MODEL = MODEL  # before the pool forks
 OUT = HERE / "results"
 SHIPPED = s2s.POLICY
@@ -65,12 +71,19 @@ TESTS = {  # name: (model, command, recoil N, pan-tilt)
     "stand, pan-tilt moving": (MODEL, (0.0, 0.0, 0.0), 0.0, True),
     "stand, pan-tilt + recoil 0.3 N": (MODEL, (0.0, 0.0, 0.0), 0.3, True),
     "stand, pan-tilt + recoil 1.3 N": (MODEL, (0.0, 0.0, 0.0), 1.3, True),
-    "empty tank: vx 0.3": (MODEL + "_empty", (0.3, 0.0, 0.0), 0.0, False),
-    "empty tank: turn on the spot 0.5": (MODEL + "_empty", (0.0, 0.0, 0.5), 0.0, False),
+    **{f"{name}: {t}": (MODEL + sfx, c, 0.0, False) for name, sfx in LIGHT.items()  # lighter variants of the model
+       for t, c in (("vx 0.3", (0.3, 0.0, 0.0)), ("turn on the spot 0.5", (0.0, 0.0, 0.5)))},
 }
 START_S, START_SEEDS = 9.5, 8  # stand 2-3.75 s (by seed), then the walk command for 9.5 s (as the fake-drive test of legs/)
 QUICK = ["start from a stand, vx 0.25", "start from a stand, vx 0.25, no noise", "stand", "vx 0.1", "vx 0.3", "turn on the spot 0.5", "turn on the spot 0.8", "stand, pan-tilt + recoil 1.3 N"]
 HW_CASES = ("1", "7", "7b")
+GAP = {  # name: (armature x, friction loss range (Nm) or None, torque scale on K, D and limit, obs ms, command ms)
+    "armature x3": (3.0, None, 1.0, 0, 0),
+    "friction loss 0.3-0.5 Nm": (1.0, (0.3, 0.5), 1.0, 0, 0),
+    "torque scale 0.85": (1.0, None, 0.85, 0, 0),
+    "latency 20 ms obs, 40 ms cmd": (1.0, None, 1.0, 20, 40),
+    "all four together": (3.0, (0.3, 0.5), 0.85, 20, 40),
+}
 
 
 @lru_cache(maxsize=4)
@@ -218,7 +231,23 @@ def job(kind, policy, *args):
         return {"policy": Path(policy).name, **hw.push_job(*args)}
     if kind == "push":
         return {"policy": Path(policy).name, **tk.push_job(DESIGN, *args)}
+    if kind == "gap":
+        return {"policy": Path(policy).name, **gap_job(*args)}
     raise ValueError(kind)
+
+
+def gap_job(case, cmd_name, seed):
+    """One hw_risks.py run (20 s, training noise, BHL start drop) with the plant and drive changes of GAP[case]."""
+    arm, fric, scale, obs_ms, cmd_ms = GAP[case]
+    hw.load.cache_clear()  # a fresh model: the changes below stay in this run
+    m, _ = hw.load()
+    m.dof_armature[6:] *= arm
+    if fric:
+        m.dof_frictionloss[6:] = np.random.default_rng([seed, 2]).uniform(*fric, 12)
+    cfg = {**hw.BASE, "K": s2s.KP * scale, "D": s2s.KD * scale, "lim": 6.0 * scale, "obs_ms": obs_ms, "cmd_ms": cmd_ms}
+    r = hw.simulate(cfg, s2s.COMMANDS[cmd_name], seed)
+    hw.load.cache_clear()
+    return {"case": case, "cmd": cmd_name, **r}
 
 
 # ---------------- tables ----------------
@@ -299,14 +328,32 @@ def tables(res, pols):
                          f"| {fmt(mean(ok('vx 0.2 + yaw 0.5'), 'vx'))}, {fmt(mean(ok('vx 0.2 + yaw 0.5'), 'wz'))} "
                          f"| {max(r['peak'] for r in w):.1f} | {mean(w, 'rate'):.3f} "
                          f"| {min(pb):.1f} / {np.mean(pb):.1f} | {min(pl):.1f} / {np.mean(pl):.1f} |")
+    if res.get("gap"):
+        L += ["", f"### Gap cases on {MODEL} (`hw_risks.py` loop with a changed plant and drive)", "",
+              "Each case: 4 commands x 10 seeds of 20 s, training noise, BHL start drop. The model has armature 0.005 kg m² "
+              "and friction loss 0.1 Nm on each leg joint. Friction loss 0.3-0.5 Nm: a random value per joint and seed. "
+              "Torque scale: K, D and the 6 Nm limit together. This loop has no knee target clip.", "",
+              "| Case | Policy | Falls | Falls: stand, vx 0.3, turn 0.5, vx 0.2 + yaw 0.5 | vx at 0.3 "
+              "| yaw rate at turn on the spot 0.5 | vx, yaw at 0.2 + 0.5 | Peak torque (Nm) | Action rate (rad) |",
+              "|---|---|---|---|---|---|---|---|---|"]
+        for case in GAP:
+            for fname, label in names.items():
+                w = [r for r in res["gap"] if r["case"] == case and r["policy"] == fname]
+                ok = lambda c: [r for r in w if r["cmd"] == c and r["fall"] is None]
+                by = ", ".join(str(sum(r["fall"] is not None for r in w if r["cmd"] == c)) for c in s2s.COMMANDS)
+                L.append(f"| {case} | {label} | {sum(r['fall'] is not None for r in w)} of {len(w)} | {by} "
+                         f"| {fmt(mean(ok('vx 0.3'), 'vx'))} | {fmt(mean(ok('yaw 0.5'), 'wz'))} "
+                         f"| {fmt(mean(ok('vx 0.2 + yaw 0.5'), 'vx'))}, {fmt(mean(ok('vx 0.2 + yaw 0.5'), 'wz'))} "
+                         f"| {max(r['peak'] for r in w):.1f} | {mean(w, 'rate'):.3f} |")
     return "\n".join(L) + "\n"
 
 
 def plot(res, pols, out):
     plt = report.plt
     names = {Path(p).name: label for label, p in pols.items()}
-    cols = {"shipped": report.INK2, "ours": report.S1}
-    fig, axs = plt.subplots(1, 3, figsize=(14, 4.2))
+    cols = dict(zip(pols, [report.INK2, report.S2, report.S3][:len(pols) - 1] + [report.S1]))  # ours: S1
+    h = 0.8 / len(names)  # bar height
+    fig, axs = plt.subplots(1, 4 if res.get("gap") else 3, figsize=(19 if res.get("gap") else 14, 4.2))
     for ax, tests, key, unit in ((axs[0], ["vx 0.1", "vx 0.2", "vx 0.3"], "vx", "m/s"),
                                  (axs[1], ["turn on the spot 0.3", "turn on the spot 0.5", "turn on the spot 0.8"], "wz",
                                   "rad/s")):
@@ -326,13 +373,24 @@ def plot(res, pols, out):
         y = np.arange(len(labels))[::-1]
         ps = [dict(p, model=p["policy"]) for p in res["push"]]
         for i, (fname, label) in enumerate(names.items()):
-            axs[2].barh(y + (0.2 if i == 0 else -0.2), [tk.push_worst(ps, fname, c, d) for c in tk.PUSH_CMDS
-                                                         for d in tk.PUSH_DIRS], 0.4, color=cols[label], label=label)
+            axs[2].barh(y + 0.4 - h * (i + 0.5), [tk.push_worst(ps, fname, c, d) for c in tk.PUSH_CMDS
+                                                   for d in tk.PUSH_DIRS], h, color=cols[label], label=label)
         axs[2].set_yticks(y, labels, fontsize=8)
         axs[2].set_xlabel("largest push survived, worst of 3 (N s)")
         axs[2].set_title(f"Push test, {MODEL}, 6 Nm", loc="left", fontsize=10)
         axs[2].grid(axis="x", color=report.GRID)
         axs[2].legend(frameon=False, fontsize=9)
+    if res.get("gap"):
+        y = np.arange(len(GAP))[::-1]
+        for i, (fname, label) in enumerate(names.items()):
+            axs[3].barh(y + 0.4 - h * (i + 0.5), [sum(r["fall"] is not None for r in res["gap"] if r["case"] == c
+                                                      and r["policy"] == fname) for c in GAP], h, color=cols[label],
+                        label=label)
+        axs[3].set_yticks(y, list(GAP), fontsize=8)
+        axs[3].set_xlabel("falls in 40 runs (4 commands x 10 seeds)")
+        axs[3].set_title(f"Gap cases, {MODEL}", loc="left", fontsize=10)
+        axs[3].grid(axis="x", color=report.GRID)
+        axs[3].legend(frameon=False, fontsize=9)
     fig.tight_layout()
     fig.savefig(out, dpi=130)
     plt.close(fig)
@@ -375,7 +433,9 @@ def main():
         video(ours, "vx 0.3", OUT / f"{stem}_walk.mp4")
         video(ours, "stand, pan-tilt + recoil 1.3 N", OUT / f"{stem}_stand_recoil.mp4", seconds=15.0)
         return
-    pols = {"ours": ours} if quick else {"shipped": str(SHIPPED), "ours": ours}
+    pols = {Path(p).stem: str(Path(p).resolve()) for p in COMPARE + [ours]}  # label: file
+    if not quick:
+        pols = {"shipped": str(SHIPPED), **pols}
     seeds = 2 if quick else SEEDS
     jobs = [("episode", p, t, s) for p in pols.values() for t in (QUICK if quick else TESTS)
             for s in range(START_SEEDS if t.startswith("start") and not quick else seeds)]
@@ -386,10 +446,11 @@ def main():
                  for s in range(hw.SEEDS)]
         jobs += [("hw_push", p, cid, d, s) for p in pols.values() for cid in HW_CASES for d in hw.PUSH_DIRS
                  for s in range(hw.PUSH_SEEDS)]
+        jobs += [("gap", p, g, c, s) for p in pols.values() for g in GAP for c in s2s.COMMANDS for s in range(hw.SEEDS)]
     t0 = time.time()
     with Pool(3) as pool:  # at most 3 CPU processes (shared machine)
         out = pool.starmap(job, jobs, chunksize=1)
-    res = {k: [r for j, r in zip(jobs, out) if j[0] == k] for k in ("episode", "push", "hw_walk", "hw_push")}
+    res = {k: [r for j, r in zip(jobs, out) if j[0] == k] for k in ("episode", "push", "hw_walk", "hw_push", "gap")}
     md = tables(res, pols)
     print(md)
     print(f"{len(jobs)} runs in {(time.time() - t0) / 60:.1f} min")

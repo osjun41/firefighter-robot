@@ -6,6 +6,7 @@
 
 Writes <run_dir>/config.json, progress.jsonl, params_<step>.pkl and params_latest.pkl.
 --set changes one env config value, for example --set=push.enable=False or --set=reward.feet_slide=-0.2.
+FF_DESIGN=<name> trains on sim/payload/models/bhl_<name>.xml (default F2), for example FF_DESIGN=F3.
 --warm starts the policy from an ONNX file with the BHL layout (45-256-128-128-12, ELU), for example the shipped
 BHL policy. Then the observations are not normalised (as BHL), so the copied weights see the same input.
 """
@@ -64,7 +65,7 @@ restore = None
 if "restore" in opts:
   with open(opts["restore"], "rb") as f:
     restore = pickle.load(f)
-json.dump({"env": cfg.to_dict(), "ppo": ppo_params, "net": NET, "restore": opts.get("restore"),
+json.dump({"env": cfg.to_dict(), "model": f1_env.F1_XML.name, "ppo": ppo_params, "net": NET, "restore": opts.get("restore"),
            "warm": opts.get("warm"), "warm_std": float(opts.get("std", 0.3))},
           open(os.path.join(run_dir, "config.json"), "w"), indent=1)
 
@@ -84,7 +85,9 @@ if "warm" in opts:  # policy weights from the ONNX file, a new critic, an identi
     layer = pol["params"]
     for k in name:
       layer = layer[k]
-    layer["kernel"], layer["bias"] = jp.array(init[n.input[1]].T), jp.array(init[n.input[2]])  # torch (out, in)
+    W = init[n.input[1]]  # BHL file: torch (out, in) with transB = 1. export_onnx.py file: (in, out)
+    tb = next((a.i for a in n.attribute if a.name == "transB"), 0)
+    layer["kernel"], layer["bias"] = jp.array(W.T if tb else W), jp.array(init[n.input[2]])
   pol["params"]["std_param"]["value"] = jp.full(env.action_size, float(opts.get("std", 0.3)))
   norm = running_statistics.init_state({k: specs.Array(v, jp.float32) for k, v in env.observation_size.items()})
   restore = (norm, pol, val)
@@ -112,8 +115,7 @@ def save(step, make_policy, params):
 ppo.train(
     environment=env,
     wrap_env_fn=wrapper.wrap_for_brax_training,
-    randomization_fn=functools.partial(f1_env.domain_randomize, mj_model=env.mj_model,
-                                       torque_range=tuple(cfg.torque_range)),
+    randomization_fn=functools.partial(f1_env.domain_randomize, mj_model=env.mj_model, cfg=cfg),
     network_factory=network_factory, progress_fn=progress, policy_params_fn=save, restore_params=restore,
     **ppo_params,
 )

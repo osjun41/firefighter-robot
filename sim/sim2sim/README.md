@@ -2,6 +2,7 @@
 
 This folder holds the shared code that runs the shipped Berkeley Humanoid Lite (BHL) walking policy in MuJoCo.
 It also holds `hw_risks.py`, a study of the course motor drives on the final design F2.
+`gap_study.py` is a sim-to-real gap study of the trolley version F3.
 
 **Status:** tested in simulation (MuJoCo 3.15.0, Python 3.12, CPU only). Nothing here is measured on board.
 
@@ -19,11 +20,14 @@ Run these commands once, from the repository root:
 |---|---|
 | `run.py` | Shared helpers: policy file, joint order, default pose, gains, observation, one simulation run, video, self-check |
 | `hw_risks.py` | Sim-to-real risks of the course motor drives on the F2 model |
+| `gap_study.py` | Sim-to-real gap study of the trolley version F3: models, one change at a time, combined cases |
 | `baseline_detector.py` | Colour-threshold fire "detector" for simulated cameras. Not a real detector |
 | `policy_biped_25hz_a.onnx` | The shipped BHL walking policy |
 | `BHL_LICENCE` | The MIT licence of the BHL code, which the policy copy requires |
 | [`results/hw_risks.md`](results/hw_risks.md) | All tables, findings and the recommendation of `hw_risks.py` |
 | `results/hw_risks.json`, `results/hw_risks.png` | Raw results and the summary figure |
+| [`results/gap_study.md`](results/gap_study.md) | Ranking, measurement order, training ranges, all tables and findings of `gap_study.py` |
+| `results/gap_study.json`, `results/gap_study.png` | Raw results and the summary figure of `gap_study.py` |
 
 ## Shared helpers (`run.py`)
 
@@ -99,6 +103,46 @@ Recommended drive settings for all 12 leg drives (tested in simulation):
 - Keep the latency from the encoder sample to the new drive target at 20 ms or less, and aim for 10 ms.
 - Add a brake chopper on the shared bus before the first walk.
 
+## Gap study of F3 (`gap_study.py`)
+
+F3 is the trolley version: a teammate pushes the water tank and the pump on a trolley behind the robot.
+`gap_study.py` asks which differences between the simulation and the real robot most likely stop the real robot from walking.
+It runs the `hw_risks.py` loop and drive model on five models, then changes one thing at a time on F3.
+A realistic case R, a pessimistic case P and 12 cases "R with one pessimistic value" test the errors together.
+Each case runs the shipped policy and f1_v1, with 4 commands × 10 seeds of 20 s and a standing push test.
+
+| What | Command | Time |
+|---|---|---|
+| Self-check | `uv run python sim/sim2sim/gap_study.py --quick` | 25 s |
+| All cases, both policies | `uv run python sim/sim2sim/gap_study.py` | 56 min with 6 processes |
+| Add another policy to the results | `uv run python sim/sim2sim/gap_study.py --policy sim/rl/policies/f3_v1.onnx` | about 28 min |
+| Tables and figure again | `uv run python sim/sim2sim/gap_study.py --report` | 1 s |
+
+`--cases ID,ID` runs only some cases and adds them to the results. The run times are for a shared 8-core desktop PC.
+
+Key results (tested in simulation, falls in 40 runs, shipped policy / f1_v1):
+
+| Case | Falls | Note |
+|---|---|---|
+| F2, nominal drive | 1 / 0 | vx 0.22 / 0.15 m/s at a 0.3 m/s command |
+| F3, nominal drive | 0 / 0 | vx 0.25 / 0.17 m/s, less time at the torque limit |
+| F3 + constant 3 N hose pull | 5 / 7 | the strongest single change |
+| F3 + IMU tilt 4° | 8 / 3 | 2° changes nothing |
+| F3 + torque per amp × 0.85 | 7 / 1 | × 1.15 changes nothing |
+| R: all middle values together | 5 / 0 | with a 9 Nm limit: 1 / 0 |
+| P: all worst values together | 40 / 40 | with a 9 Nm limit: 40 / 37 |
+
+- In R, five values cause many falls at their pessimistic value: torque per amp × 0.85, torso CoM 2 cm back,
+  a constant 3 N hose pull, a 4° IMU tilt and 40 ms of command latency.
+- Armature, joint friction, foot friction, leg mass and gear play changed the falls by 3 or less.
+- Measure the torque per amp, the torso CoM, the hose pull, the IMU tilt and the loop latency first.
+  The report gives the order, the limits and the randomization ranges for the next training.
+
+`gap_study.py` uses optional settings of `hw_risks.simulate()`: another model and policy, an IMU tilt, gear play, a hose pull,
+and the time at the torque limit per joint. The cases of `hw_risks.py` do not use them, so their results do not change.
+
+![Falls and push per case](results/gap_study.png)
+
 ## Detector interface and the baseline detector
 
 Every detector module defines `detect(rgb, t) -> list[FireDetection]` (`aim/detection.py`).
@@ -113,7 +157,7 @@ The real detector is `vision/detector.py`. To test a detector in full F2 mission
 
 ## Open points
 
-- **Not verified:** the actuator model has no motor dynamics, no CAN jitter and no gearbox backlash.
+- **Not verified:** the actuator model has no motor dynamics and no CAN jitter. Gearbox backlash has only the simple model of `gap_study.py`.
 - **Assumed:** the motor phase resistance is 0.1 Ω. The bus capacitance (5 × 100 µF per drive) comes from photos.
 - **Open:** check the drive trip limits on an XDrive MINI, and log the loop latency on the board.
 - **Open:** after the first walks, run `dump_errors(odrv0)` on each drive and look for overspeed and regen errors.
