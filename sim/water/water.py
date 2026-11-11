@@ -1,11 +1,12 @@
-"""Water system of the final design F2 (two R2 tanks, Kamoer KLP02 24 V pump): pump and system curve, nozzle operating
-points, jet range with air drag and jet break-up, spray time, recoil, and the fire size that the water can handle.
+"""Water system of design F3 (2 L bag and Kamoer KLP02 24 V pump on a trolley, hose to the robot): pump and system
+curve, nozzle operating points, jet range with air drag and jet break-up, spray time, recoil, the water that the check
+valves hold when the pump is off, and the fire size that the water can handle.
 
-    uv run python sim/water/water.py          -> sim/water/results/water.md, water.json, *.png (about 20 s)
-    uv run python sim/water/water.py check    self-check (about 5 s)
+    uv run python sim/water/water.py          -> sim/water/results/water.md, water.json, *.png (about 5 s)
+    uv run python sim/water/water.py check    self-check (about 3 s)
 
 Status: tested in simulation. Every pump value comes from a datasheet or a shop page (see PUMPS). Nothing is measured.
-The geometry (heights, volume) comes from cad/final/out_f2/r2.json, the tube path from out_f2/layout.json.
+The heights, the bag volume and the hose come from docs/hardware/trolley.py (design F3).
 """
 import json
 import math
@@ -21,43 +22,43 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE.parent.parent / "aim"))
+sys.path[:0] = [str(HERE.parent.parent / "aim"), str(HERE.parent.parent / "docs/hardware")]
 import ballistics  # noqa: E402  aim/ballistics.py: the constant-drag jet of the aim code
+import trolley  # noqa: E402  docs/hardware/trolley.py: heights, bag and hose of the water trolley
 
 OUT = HERE / "results"
 G, RHO, MU, SIGMA = 9.81, 998.0, 1.0e-3, 0.072  # water at 20 degC: kg/m3, Pa s, N/m
 RHO_AIR, MU_AIR = 1.20, 1.81e-5  # air at 20 degC
 
-# ---------------- geometry (cad/final, design F2: two R2 tanks outside the torso) ----------------
-_R2 = json.loads((HERE.parent.parent / "cad/final/out_f2/r2.json").read_text())
-NOZZLE_Z = 0.905  # m, nozzle over the floor at tilt 0 (layout.json nozzle_fitting). Tilt moves it a few cm: ignored.
-WATER_TOP, WATER_FLOOR = (_R2["water_z_mm"][k] / 1000 for k in ("full_surface", "floor"))  # 0.6755, 0.5945 m
-LIFT_FULL, LIFT_EMPTY = NOZZLE_Z - WATER_TOP, NOZZLE_Z - WATER_FLOOR  # 0.23 and 0.31 m
-PUMP_INLET_Z = 0.703  # m, pump axis on the rear of the middle shelf (the CAD pump holder, layout.json pump_dwp385): suction
-# lift 0.03 m (full) to 0.11 m (empty). The pump primes itself, so it can sit above the water. Included in LIFT_*.
-TANK_L = _R2["volume_l"]  # L, both R2 tanks together (0.39 L each)
-# ASSUMED tube path (cad/final/out_f2/layout.json suction_mm): the right tank outlet to the tee 0.29 m (left 0.20 m),
-# tee + filter to the pump 0.06 m, pump to the deck slot 0.25 m, service loop around the pan axis 0.25 m, tilt arm
-# to the nozzle 0.12 m. Sum 0.97 m, rounded up (the right line, full flow: conservative).
-TUBE_L, TUBE_D = 1.0, 3.2e-3
-DEAD_ML = 24.0  # mL, ASSUMED: about 12 mL per tank under the outlet (z 599) when the pump starts to suck air
+# ---------------- geometry (docs/hardware/trolley.py, design F3: the bag hangs on the trolley above the pump) ----------
+NOZZLE_Z = trolley.NOZZLE_Z  # 0.905 m, nozzle over the floor at tilt 0. Tilt moves it a few cm: ignored.
+WATER_TOP, WATER_FLOOR = trolley.WATER_Z  # 1.80 m (full bag), 1.53 m (empty bag: the outlet)
+LIFT_FULL, LIFT_EMPTY = NOZZLE_Z - WATER_TOP, NOZZLE_Z - WATER_FLOOR  # -0.90 and -0.62 m: the water is above the nozzle
+# The pump inlet (1.20 m) is under the bag outlet, so the water fills the pump. Only the end heights count in LIFT_*:
+# the hose goes up over the boom (1.45 m) and down to the robot, full of water.
+TANK_L = trolley.TANK_L  # L, one hydration bag
+# Bag outlet to the pump 0.3 m, delivery hose 3.0 m (pump - boom - free span - robot - nozzle): one 3.2 mm bore in the
+# model (the bag hose is wider: conservative).
+TUBE_L, TUBE_D = trolley.SUCTION_L + trolley.HOSE_L, trolley.HOSE_BORE
+DEAD_ML = 20.0  # mL, ASSUMED: left in the bag when the pump starts to suck air
 # ---------------- pumps ----------------
 # q in L/min, p in kPa at v_ref. Speed ~ voltage (ASSUMED). "centrifugal": q ~ V, p ~ V^2 (affinity laws).
 # "displacement": q ~ V, stall pressure ~ stall torque ~ V.
-# volts: the voltage the pump runs on. The KLP02 takes the 24 V motor bus after relay K1, through the DMC-101 pump
-# controller: two 6S packs, 25.2 V full, 22.2 V nominal, 21.0 V low (3.5 V per cell). Pin 11 of the ROCK 3C switches it
-# on and off (no PWM). The diode drop of the bus is ignored.
-V_BUS = (21.0, 22.2, 25.2)  # V: low, nominal, full
+# volts: the voltage the pump runs on. The KLP02 takes the 6S pack of the trolley through the DMC-101 pump controller:
+# 25.2 V full, 22.2 V nominal, 21.0 V low (3.5 V per cell). Pin 11 of the ROCK 3C switches it on and off (no PWM)
+# through the e-stop contact S1 NC4, the plug J10 and the opto-isolator U8 on the trolley.
+V_PACK = (21.0, 22.2, 25.2)  # V: low, nominal, full
 PUMPS = {
-    "KLP02": dict(label="Kamoer KLP02, 24 V, brushless, self-priming", kind="displacement", v_ref=24.0, volts=V_BUS[1],
+    "KLP02": dict(label="Kamoer KLP02, 24 V, brushless, self-priming", kind="displacement", v_ref=24.0, volts=V_PACK[1],
                   q=[0.0, 0.7], p=[RHO * G * 30.0 / 1000, 0.0], amps=0.5, grams=250, self_priming=True,
-                  config="filter and check valve",
+                  config="filter and two check valves",
                   source="Kamoer data for the 24 V brushless KLP02: flow 0.7 L/min or more, head 30 m or more (294 kPa), "
                          "suction lift 4 m or more, power 12 W or less (0.5 A at 24 V), about 250 g, switch control. "
                          "ESTIMATE from two datasheet points: a straight line from the free flow to the head at zero "
                          "flow (ASSUMED shape). The datasheet gives minimum values."),
     "DWP-385": dict(label="motorbank DWP-385, 2-stage gear (comparison only)", kind="displacement", v_ref=12.0,
-                    volts=11.1, q=[0.0, 0.9], p=[167.0, 0.0], amps=1.1, grams=130, self_priming=True, config="filter and check valve",
+                    volts=11.1, q=[0.0, 0.9], p=[167.0, 0.0], amps=1.1, grams=130, self_priming=True,
+                    config="filter and two check valves",
                     source="motorbank DWP-385 12 V datasheet image on eleparts goods 3850995 (read 2026-10-15): "
                            "6-18 V, 900 cc/min and 0.4-0.65 A at no load, 540 cc/min and 0.7-1.1 A rated, locking "
                            "pressure 1.7 kgf/cm2 or more, 130 g, intermittent running. Straight line from free flow "
@@ -71,9 +72,12 @@ BARB_D = 2.0e-3  # m, bore of an M5 hose barb for 3 mm tube
 K_BARB = 1.0  # contraction into the barb bore + expansion into the tube, at the barb bore velocity
 K_FILTER = 3.0  # inline mesh filter body, at the tube velocity
 K_CHECK, P_CRACK = 2.0, 10.0  # check valve body (tube velocity) and cracking pressure (kPa): Sansyo SB, 10 kPa
-CONFIGS = {"minimal": dict(barbs=4, filt=False, check=False),  # tank outlet barb + tee (2 barbs) + nozzle barb
-           "filter": dict(barbs=6, filt=True, check=False),  # + filter with 2 barbs
-           "filter and check valve": dict(barbs=8, filt=True, check=True)}  # + check valve with 2 barbs
+# check: number of check valves in series. F3 uses two: CV1 at the pump outlet on the trolley, CV2 on the tilt arm.
+# Together they open at 20 kPa, so they hold the water of the bag when the pump is off (water_held()).
+CONFIGS = {"minimal": dict(barbs=2, filt=False, check=0),  # bag outlet barb + nozzle barb
+           "filter": dict(barbs=4, filt=True, check=0),  # + filter with 2 barbs
+           "filter and check valve": dict(barbs=6, filt=True, check=1),  # + check valve with 2 barbs
+           "filter and two check valves": dict(barbs=8, filt=True, check=2)}  # + second check valve with 2 barbs
 
 # ---------------- nozzle ----------------
 # A 3D-printer brass nozzle: 2 mm bore, cone, short land at the orifice = a short convergent nozzle.
@@ -93,7 +97,7 @@ def tube_dp(q, L=TUBE_L, d=TUBE_D):
 def fittings_dp(q, barbs, filt, check):
     vb, vt = q / (math.pi * BARB_D ** 2 / 4), q / (math.pi * TUBE_D ** 2 / 4)
     dp = barbs * K_BARB * RHO * vb * vb / 2 + (K_FILTER * RHO * vt * vt / 2 if filt else 0.0)
-    return dp + ((K_CHECK * RHO * vt * vt / 2 + P_CRACK * 1e3) if check else 0.0)
+    return dp + check * (K_CHECK * RHO * vt * vt / 2 + P_CRACK * 1e3)
 
 
 def pump_dp(pump, q, volts, shape=1.0):
@@ -107,14 +111,15 @@ def pump_dp(pump, q, volts, shape=1.0):
     return (s * s if pump["kind"] == "centrifugal" else s) * p * 1e3
 
 
-def operating_point(pump, d_mm, volts=None, lift=LIFT_EMPTY, config=None, shape=1.0, tube_l=TUBE_L, cd=CD):
+def operating_point(pump, d_mm, volts=None, lift=LIFT_EMPTY, config=None, shape=1.0, tube_l=TUBE_L, cd=CD,
+                    tube_d=TUBE_D):
     """Flow (L/min), nozzle pressure (kPa), exit speed (m/s), jet diameter (mm). None when the pump cannot lift."""
     a = math.pi * (d_mm / 1000) ** 2 / 4
     cfg = CONFIGS[config or pump["config"]]
     volts = volts or pump["volts"]
 
     def p_nozzle(q):  # pressure left for the nozzle at flow q
-        return pump_dp(pump, q, volts, shape) - RHO * G * lift - tube_dp(q, tube_l) - fittings_dp(q, **cfg)
+        return pump_dp(pump, q, volts, shape) - RHO * G * lift - tube_dp(q, tube_l, tube_d) - fittings_dp(q, **cfg)
 
     def f(q):
         return p_nozzle(q) - RHO / 2 * (q / (cd * a)) ** 2
@@ -323,9 +328,9 @@ def md_table(head, rows):
 def report(res):
     L = ["# Water system numbers (generated by sim/water/water.py)", "",
          "Status: tested in simulation. Pump values: datasheets or shop pages (see `PUMPS` in the script). Not measured.",
-         f"Geometry: nozzle {NOZZLE_Z:.3f} m over the floor, lift {LIFT_FULL:.2f} m (full tank) to {LIFT_EMPTY:.2f} m "
-         f"(empty), {TUBE_L} m of {TUBE_D * 1000:.1f} mm tube, {TANK_L:.3f} L in two R2 tanks (F2). "
-         f"Ranges: from the nozzle to the floor.", ""]
+         f"Geometry (F3 trolley): nozzle {NOZZLE_Z:.3f} m over the floor. Lift {LIFT_FULL:.2f} m (full bag) to "
+         f"{LIFT_EMPTY:.2f} m (empty bag): the water surface is above the nozzle. {TUBE_L:g} m of {TUBE_D * 1000:.1f} mm "
+         f"tube, {TANK_L:g} L bag. Ranges: from the nozzle to the floor.", ""]
     for key, block in res["pumps"].items():
         pump = PUMPS[key]
         L += [f"## {pump['label']} at {block['volts']:g} V, fittings: {pump['config']}", "",
@@ -345,7 +350,7 @@ def report(res):
                          f"{r['spray_s'] / 60:.1f}", f"{1000 * r['recoil_n']:.0f}"])
         L += [md_table(["Nozzle (mm)", "Flow (L/min)", "Flow (g/s)", "Nozzle pressure (kPa)", "Exit speed (m/s)",
                         "Intact column, laminar / turbulent (mm)", "Max range, no drag (m)",
-                        "Max range, best estimate (m)", "Max range, low estimate (m)", "Spray time, both tanks full (min)",
+                        "Max range, best estimate (m)", "Max range, low estimate (m)", "Spray time, full bag (min)",
                         "Recoil (mN)"], rows), ""]
         L += ["Range to the floor per elevation (best estimate / low estimate, m):", ""]
         L += [md_table(["Nozzle (mm)"] + [f"{e:+d}°" for e in ELEV_DEG],
@@ -358,8 +363,15 @@ def report(res):
                                                                         f"{v['range15']:.1f}"] for k, v in s.items()]),
           "", f"Equivalent constant drag for `aim/` (`ControllerConfig.drag`): {res['k_equiv']:.3f} 1/m "
               f"(fit to the best estimate at +15°).",
-          f"Jet speed against the bus voltage: v0 = {res['recommended']['v']:.1f} m/s × (V / {V_BUS[1]:g} V)^"
-          f"{res['v0_exponent']:.2f} (fit from {V_BUS[0]:g} V and {V_BUS[2]:g} V, ASSUMED speed ~ voltage).", ""]
+          f"Jet speed against the pack voltage: v0 = {res['recommended']['v']:.1f} m/s × (V / {V_PACK[1]:g} V)^"
+          f"{res['v0_exponent']:.2f} (fit from {V_PACK[0]:g} V and {V_PACK[2]:g} V, ASSUMED speed ~ voltage).", ""]
+    h = res["held"]
+    L += ["## Water held when the pump is off", "",
+          f"The water surface is up to {WATER_TOP:.2f} m high. It pushes water through the stopped pump toward the nozzle.",
+          f"- Robot standing, nozzle tilted down ({trolley.NOZZLE_LOW_Z:.3f} m): {h['standing_kpa']:.1f} kPa.",
+          f"- Robot on the floor (nozzle {trolley.NOZZLE_FALLEN_Z:.2f} m): {h['fallen_kpa']:.1f} kPa.",
+          f"- The check valves in series open at {h['crack_kpa']:.0f} kPa. "
+          + ("They hold the water in both cases." if h["fallen_kpa"] < h["crack_kpa"] else "The water drips out."), ""]
     f = res["fire"]
     L += ["## Fire capacity (recommended pump and nozzle)", "",
           f"- Water flow {f['grams_s']:.1f} g/s. If all of it evaporates, it takes {f['kw_max']:.0f} kW. This is an "
@@ -374,6 +386,14 @@ def report(res):
 REC_PUMP, REC_NOZZLE = "KLP02", 1.0  # pump and nozzle of docs/hardware/water.md
 
 
+def water_held(n_check):
+    """Static pressure (kPa) of the full bag at the nozzle with the pump off, and the opening pressure of the check
+    valves in series. The stopped diaphragm pump lets water through (ASSUMED)."""
+    head = lambda z: RHO * G * (WATER_TOP - z) / 1e3  # noqa: E731
+    return dict(standing_kpa=head(trolley.NOZZLE_LOW_Z), fallen_kpa=head(trolley.NOZZLE_FALLEN_Z),
+                crack_kpa=n_check * P_CRACK)
+
+
 def main():
     OUT.mkdir(exist_ok=True)
     res = {"pumps": {}}
@@ -385,14 +405,16 @@ def main():
     r = next(r for r in rows if r["d"] == d)
     plot_ranges(rows, OUT / "ranges.png", f"{REC_PUMP} at {pump['volts']:g} V")
     plot_jets(r["op"], d, OUT / "jets.png")
-    cases = {"baseline: empty tank, filter and check valve": dict(),
-             "full tank": dict(lift=LIFT_FULL),
+    cases = {"baseline: empty bag, filter and two check valves": dict(),
+             "full bag": dict(lift=LIFT_FULL),
+             "one check valve": dict(config="filter and check valve"),
              "no check valve": dict(config="filter"),
              "no filter, no check valve": dict(config="minimal"),
-             "tube 0.7 m": dict(tube_l=0.7),
-             "tube 1.3 m": dict(tube_l=1.3),
-             f"bus full, {V_BUS[2]:g} V": dict(volts=V_BUS[2]),
-             f"bus low, {V_BUS[0]:g} V": dict(volts=V_BUS[0]),
+             "hose 2.5 m instead of 3.0 m": dict(tube_l=trolley.SUCTION_L + 2.5),
+             "hose 3.5 m instead of 3.0 m": dict(tube_l=trolley.SUCTION_L + 3.5),
+             "hose bore 3.0 mm instead of 3.2 mm": dict(tube_d=3.0e-3),
+             f"pack full, {V_PACK[2]:g} V": dict(volts=V_PACK[2]),
+             f"pack low, {V_PACK[0]:g} V": dict(volts=V_PACK[0]),
              "datasheet voltage, 24 V": dict(volts=24.0),
              "nozzle Cd 0.65 (sharp orifice)": dict(cd=0.65),
              "quadratic pump curve": dict(shape=2.0)}
@@ -402,10 +424,11 @@ def main():
         sens[name] = dict(q_lpm=op["q_lpm"], v=op["v"], range15=jet(op["v"], 15, op["dj_mm"], MODELS["best estimate"])[2])
     res["sensitivity"] = sens
     res["k_equiv"] = equivalent_drag(r["op"]["v"], 15, r["ranges"]["best estimate"][15])
-    lo, hi = (operating_point(pump, d, volts=v)["v"] for v in (V_BUS[0], V_BUS[2]))
-    res["v0_exponent"] = math.log(hi / lo) / math.log(V_BUS[2] / V_BUS[0])  # v0 ~ v0_nominal (V / V_nominal)^exponent
+    lo, hi = (operating_point(pump, d, volts=v)["v"] for v in (V_PACK[0], V_PACK[2]))
+    res["v0_exponent"] = math.log(hi / lo) / math.log(V_PACK[2] / V_PACK[0])  # v0 ~ v0_nominal (V / V_nominal)^exponent
+    res["held"] = water_held(CONFIGS[pump["config"]]["check"])
     res["fire"] = fire_capacity(r["grams_s"]) | {"grams_s": r["grams_s"]}
-    res["recommended"] = dict(pump=REC_PUMP, nozzle_mm=d, volts=pump["volts"], amps=pump["amps"],
+    res["recommended"] = dict(pump=REC_PUMP, nozzle_mm=d, volts=pump["volts"], amps=pump["amps"], tank_l=TANK_L,
                               watts=pump["amps"] * 24.0, q_lpm=r["op"]["q_lpm"], v=r["op"]["v"],
                               spray_min=r["spray_s"] / 60, usable_l=r["spray_s"] * r["op"]["q_lpm"] / 60,
                               range15=r["ranges"]["best estimate"][15], range15_low=r["ranges"]["low estimate"][15])
@@ -432,7 +455,7 @@ def check():
     # drag only shortens the jet, and the low estimate is the shortest
     rn, rb, rl = (jet(v, 20, 1.0, m)[2] for m in MODELS.values())
     assert rl < rb < rn, (rn, rb, rl)
-    # more lift or a filter means less flow; a higher voltage means more flow
+    # more lift or a filter means less flow. A higher voltage means more flow
     assert operating_point(pump, 1.0, 24.0, lift=0.5, config="minimal")["q_lpm"] < op["q_lpm"]
     assert operating_point(pump, 1.0, 24.0, config="filter and check valve")["q_lpm"] < op["q_lpm"]
     assert operating_point(pump, 1.0, 25.2, config="minimal")["v"] > op["v"]
@@ -444,6 +467,9 @@ def check():
     assert abs(np.interp(-h, p[::-1, 1], p[::-1, 0]) - 0.8 * jet(v, 15, 1.0, None)[2]) < 0.01
     # Weber laminar form: about 0.35 m intact length for a 1 mm jet at 7 m/s (We 680, Re 7000)
     assert 0.3 < breakup(7.0, 1.0)["laminar"] < 0.6
+    # design F3: the check valves hold the bag water when the pump is off, also with the robot on the floor
+    h = water_held(CONFIGS[pump["config"]]["check"])
+    assert h["fallen_kpa"] < h["crack_kpa"], h
     print("water.py check: OK")
 
 

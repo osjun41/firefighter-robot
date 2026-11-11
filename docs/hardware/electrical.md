@@ -1,6 +1,10 @@
 # Electrical design
 
-Drawing set SOB-E, revision B (2026-10-22). Status: **planned**. Nothing is built or measured yet. The power numbers are **tested in simulation** (`power_calc.py` on the F2 robot model).
+Drawing set SOB-E, revision C (2026-10-30). Status: **planned**. Nothing is built or measured yet. The power numbers are **tested in simulation** (`power_calc.py`).
+
+Revision C follows design F3 (team decision of 2026-10-29). The pump, its controller and its own 6S pack moved to the water trolley ([trolley.md](trolley.md)). The robot keeps the pump on/off line, now through a fourth e-stop contact and a plug at the rear of the deck.
+
+- **Assumed:** the walking power comes from the F2 robot model (16.0 kg). F3 has no water system on the robot (14.6 kg), so the motor bus numbers are upper estimates.
 
 ![System overview](schematic/overview.svg)
 
@@ -8,7 +12,7 @@ Figure 1. System overview. The full wiring is on two A3 sheets:
 
 | Drawing | Content | File |
 |---|---|---|
-| SOB-E-01 | Power distribution: motor packs, fuses, OR diode, main relay, legs, brake resistors, pump; control pack, 5 V and 24 V converters, e-stop chain, servo relay | [SOB-E-01_power.svg](schematic/SOB-E-01_power.svg) |
+| SOB-E-01 | Power distribution: motor packs, fuses, OR diode, main relay, legs, brake resistors. Control pack, 5 V and 24 V converters, e-stop chain, servo relay. Water trolley: pack, fuse, switches, pump controller, pump, opto-isolator, plug J10 | [SOB-E-01_power.svg](schematic/SOB-E-01_power.svg) |
 | SOB-E-02 | Control and communication: ROCK 3C header and USB ports, two CAN buses with the 12 drives, camera, IMU, pan-tilt servos | [SOB-E-02_control.svg](schematic/SOB-E-02_control.svg) |
 | both | A3 sheets for printing | [SOB-E_schematic.pdf](schematic/SOB-E_schematic.pdf) |
 | every wire | ends, connector, gauge, colour, length, fuse, current | [harness.csv](harness.csv) |
@@ -21,14 +25,14 @@ The drawings use IEC 60617 symbols. Contacts are drawn at rest. A cross-referenc
 |---|---|---|
 | Motor bus | 2 × 6S packs → fuses F1, F2 → OR diode D1 → main relay K1 → fuses F3, F4 → two leg chains | walking 34 W mean, 191 W peak (simulation). Planning value 90 W. |
 | Brake | 4.7 Ω 50 W resistor on the AUX terminal of the two hip-roll drives, with the drive over-voltage ramp 25.5 to 25.9 V | bus peak 25.6 V instead of 36.5 V, 1.15 W mean in the resistors |
-| Pump | Kamoer KLP02 (24 V) with a DMC-101 controller, on the motor bus after K1, fuse F14 3 A | ≤ 12 W, about 0.5 A |
-| Pump on/off | ROCK 3C pin 11 → opto-isolator U8 → DMC-101 control input (**proposed**) | the e-stop also cuts the pump through K1 |
+| Pump | Kamoer KLP02 (24 V) with a DMC-101 controller, on the water trolley. Own 6S 1300 mAh pack BT4, fuse F20 3 A, main switch S10, kill switch S11 at the push handle. | ≤ 12 W, about 0.5 A |
+| Pump on/off | ROCK 3C pin 11 → R7 → S1 NC4 → plug J10 → 2-wire cable → opto-isolator U8 on the trolley → DMC-101 (**proposed**) | the robot e-stop and a pulled plug stop the pump in hardware |
 | 5 V for the ROCK 3C | Pololu D36V50F5 (5.5 A) on header pins 2 and 4 | 1.6 A typical, 2.6 A peak |
 | 24 V control | HAM5925 boost set to 24.0 V, current limit 0.5 A | K1 coil 176 mA, K2 coil about 0.1 A |
-| E-stop | NC1 opens the K1 coil (drives and pump). NC2 opens the K2 coil (pan-tilt servos). NC3 is a sense line to pin 13. | |
+| E-stop | NC1 opens the K1 coil (drives). NC2 opens the K2 coil (pan-tilt servos). NC3 is a sense line to pin 13. NC4 opens the pump on/off loop. | |
 | IMU | UART4 on pins 16 and 18 (`/dev/ttyS4`) | the 4 USB ports take the 4 USB devices |
-| Fuses | 10 mini blade fuses, 32 V DC | section 6 |
-| Battery time | 2 × 6S: 2 h (planning), 5.0 h (simulation, with the pump). 3S: 2.6 h. | section 3.3 |
+| Fuses | 10 mini blade fuses, 32 V DC: 9 on the robot, F20 on the trolley | section 6 |
+| Battery time | 2 × 6S: 2 h (planning), 5.2 h (simulation). 3S: 2.6 h. Trolley pack: 1.6 h of continuous spray. | section 3.3 |
 
 ## 2. Parts
 
@@ -39,21 +43,25 @@ The reference designators are the same on the drawings, in `harness.csv` and in 
 | BT1, BT2 | Zeee 6S LiPo 5000 mAh, EC5 | motor packs (course BOM) |
 | BT3 | 3S LiPo 6000 mAh, EC5 | computer, relay coils and servos (course BOM) |
 | D1 | MBRT400100 dual Schottky, common cathode | joins the two 6S packs |
-| K1 | Panasonic AEP18024, 80 A, 24 V coil | main relay: motor bus and pump |
+| K1 | Panasonic AEP18024, 80 A, 24 V coil | main relay: motor bus |
 | K2 | KKA-K4 automotive relay, 40 A, 24 V coil | e-stop cut of the 12 V servo feed |
-| S1 | A20-E01P e-stop, 3 NC contact blocks | NC1 K1 coil, NC2 K2 coil, NC3 sense |
+| S1 | Menics A20 series e-stop with 4 × A20-E01P (1 NC) contact blocks | NC1 K1 coil, NC2 K2 coil, NC3 sense, NC4 pump on/off loop (new block, **proposed**) |
 | S2, S3 | 12 V and 24 V push-lock switches (S3 with lamp H1) | PC POWER, MOTOR POWER |
 | U1 | HAM5925 boost, 3S → 24.0 V | relay coil supply |
 | U2 | Pololu D36V50F5 buck, 5 V 5.5 A | ROCK 3C and USB devices |
 | U3 | Radxa ROCK 3C (RK3566) | robot computer |
 | U4, U5 | CANable 2.0 Pro (isolated) | USB to CAN, one per leg |
 | U6 | Waveshare Bus Servo Adapter (A) | USB to the ST3215 servo bus |
-| U7 | DMC-101 DC pump controller | drives the pump (datasheet not available yet) |
-| U8 | PC817-type opto-isolator | pump on/off across the two ground domains (**proposed**) |
+| U7 | DMC-101 DC pump controller, on the trolley | drives the pump (datasheet not available yet) |
+| U8 | PC817-type opto-isolator, on the trolley | pump on/off across the robot and trolley grounds (**proposed**) |
 | U9 | Hiwonder IM10A IMU | body attitude, UART4 |
 | U10 | Arducam B0201 (IMX291, UVC) | fire camera |
 | A1–A12 | XDrive MINI drives: 8 with M6C12 motors, 4 with MAD 5010 motors (ankles) | leg joints, node ids on sheet 2 |
-| M1 | Kamoer KLP02, 24 V, self-priming diaphragm pump | water |
+| M1 | Kamoer KLP02, 24 V, self-priming diaphragm pump, on the trolley | water |
+| BT4 | 6S LiPo 1300 mAh, XT60, on the trolley | pump power |
+| S10, H10 | push-lock switch with a 24 V lamp, in the pump box | trolley main switch, "pump has power" lamp |
+| S11 | 22 mm e-stop in a one-hole box, at the push handle | trolley kill switch: cuts the pump power |
+| J10 | JST SM 2-pin connector at the hose anchor (rear of the deck) | pump on/off loop between the robot and the trolley cable |
 | M2, M3 | ST3215 servos, 12 V | pan and tilt |
 | RB1, RB2 | RARA RH50C4R70J, 4.7 Ω 50 W | brake resistors |
 | RS1, P1 | 100 A / 75 mV shunt with the HAV6001 V/A meter | motor bus meter |
@@ -61,7 +69,7 @@ The reference designators are the same on the drawings, in `harness.csv` and in 
 | RV1 | 10D390K varistor | K1 coil suppression |
 | D2 | SB560 Schottky | K2 coil flyback |
 | R1, R7, R8 | 10 kΩ, 470 Ω, 10 kΩ | e-stop pull-up, opto LED, pump pull-down |
-| F1–F14 | mini blade fuses | section 6 |
+| F1–F5, F10–F13, F20 | mini blade fuses | section 6 |
 | X1 | Wago 221-413 lever connectors | 3S distribution |
 
 ## 3. Power
@@ -70,10 +78,11 @@ The reference designators are the same on the drawings, in `harness.csv` and in 
 
 | Rail | Voltage | Source | Loads | Typical | Peak | Protection |
 |---|---|---|---|---|---|---|
-| Motor bus | 22.2–25.2 V | 2 × 6S through D1 and K1 | 12 XDrive MINI, pump | 34 W (simulation, walking). Planning: 90 W. Pump ≤ 12 W. | 191 W instant, 148 W over 20 ms | F1, F2 20 A (packs), F3, F4 20 A (legs), F14 3 A (pump) |
+| Motor bus | 22.2–25.2 V | 2 × 6S through D1 and K1 | 12 XDrive MINI | 34 W (simulation, walking). Planning: 90 W. | 191 W instant, 148 W over 20 ms | F1, F2 20 A (packs), F3, F4 20 A (legs) |
 | 24 V control | 24.0 V | U1 boost from the switched 3S | K1 coil 176 mA, K2 coil about 0.1 A, lamp H1 | 0.29 A | 0.3 A | F12 2 A, boost current limit 0.5 A |
 | 12 V | 10.5–12.6 V | 3S pack | U2, U1, and through K2: the two ST3215 | 1.83 A at 11.1 V (20.3 W) | 7.8 A at 10.5 V (both servos at stall) | F10 10 A, F11 5 A, F13 10 A |
 | 5 V | 5.0 V | U2 buck | ROCK 3C, 2 CANables, camera, servo adapter (USB side) | 1.63 A | 2.62 A | buck current limit (5.5 A) |
+| Trolley | 21.0–25.2 V | BT4 6S 1300 mAh (separate unit) | DMC-101 and pump, lamp H10 | 14.3 W while spraying (Assumed: 90 % controller efficiency, 1 W standby) | start current not known | F20 3 A |
 
 The 5 V and 3S load details are in [power_calc.md](power_calc.md).
 
@@ -92,8 +101,9 @@ The BHL paper gives about 30 min from one 6S 4000 mAh pack (88.8 Wh) for 22 actu
 
 | Pack | Energy | Usable (80 %) | Load | Time |
 |---|---|---|---|---|
-| 2 × 6S 5000 mAh | 2 × 111 Wh | 178 Wh | 90 W planning / 35 W simulation (walking 34 W + pump 1.2 W mean) | 2.0 h / 5.0 h |
+| 2 × 6S 5000 mAh | 2 × 111 Wh | 178 Wh | 90 W planning / 34 W simulation (walking) | 2.0 h / 5.2 h |
 | 3S 6000 mAh | 66.6 Wh | 53 Wh | 20.3 W typical | 2.6 h |
+| Trolley 6S 1300 mAh | 28.9 Wh | 23.1 Wh | 14.3 W continuous spray / 2.3 W mission with 10 % spray time | 1.6 h / 9.9 h |
 
 - D1 joins the two packs. The pack with the higher voltage feeds the bus first. Charge both 6S packs to the same voltage before each session.
 - Measure the real current with the P1 meter during the first walks, then update this table.
@@ -106,7 +116,7 @@ The BHL paper gives about 30 min from one 6S 4000 mAh pack (88.8 Wh) for 22 actu
 - When the legs brake, the motors work as generators. Only the drive capacitors (about 6 mF in total) take this energy.
 - Simulation (F2, worst case without standby power): without a brake, the bus rises from 25.2 V to 36.5 V. The drives trip at 26 V (`dc_bus_overvoltage_trip_level`).
 - One regen event brings up to 2.0 J, up to 4.1 events per second. 6 mF takes only 0.12 J between 25.2 and 26.0 V. A bigger capacitor is not a solution: 2 J in 0.8 V needs about 100 mF.
-- The P1 meter and the pump controller also need the bus to stay low: P1 takes at most 30 V on its supply.
+- The P1 meter also needs the bus to stay low: P1 takes at most 30 V on its supply.
 
 ### 4.2 Firmware behaviour
 
@@ -166,28 +176,33 @@ Why these values:
 
 If trips still happen: the board is the 12–56 V version. You can raise `dc_bus_overvoltage_trip_level` to 28 V and `dc_bus_overvoltage_ramp_end` to 26.5 V. Ask the TA first, because this changes the course config.
 
-## 5. Pump power and control
+## 5. Pump power and control (water trolley)
 
-The team uses the Kamoer KLP02 in its 24 V version with a DMC-101 DC pump controller (decision of 2026-10-22).
+The team uses the Kamoer KLP02 in its 24 V version with a DMC-101 DC pump controller (decision of 2026-10-22). Since design F3 they ride on the water trolley with their own pack ([trolley.md](trolley.md)).
 
-- **Power:** U7 takes 24 V from the motor bus after K1, through F14 3 A (W32, 18 AWG). Its return goes to GND_M at the RS1 LOAD bolt.
-- **Why the motor bus:** the e-stop already opens K1, so it cuts the pump with the drives. No new converter is needed. The 3S pack stays for the computer.
-- **Control (proposed):** ROCK 3C pin 11 (GPIO3_A1) drives the LED of the opto-isolator U8 through R7 470 Ω. R8 10 kΩ holds pin 11 low, so the pump stays off while the board boots. The U8 output drives the DMC-101 control input.
-- **Why an opto-isolator:** U7 sits on GND_M and the ROCK 3C sits on GND_3S. U8 keeps the two grounds apart (section 10).
-- **Software:** `robot/pump.py` switches pin 11 on and off. It stops the pump after `max_spray_s` (12 s) and when the actuator node stops updating it (`robot/config.toml`, `[pump]`).
+- **Power:** BT4 (6S 1300 mAh) → F20 3 A → main switch S10 → kill switch S11 → U7 → M1. Wires W70, W71, W72 and W37. Lamp H10 in S10 lights while U7 has power.
+- **Why a separate pack:** only the hose and a thin cable reach the robot. A 6S pack gives the same 21.0–25.2 V as the old motor bus, so the pump numbers do not change. The drive regen (up to 25.6 V) no longer reaches the DMC-101.
+- **Control (proposed):** ROCK 3C pin 11 (GPIO3_A1) drives the LED of the opto-isolator U8. The current flows through R7 470 Ω, the e-stop contact S1 NC4 (41–42), the plug J10 and the cable W60. R8 10 kΩ holds pin 11 low, so the pump stays off while the board boots. The U8 output drives the DMC-101 control input.
+- **LED current:** (3.3 V − 1.2 V) / 470 Ω = 4.5 mA. The cable adds about 0.2 Ω.
+- **Hardware stop from the robot:** pressing the robot e-stop opens NC4. The LED goes dark and the pump stops, even if pin 11 stays high. A plug pulled out of J10 does the same.
+- **Software stop:** `robot/pump.py` keeps the pump off while pin 13 reads "pressed" (NC3). It also stops the pump after `max_spray_s` (12 s) and when the actuator node stops updating it (`robot/config.toml`, `[pump]`).
+- **Stop at the trolley:** the person who pushes presses S11. S11 cuts the pump power directly.
+- **Why an opto-isolator:** the robot (GND_3S) and the trolley (GND_T) share no wire. U8 passes the on/off signal as light. The LED and its current loop stay on the robot side of U8.
 
 **Open:** We do not have the DMC-101 datasheet yet. Confirm these points before you wire the pump:
 
 1. The control input of the DMC-101: on/off contact, logic level, or PWM. Change U8 and R7 to match.
-2. The input voltage range of the DMC-101. The bus is 22.2–25.6 V with the brake resistors and up to 36.5 V without them.
-3. The KLP02 variant: brushless or brushed. A brushed pump needs a flyback diode across its leads if the DMC-101 has none.
-4. The start current of the pump. F14 is 3 A.
+2. The pump must run only while U8 conducts. Then a dark LED (pressed e-stop, pulled plug, board off) always means "pump off". If the DMC-101 runs with an open input, do not invert the signal in software (`active_low = true`). Add a small relay or a transistor stage on the trolley instead.
+3. The input voltage range of the DMC-101. The trolley pack gives 21.0–25.2 V.
+4. The KLP02 variant: brushless or brushed. A brushed pump needs a flyback diode across its leads if the DMC-101 has none.
+5. The start current of the pump. F20 is 3 A.
 
-Alternative: feed the pump from the U1 boost on the 3S side. This needs a higher boost current limit and its own e-stop cut, so we do not use it.
+- **Not verified:** the S1 operator takes a fourth A20-E01P block. If it does not, replace one block with a Menics A20-E02P (two NC contacts in one block).
+- **Not verified:** the A20-E01P contacts switch 3.3 V and 4.5 mA reliably. Small signals can fail on silver contacts. Test 12.7 step 11 measures the contact voltage.
 
 ## 6. Fuses and wires
 
-Every wire, its fuse and its current are in `harness.csv`. `power_calc.py check` checks each row: the fuse is not larger than the wire rating, the continuous current is at most 80 % of the fuse, and the voltage drop is at most 3 % of the rail voltage.
+Every wire, its fuse and its current are in `harness.csv`. `power_calc.py check` checks three things in each row. The fuse is not larger than the wire rating. The continuous current is at most 80 % of the fuse. The voltage drop is at most 3 % of the rail voltage.
 
 | Fuse | Rating | Where | Wire | Holder |
 |---|---|---|---|---|
@@ -198,9 +213,10 @@ Every wire, its fuse and its current are in `harness.csv`. `power_calc.py check`
 | F11 | 5 A | 3S to S2 (computer and boost) | 22 AWG | Coms BE151 |
 | F12 | 2 A | boost output to the e-stop chain | 22 AWG | Coms BE151 |
 | F13 | 10 A | 12 V actuator node (after K2) to the servo adapter | 18 AWG | Coms BE151 |
-| F14 | 3 A | motor bus (after K1) to the pump controller U7 | 18 AWG | Coms BE151 |
+| F20 | 3 A | trolley pack BT4 +, within 50 mm of the XT60 | 18 AWG | Coms BE151 |
 
 - All fuses are mini blade fuses (ATM / MINIVAL), 32 V DC. A full 6S pack has 25.2 V.
+- Revision B had F14 (3 A) from the motor bus to the pump. F14 is gone. The trolley uses F20.
 - The D1 cathode to K1 wire (W05) is 10 AWG, because both packs can feed it.
 - In a leg short, the 20 A leg fuse blows before the pack fuses.
 
@@ -215,10 +231,14 @@ Every wire, its fuse and its current are in `harness.csv`. `power_calc.py check`
 | Ring lugs 6 mm² (JOT 6-6, 6-8) | D1 screws, K1 studs, shunt bolts |
 | DC plug 5.5 × 2.1 mm | servo adapter power |
 | Dupont 1-pin | ROCK 3C header: power, pump control, e-stop sense, IMU |
+| JST SM 2-pin (J10) | pump on/off loop at the hose anchor. Robot side: receptacle with female contacts. Trolley cable: plug. Latching, not sealed. |
+| XT60 | trolley pack BT4 to its lead with F20 |
 | Yazaki 7283-1020 | K1 coil plug, ships with the relay |
 | 6.3 mm female spade | K2 terminals |
 | Wago 221-413 | 3S distribution (X1) and the 12 V actuator node |
 | Pump and DMC-101 terminals | **Open:** follow the DMC-101 datasheet |
+
+J10 fits the space of about 20 × 12 × 10 mm that the hose anchor leaves for the plug.
 
 ## 8. E-stop chain and relays
 
@@ -228,12 +248,14 @@ Every wire, its fuse and its current are in `harness.csv`. `power_calc.py check`
 4. A jumper (W38) takes the 24 V from NC1 to NC2. NC2 feeds the K2 coil. D2 (SB560) sits across the K2 coil.
 5. The K2 contact connects the 3S distribution to the 12 V actuator node. F13 feeds the servo adapter from this node.
 6. NC3 opens the sense line on pin 13. `robot/pump.py` then keeps the pump off. Set `estop_chip = "/dev/gpiochip3"` in `robot/config.toml` when this wire is in place.
+7. NC4 sits in the pump on/off loop between R7 and J10. It stops the pump in hardware (section 5).
 
 | Contact | Opens | Result |
 |---|---|---|
-| NC1 | K1 coil | the 12 drives and the pump lose power |
+| NC1 | K1 coil | the 12 drives lose power |
 | NC2 | K2 coil | the pan-tilt servos lose power |
 | NC3 | sense line, pin 13 goes high | `robot/pump.py` keeps the pump off |
+| NC4 | pump on/off loop (U8 LED on the trolley) | the pump stops, whatever pin 11 does |
 
 - The walk and the aim loop stop because K1 and K2 cut the drives and the servos. `robot/launch.py` then sees the missing heartbeats and does the safe stop.
 - K2 switches the servo current (up to 5.4 A at stall). The DC rating of the A20 contact blocks is not published, so the e-stop contacts carry only coil current.
@@ -265,7 +287,7 @@ Relay data: [Panasonic EP datasheet](https://www.tti.com/content/dam/tti-commons
 |---|---|
 | 1 | 3.3 V for the e-stop pull-up R1 |
 | 2, 4 / 6, 14 | 5 V in / GND |
-| 9, 11 | pump control: GND, GPIO3_A1 with the R8 pull-down |
+| 9, 11 | pump on/off: GND, GPIO3_A1 with the R8 pull-down. The loop goes through S1 NC4 and J10 to U8 on the trolley. |
 | 13, 25 | e-stop sense: GPIO3_A2 with the R1 pull-up, GND |
 | 16, 17, 18, 20 | IMU: UART4 RX, 3.3 V, UART4 TX, GND |
 
@@ -278,15 +300,16 @@ Relay data: [Panasonic EP datasheet](https://www.tti.com/content/dam/tti-commons
 ## 11. Grounds
 
 - The motor side (GND_M) and the 3S side (GND_3S) share no wire.
-- K1 separates its coil (3S side) from its contacts (motor side). U8 separates the pump control.
+- K1 separates its coil (3S side) from its contacts (motor side).
+- The trolley has its own ground GND_T. U8 separates it from GND_3S. The robot and the trolley share only the LED loop of U8 (W60).
 - The CANables isolate CAN from USB. Connect the CAN GND terminal of each CANable to GND_M at the RS1 LOAD bolt (W40, W41).
 - The XDrive USB port joins GND_M to the laptop when you configure a drive. Unplug the CANable USB first, or use a USB isolator.
 
 ## 12. Power-on test procedure
 
-Status: planned. Do the steps in this order. Stop at the first step that fails and fix the fault. Write each value in the data sheet (12.8).
+Status: planned. Do the steps in this order. Stop at the first step that fails and fix the fault. Write each value in the data sheet (12.9).
 
-Tools: multimeter, a 10 Ω 10 W resistor, a bench supply with a current limit (0–30 V, 3 A or more), a LiPo charger and bag, and a class ABC or CO2 extinguisher within reach.
+Tools: multimeter, a 10 Ω 10 W resistor and a bench supply with a current limit (0–30 V, 3 A or more). Also a LiPo charger and bag, and a class ABC or CO2 extinguisher within reach.
 
 ### 12.1 No power: visual and continuity checks
 
@@ -300,13 +323,13 @@ Tools: multimeter, a 10 Ω 10 W resistor, a bench supply with a current limit (0
 8. Check D1 in diode mode. Pass: A1 → K and A2 → K read 0.15 to 0.4 V. K → A1 and K → A2 read open.
 9. Measure the K1 coil at its plug. Pass: 136 Ω ± 10 %.
 10. Measure K1 terminal 1 to terminal 2. Pass: open.
-11. Press the e-stop. Measure NC1, NC2 and NC3. Pass: open when pressed, below 1 Ω when released.
+11. Press the e-stop. Measure NC1, NC2, NC3 and NC4. Pass: open when pressed, below 1 Ω when released.
 
 ### 12.2 Polarity
 
 1. Mark the + side of every EC5, XT60 and DC plug with red tape.
 2. Measure each pack at its own plug. Pass: 6S 22.2 to 25.2 V, 3S 11.1 to 12.6 V.
-3. **Reversed input destroys U1 and U7.** Check their + and − leads twice before the first power-on.
+3. **Reversed input destroys U1 (robot) and U7 (trolley).** Check their + and − leads twice before the first power-on.
 
 ### 12.3 3S side on the bench supply
 
@@ -348,12 +371,23 @@ Tools: multimeter, a 10 Ω 10 W resistor, a bench supply with a current limit (0
 6. Press the e-stop. Pass: K1 opens and all drives lose power.
 7. Insert F2. Plug in pack B. Pass: the P1 voltage changes by less than 0.3 V.
 
-### 12.7 Pump (after the DMC-101 wiring is confirmed)
+### 12.7 Water trolley and pump (after the DMC-101 wiring is confirmed)
 
-1. With the board off, measure pin 11 to GND. Pass: about 10 kΩ (R8).
-2. Fill the tanks. Insert F14. Close K1 (S3 on). Boot the board. Pass: the pump stays off during the whole boot.
-3. Run `gpioset gpiochip3 1=1` for 2 s. Pass: the pump runs, P1 shows 0.3 to 0.6 A more. If the pump runs at 0 and stops at 1, the input is active-low: set `active_low = true` in `robot/config.toml`.
-4. Press the e-stop. Set pin 11 high again. Pass: the pump does not run.
+1. Leave BT4 unplugged. Compare W37, W42, W60 and W70–W72 with `harness.csv`.
+2. Measure S11. Pass: open when pressed, below 1 Ω when released. Measure S10. Pass: open when off.
+3. Set the bench supply to 22.2 V and 0.5 A. Connect it at the trolley XT60 in place of BT4. Insert F20. S10 is off. Pass: below 0.01 A.
+4. Switch S10 on. Release S11. Pass: H10 lights. U7 V+ reads 22.2 V. The pump stays off, because no LED current flows.
+5. Press S11. Pass: H10 goes out and U7 V+ reads 0 V. Release S11.
+6. Fill the bag and open the pinch clamp. Raise the supply limit to 2 A. Feed J10 pin 1 with 3.3 V through 470 Ω, pin 2 to the minus of that source. Pass: the pump runs. The current rises by 0.3 to 0.6 A.
+7. Remove the 3.3 V source. Pass: the pump stops. If the pump runs without LED current, stop here and read section 5, point 2.
+8. Plug J10 into the robot. Boot the board. Pass: the pump stays off during the whole boot.
+9. Hold pin 11 high from a second terminal: `gpioset --mode=signal gpiochip3 1=1`. It holds the line until Ctrl+C. Pass: the pump runs. Press the robot e-stop. Pass: the pump stops within 0.5 s. Release the e-stop. The pump runs again, because `gpioset` still holds pin 11 high.
+10. With pin 11 high, pull J10 apart. Pass: the pump stops.
+11. With pin 11 high and J10 plugged in, measure the voltage across the closed NC4 contact. Pass: below 0.05 V.
+12. With pin 11 high, press S11. Pass: the pump stops and H10 goes out. Stop `gpioset` with Ctrl+C.
+13. Replace the bench supply with BT4 and repeat step 9.
+
+`--mode=signal` is the option of libgpiod 1.6 (Debian 12). With libgpiod 2, `gpioset -c gpiochip3 1=1` holds the line by default.
 
 ### 12.8 Brake test (legs hanging, one 6S pack)
 
@@ -379,12 +413,17 @@ Tools: multimeter, a 10 Ω 10 W resistor, a bench supply with a current limit (0
 | 12.4.5 | 12 V actuator node, e-stop pressed | 0 V | | |
 | 12.4.8 | K1 at 9.5 V input | open | | |
 | 12.6.4 | 6S idle current, 12 drives | about 0.8 A | | |
-| 12.7.3 | pump current at 24 V | 0.3–0.6 A | | |
+| 12.7.4 | U7 V+ with S10 on, bench supply 22.2 V | 22.0–22.2 V | | |
+| 12.7.6 | pump current at 22.2 V | 0.3–0.6 A | | |
+| 12.7.9 | pump stops after the robot e-stop | within 0.5 s | | |
+| 12.7.11 | voltage across the closed NC4 at 4.5 mA | below 0.05 V | | |
 | 12.8.4 | highest `vbus_voltage` in the push test | below 26 V | | |
 
 ## 13. Open points
 
-- The DMC-101 datasheet: control input, voltage range, terminals (section 5).
+- The DMC-101 datasheet: control input, voltage range, terminals. The hardware stop needs an input that runs the pump only while U8 conducts (section 5).
+- The fourth contact block on S1 and its behaviour at 3.3 V and 4.5 mA (section 5, test 12.7).
+- The robot cannot read the trolley pack voltage. The jet speed follows that voltage (water.md, section 2.3).
 - No precharge circuit for the motor bus. K1 closes onto about 6 mF. The inrush rating of the AEP18024 is not checked.
 - The drive node ids on sheet 2 follow `legs/robot.py`. Set the same ids in the drives, or change the table in `legs/robot.py`.
 - The AUX current rating and the shipped brake resistor value of the XDrive MINI (section 4.4).
@@ -401,5 +440,6 @@ Tools: multimeter, a 10 Ω 10 W resistor, a bench supply with a current limit (0
 - Radxa ROCK 3C header: https://docs.radxa.com/en/rock3/rock3c/hardware-design/hardware-interface
 - Pololu D36V50F5: https://www.pololu.com/product/4091
 - Kamoer KLP02 parameters: https://www.kamoer.com/us/product/params.html?id=3006
+- Menics A20 contact blocks A20-E01P (1 NC) and A20-E02P (2 NC), distributor listing: https://www.wolfautomation.com/contact-block-1nc-for-pushbuttons-o22mm
 - Wire ratings: https://www.powerstream.com/Wire_Size.htm
 - BHL paper: https://arxiv.org/abs/2504.17249

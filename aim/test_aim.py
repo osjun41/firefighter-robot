@@ -334,10 +334,10 @@ def test_robot_setup_uses_the_lens_calibration(tmp_path, monkeypatch):
     import run
     for none in (tmp_path / "none.json", None):  # a missing file, or config.toml [camera] calib = "" (mission simulation)
         monkeypatch.setattr(run, "CALIB", none)
-        k = run.robot_setup("F2")[0]["cameras"]["rgb"]["K"]
+        k = run.robot_setup("F3")[0]["cameras"]["rgb"]["K"]
         assert (k.cx, k.cy) == (320, 240) and abs(k.fx - 476.2) < 0.5  # config.toml hfov_deg 67.8
     (tmp_path / "c.json").write_text(json.dumps(dict(width=640, height=480, fx=301.0, fy=302.0, cx=318.5, cy=243.0)))
     monkeypatch.setattr(run, "CALIB", tmp_path / "c.json")
-    k = run.robot_setup("F2")[0]["cameras"]["rgb"]["K"]
+    k = run.robot_setup("F3")[0]["cameras"]["rgb"]["K"]
     assert (k.fx, k.fy, k.cx, k.cy) == (301.0, 302.0, 318.5, 243.0)
-    assert CONCEPTS["F2"]["cameras"]["rgb"]["K"].cx == 320  # the shared concept stays as it was
+    assert CONCEPTS["F3"]["cameras"]["rgb"]["K"].cx == 320  # the shared concept stays as it was

@@ -1,9 +1,10 @@
-"""Build the MuJoCo models of the Berkeley Humanoid Lite (BHL) biped with the payload of the final design F2.
+"""Build the MuJoCo models of the Berkeley Humanoid Lite (BHL) biped with the payload of the designs F2 and F3.
 
     uv run python sim/payload/models.py     # writes sim/payload/models/*.xml, then runs the self-check
 
-Needs the BHL assets (scripts/fetch_bhl_assets.sh) and cad/final/out_f2/layout.json (cad/final/layout.py).
-Models: bhl_biped (no payload), bhl_F2 (tanks full), bhl_F2_half and bhl_F2_empty.
+Needs the BHL assets (scripts/fetch_bhl_assets.sh) and cad/final/out_f2/layout.json and out_f3/layout.json (cad/final/layout.py).
+Models: bhl_biped (no payload), bhl_F2 (tanks full), bhl_F2_half, bhl_F2_empty, bhl_F3 (trolley version),
+bhl_F3_1pack and bhl_F3_tether.
 Robot frame: x forward, y left, z up, feet on the floor, torso upright.
 Each part is a rigid body welded to the BHL base, with a solid-box inertia and a visual box (no collision).
 """
@@ -29,20 +30,35 @@ STAND = {"hip_pitch": -0.2, "knee_pitch": 0.4, "ankle_pitch": -0.3}  # BHL defau
 PARTS, REMOVE = {}, {}
 
 
+def layout(design):
+    """Payload parts and the BHL parts taken out of the base link, from cad/final/out_<design>/layout.json."""
+    lay = json.load(open(os.path.normpath(os.path.join(HERE, f"../../cad/final/out_{design}/layout.json"))))
+    items = [(i["name"], i["mass_kg"], tuple(i["com_m"]), tuple(i["size_m"])) for i in lay["items"]]
+    return lay, items, [(r["name"], r["mass_kg"], tuple(r["com_m"])) for r in lay["bhl_removed"]]
+
+
 def f2_parts():
-    """Final design F2 (cad/final/out_f2/layout.json, two R2 side tanks, water lumped in one inertia-equivalent body):
-    all course BOM parts, with the BHL battery and PC taken out of the BHL base link mass (REMOVE)."""
-    lay = json.load(open(os.path.normpath(os.path.join(HERE, "../../cad/final/out_f2/layout.json"))))
-    full = [(i["name"], i["mass_kg"], tuple(i["com_m"]), tuple(i["size_m"])) for i in lay["items"]]
+    """Final design F2 (two R2 side tanks, water lumped in one inertia-equivalent body): all course BOM parts,
+    with the BHL battery and PC taken out of the BHL base link mass (REMOVE)."""
+    lay, full, rem = layout("f2")
     wh = lay["water_half"]
     half = [p for p in full if p[0] != "water"] + [("water", wh["mass_kg"], tuple(wh["com_m"]), tuple(wh["size_m"]))]
-    rem = [(r["name"], r["mass_kg"], tuple(r["com_m"])) for r in lay["bhl_removed"]]
     return {"F2": full, "F2_half": half}, {"F2": rem, "F2_half": rem}
 
 
-_f2, _rem = f2_parts()
-PARTS.update(_f2)
-REMOVE.update(_rem)
+def f3_parts():
+    """Trolley version F3 (team decision of 2026-10-29): the water bag and the pump hang on a trolley that a person
+    pushes behind the robot, so the robot carries only the end of the hose. Two lighter options: one 6S pack in the
+    middle of the holder, or motor power by cable from the trolley."""
+    _, f3, rem = layout("f3")
+    one = [("lipo_6s", m, (0.0, 0.0, c[2]), s) if n == "lipo_6s_a" else (n, m, c, s) for n, m, c, s in f3 if n != "lipo_6s_b"]
+    tether = [p for p in f3 if not p[0].startswith("lipo_6s")] + [("power_cable_end", 0.07, (-0.09, 0.0, 0.70), (0.03, 0.03, 0.05))]
+    return {"F3": f3, "F3_1pack": one, "F3_tether": tether}, dict.fromkeys(("F3", "F3_1pack", "F3_tether"), rem)
+
+
+for _parts, _rem in (f2_parts(), f3_parts()):
+    PARTS.update(_parts)
+    REMOVE.update(_rem)
 
 
 def box_inertia(m, s):
@@ -104,7 +120,8 @@ def remove_from_base(s, parts):
     b.fullinertia = [inertia1[0, 0], inertia1[1, 1], inertia1[2, 2], inertia1[0, 1], inertia1[0, 2], inertia1[1, 2]]
 
 
-VARIANTS = {"biped": ("biped", False), "F2": ("F2", False), "F2_half": ("F2_half", False), "F2_empty": ("F2", True)}
+VARIANTS = {"biped": ("biped", False), "F2": ("F2", False), "F2_half": ("F2_half", False), "F2_empty": ("F2", True),
+            "F3": ("F3", False), "F3_1pack": ("F3_1pack", False), "F3_tether": ("F3_tether", False)}
 
 
 def path(variant):
@@ -115,15 +132,19 @@ def load(variant):
     return mujoco.MjModel.from_xml_path(path(variant))
 
 
-def write_all():
-    os.makedirs(OUT, exist_ok=True)
+def save(s, variant):
+    """Add the stand keyframe (feet flat, 1 mm above the floor) and write models/bhl_<variant>.xml."""
     from poses import stand_qpos
+    os.makedirs(OUT, exist_ok=True)
+    m = s.compile()
+    s.add_key(name="stand", qpos=stand_qpos(m, STAND), ctrl=np.zeros(m.nu))
+    with open(path(variant), "w") as f:  # relative mesh path, so the file works from any working directory
+        f.write(s.to_xml().replace(f'meshdir="{s.meshdir}', f'meshdir="{MESHDIR}'))
+
+
+def write_all():
     for v, (c, empty) in VARIANTS.items():
-        s = build(c, empty)
-        m = s.compile()
-        s.add_key(name="stand", qpos=stand_qpos(m, STAND), ctrl=np.zeros(m.nu))  # feet flat, 1 mm above the floor
-        with open(path(v), "w") as f:  # relative mesh path, so the file works from any working directory
-            f.write(s.to_xml().replace(f'meshdir="{s.meshdir}', f'meshdir="{MESHDIR}'))
+        save(build(c, empty), v)
 
 
 def payload_mass(concept, empty=False):

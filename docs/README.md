@@ -3,10 +3,12 @@
 | Topic | Document |
 |---|---|
 | Plan, milestones, workstreams and next tasks | [plan/README.md](plan/README.md) |
+| Walking on the real robot: causes, measurements, test stages | [plan/walking.md](plan/walking.md) |
 | Vision on the real camera and board: test stages, commands, pass criteria | [plan/vision.md](plan/vision.md) |
-| Final design F2: layout, mass, print kit | [design.md](design.md) |
+| Design F3: layout, mass, print kit, water trolley | [design.md](design.md) |
 | Electrical design and drawings SOB-E | [hardware/electrical.md](hardware/electrical.md) |
-| Water system: tanks, pump, nozzle, bench tests | [hardware/water.md](hardware/water.md) |
+| Water trolley: stand, bag, pump box, hose | [hardware/trolley.md](hardware/trolley.md) |
+| Water system: pump, hose, nozzle, jet, bench tests | [hardware/water.md](hardware/water.md) |
 | Parts to order | [hardware/order_list.md](hardware/order_list.md) |
 | Software architecture: nodes, messages, modes | [architecture.md](architecture.md) |
 

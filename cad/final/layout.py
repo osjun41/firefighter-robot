@@ -1,7 +1,8 @@
-"""Final design F2 (default; DESIGN=F1 for the old design F1): the course robot torso with every part of the course
-BOM placed. Two R2 side tanks (tank.py), the pump on the middle shelf, the e-stop 50 mm higher than on the lab robot.
+"""Final design F3 (the default, DESIGN=F2 or F1 for the older designs): the course robot torso with every part of the
+course BOM placed. F3: the tank and the pump hang on a trolley, a hose anchor on the deck holds the hose end, the e-stop
+is at the lab's place. F2: two R2 side tanks (tank.py), the pump on the middle shelf, the e-stop 50 mm higher.
 
-    uv run --project cad python cad/final/layout.py          # checks, out_f2/layout.json (F1: out/layout.json)
+    uv run --project cad python cad/final/layout.py          # checks, out_f3/layout.json (F2: out_f2/, F1: out/)
 
 The torso is the BHL torso (base_visual.stl), checked against 13 photos of the lab's prototype. The photos show the
 same 2020 frame, the same battery holder and the same hip actuators. The lab changed: no shoulder actuators, two
@@ -23,9 +24,9 @@ import trimesh
 from scipy.spatial import cKDTree
 
 HERE = Path(__file__).parent
-DESIGN = os.environ.get("DESIGN", "F2").upper()   # the same switch as tank.py and kit.py
-F2 = DESIGN == "F2"
-OUT = HERE / ("out_f2" if F2 else "out")
+DESIGN = os.environ.get("DESIGN", "F3").upper()   # the same switch as tank.py and kit.py
+F2, F3 = DESIGN == "F2", DESIGN == "F3"
+OUT = HERE / {"F1": "out", "F2": "out_f2", "F3": "out_f3"}[DESIGN]
 ROOT = HERE.parent.parent
 sys.path[:0] = [str(HERE.parent / "backpack")]
 import body as bp  # noqa: E402  cad/backpack/body.py: BHL path, leg sweep
@@ -36,7 +37,7 @@ P = {p["id"]: p for p in json.loads((HERE / "parts.json").read_text())}
 HANDLE = (-62.0, 62.0, 50.0, 80.0, 791.0, 836.0)  # left handle; grip about 30 mm, 45 mm high, on the side top rail
 SHELF_Z = 641.0       # middle acrylic shelf, 5 mm, on the bars of the BHL PC shelf brackets (bar top z 641 on the mesh)
 # e-stop on the left side face; 3 contact blocks go inside. F2: the left tank fills z 592..678 there, so the e-stop
-# moves up to z 720 (head z 700..740, 22 mm over the tank top), still on the left side face.
+# moves up to z 720 (head z 700..740, 22 mm over the tank top), still on the left side face. F1 and F3: the lab's place.
 ESTOP_X, ESTOP_Z = -13.0, (720.0 if F2 else 670.0)
 
 # ---------- placement (mm) ----------
@@ -165,10 +166,11 @@ def lump(parts):
 
 def main():
     OUT.mkdir(exist_ok=True)
+    tk, r1 = None, {}                              # F3: no tank on the robot
     if F2:
         tk = json.loads((OUT / "r2.json").read_text())
         r1 = {f"tank_{s}": trimesh.load(OUT / f"tank_{s}.stl") for s in ("left", "right")}
-    else:
+    elif not F3:
         tk = json.loads((OUT / "r1f.json").read_text())
         r1 = {"r1f_tank": trimesh.load(OUT / "r1f_tank.stl")}   # the pump (or the filter) is a kit part now
     PARTS, TOP = kit_parts()
@@ -233,7 +235,7 @@ def main():
         print("tube clearance (closest part, mm):", tube_gaps)
 
     # 3. legs: parts outside the frame, over the leg range with the knee limit used by the sims
-    pts = {n: np.vstack([box_mesh(boxes[n]).vertices, box_mesh(boxes[n]).sample(3000)]) for n in LEG_PARTS}
+    pts = {n: np.vstack([box_mesh(boxes[n]).vertices, box_mesh(boxes[n]).sample(3000)]) for n in LEG_PARTS if n in boxes}
     for n, m in (r1.items() if F2 else ()):    # the R2 tanks sit outside the frame
         pts[n] = np.vstack([m.vertices, m.sample(30000)])
     for n, b in tubes.items():
@@ -259,12 +261,13 @@ def main():
         # GUESS as R2 round 5: 8 M5 x 55 screws and T-nuts, barbs, tee, 1.3 m of tubing with water
         items += [("tank_hardware_tubing", 0.140, (20.0, 0.0, 640.0), (100.0, 200.0, 60.0), "water_system")]
         wf, wh = lump(list(tk["water_full"].values())), lump(list(tk["water_half"].values()))
-    else:
+    elif not F3:
         items += [("r1f_shell", tk["shell"]["mass_kg"], tuple(v * 1000 for v in tk["shell"]["com_m"]),
                    tuple(v * 1000 for v in tk["shell"]["size_m"]), "water_system"),
                   ("tank_hardware_tubing", 0.045, (0.0, 0.0, 745.0), (100.0, 100.0, 50.0), "water_system")]  # GUESS as R1
         wf, wh = tk["water_full"], tk["water_half"]
-    water = [("water", wf["mass_kg"], tuple(v * 1000 for v in wf["com_m"]), tuple(v * 1000 for v in wf["size_m"]), "water")]
+    water = [] if F3 else [("water", wf["mass_kg"], tuple(v * 1000 for v in wf["com_m"]),
+                            tuple(v * 1000 for v in wf["size_m"]), "water")]
     removed_m = sum(m for _, m, _ in BHL_REMOVED) / 1000
     removed_c = sum(m * np.array(c) for _, m, c in BHL_REMOVED) / 1000 / removed_m
     add = items + water
@@ -279,13 +282,14 @@ def main():
     print(f"total robot: {BARE_KG - removed_m + add_m:.2f} kg (bare biped {BARE_KG:.2f} kg from the BHL model)")
     layout = {"design": DESIGN,
               "note": f"{DESIGN} layout, robot frame in m. Sizes from cad/final/parts.json, positions from cad/final/layout.py. "
-                      "F2: 'water' lumps both tanks (inertia-equivalent box).",
+                      + ("F3: no water on the robot. hose_anchor, hose_and_water and signal_plug are the end of the "
+                         "trolley hose." if F3 else "F2: 'water' lumps both tanks (inertia-equivalent box)."),
               "items": [{"name": n, "mass_kg": round(m, 4), "com_m": [round(v / 1000, 4) for v in c],
                          "size_m": [round(v / 1000, 4) for v in s], "group": g} for n, m, c, s, g in add],
               "bhl_removed": [{"name": n, "mass_kg": m / 1000, "com_m": [v / 1000 for v in c]} for n, m, c in BHL_REMOVED],
               "boxes_mm": boxes, "handles_mm": [HANDLE, (HANDLE[0], HANDLE[1], -HANDLE[3], -HANDLE[2], HANDLE[4], HANDLE[5])],
-              "water_half": {"mass_kg": wh["mass_kg"], "com_m": wh["com_m"], "size_m": wh["size_m"]},
-              "volume_l": tk["volume_l"],
+              **({"water_half": {"mass_kg": wh["mass_kg"], "com_m": wh["com_m"], "size_m": wh["size_m"]},
+                  "volume_l": tk["volume_l"]} if tk else {}),
               "torso_clearance_mm": torso, "leg_clearance_mm": legs, "tube_clearance_mm": tube_gaps, "fails": fails}
     if F2:
         layout["tubes_mm"] = TUBES

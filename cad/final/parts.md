@@ -1,6 +1,6 @@
 # Torso parts: size, mass, mount, power
 
-Research date: 2026-10-15. Pump: 2026-10-22. The machine-readable copy is `parts.json` in this folder. `kit.py` and `layout.py` read the sizes and masses from it.
+Research date: 2026-10-15. Pump: 2026-10-22. Trolley version F3: 2026-10-29. The machine-readable copy is `parts.json` in this folder. `kit.py` and `layout.py` read the sizes and masses from it.
 
 **Not verified:** IMU shell hole spacing, CANable V2.0 Pro hole pattern, HAM5925 size, switch and e-stop depths, HAV1808 and HAV1625a sizes, XDrive MINI size. Measure these parts when they arrive.
 
@@ -16,7 +16,7 @@ Research date: 2026-10-15. Pump: 2026-10-22. The machine-readable copy is `parts
 - For switches and the e-stop, size is [bezel or head width, width, depth behind the panel].
 - Confidence: "datasheet" = maker document, "listing" = shop page, "estimate" = our estimate from a similar part.
 - Confidence is for the main size. The notes say which other values are estimates.
-- Qty 0 = reference, alternative or old part, not on the robot. The CAD layout still places the DWP-385 pump and the DFR0457 module as stand-ins.
+- Qty 0 = reference, alternative or old part, or a part on the trolley: not on the robot. The F3 layout has no pump. The F2 layout places the DWP-385 pump and the DFR0457 module as stand-ins.
 
 ## Parts table
 
@@ -45,8 +45,8 @@ Research date: 2026-10-15. Pump: 2026-10-22. The machine-readable copy is `parts
 | acrylic_b4_5mm | Acrylic plate 5 mm, B4 | 1 | 364 x 257 x 5 | 557 | Cut and drill as needed. | estimate | [link](https://smartstore.naver.com/sol321/products/10278086239) |
 | profile_2020_200 | Aluminium profile 2020, 200 mm | 2 | 200 x 20 x 20 | 90 | 6 mm slots, M5 centre hole (typical 2020). | estimate | [link](https://www.yjprofile.co.kr/goods/goods_view.php?goodsNo=1000000042) |
 | buck_12v_to_5v | Pololu D36V50F5 step-down regulator, 5 V 5.5 A, for the ROCK 3C (NOT in the course BOM) | 1 | 25.4 x 25.4 x 10 | 7 | Rail pocket on the pod basket lip, foam tape. | listing | [link](https://www.pololu.com/product/4091) |
-| pump_klp02 | Kamoer KLP02 24 V brushless pump, with a DMC-101 DC pump controller | 1 | not published | about 250 | Not drawn yet. A KLP02 holder follows when the pump arrives and is measured. | datasheet | Kamoer |
-| pump_dwp385 | motorbank DWP-385 12 V gear pump, self-priming. No longer used: the printed pump holder fits it | 0 | 99 x 34 x 48 | 130 | Printed pump holder on the rear of the middle shelf, 2 saddles and a strap. | estimate | [link](https://www.eleparts.co.kr/goods/view?no=3850995) |
+| pump_klp02 | Kamoer KLP02 24 V brushless pump, with a DMC-101 DC pump controller. F3: on the trolley | 0 | not published | about 250 | F3: on the trolley, with the water tank. Not drawn in cad/final. | datasheet | Kamoer |
+| pump_dwp385 | motorbank DWP-385 12 V gear pump, self-priming. No longer used: the printed pump holder fits it | 0 | 99 x 34 x 48 | 130 | F2 kit: printed pump holder on the rear of the middle shelf, 2 saddles and a strap. | estimate | [link](https://www.eleparts.co.kr/goods/view?no=3850995) |
 | mosfet_dfr0457 | DFRobot DFR0457 MOSFET module, the switch of the DWP-385. Not used with the KLP02 | 0 | 44 x 32 x 15 | 10 | Rail pocket on the pod basket lip, foam tape. | estimate | [link](https://www.icbanq.com/P007616427) |
 | relay_k2_kka_k4 | Relay K2 KKA-K4, 24 V coil, 40 A | 1 | 28 x 28 x 35 | 30 | Pod plate, foam tape and a zip tie. | estimate | [link](https://www.devicemart.co.kr/goods/view?no=14822397) |
 | brake_resistor_rh50 | Brake resistor RARA RH50C4R70J, 4.7 Ohm 50 W | 2 | 71 x 30 x 16 | 31 | 4 x M3, ASSUMED 39.7 x 21.4 mm pattern. Printed mount on the front face of the front bottom rail. | estimate | [link](https://www.devicemart.co.kr/goods/view?no=33451) |
@@ -54,9 +54,9 @@ Research date: 2026-10-15. Pump: 2026-10-22. The machine-readable copy is `parts
 ## Mass in the torso
 
 - Batteries (2 x 6S Zeee + 1 x 3S): 1568 g.
-- All parts in the table with qty > 0 and a known mass, batteries and the camera included: 2808 g.
-- This sum has no XDrive drivers, no DMC-101, no opto-isolator, no wires, no acrylic plate and no profiles.
-- The CAD layout (`layout.py`) uses the DWP-385 (130 g) and the DFR0457 (10 g) instead of the KLP02 (about 250 g).
+- All parts in the table with qty > 0 and a known mass, batteries and the camera included: 2558 g.
+- This sum has no XDrive drivers, no opto-isolator, no wires, no acrylic plate and no profiles. The KLP02 pump and the DMC-101 are on the trolley.
+- The F3 layout (`layout.py`) has no pump. The F2 layout used the DWP-385 (130 g) and the DFR0457 (10 g) instead of the KLP02 (about 250 g).
 - With the VEGA 6S packs, add 296 g.
 
 ## Electrical data and notes per part
@@ -181,11 +181,12 @@ Research date: 2026-10-15. Pump: 2026-10-22. The machine-readable copy is `parts
 - Kamoer data for the 24 V brushless KLP02: flow 0.7 L/min or more, head 30 m or more, suction lift 4 m or more, 12 W or less, about 250 g, "switch control".
 - Size: not published. Port size: not published. The DMC-101 datasheet is not available yet.
 - Proposed wiring: 24 V from the motor bus after relay K1, so the e-stop cuts it. Fuse F14 3 A. On/off from ROCK 3C pin 11 (GPIO3_A1) through an opto-isolator into the DMC-101. The software keeps one on/off GPIO (`robot/pump.py`).
-- The printed pump holder fits the DWP-385. We will draw a KLP02 holder when the pump arrives and is measured.
+- F3 (team decision of 2026-10-29): the KLP02 and the DMC-101 hang on the trolley with the water tank. The robot carries the hose end in the hose anchor and the robot plug of the pump signal cable.
+- The F2 pump holder fits the DWP-385. F3 needs no pump holder.
 
 ### Old pump parts, relay K2, brake resistors
 
-- `pump_dwp385` and `mosfet_dfr0457` are the pump and the pump switch of the earlier plan. The printed pump holder and the basket pocket still fit them.
+- `pump_dwp385` and `mosfet_dfr0457` are the pump and the pump switch of the earlier plan. The F2 pump holder and the basket pocket still fit them. In F3 the basket pocket stays empty.
 - Relay K2 cuts the 12 V of the pan-tilt servos when the e-stop is pressed.
 - The sizes and masses of these parts come from `docs/hardware/electrical.md` and shop listings. Head size, ear span and hole patterns are guesses. See `parts.json`.
 

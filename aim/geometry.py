@@ -82,6 +82,10 @@ CONCEPTS = {
 # 0.42 L/min, v0 = 10.0 m/s at 22.2 V (10.6 m/s at 24 V), drag 0.11 1/m. Not measured: the jet test (robot/bench.py pump)
 # gives the real v0 for robot/config.toml [aim.controller]. Tanks: 0.749 L usable of 0.781 L / 0.42 L/min = 107 s of pump time.
 CONCEPTS["F2"] = dict(CONCEPTS["F1"], controller=dict(CONCEPTS["F1"]["controller"], v0=10.0, tank_time=0.749 / (0.42 / 60)))
+# Design F3 (docs/design.md): F2 without tanks. A pushed trolley carries the bag and the pump, a 3 m hose with two check
+# valves feeds the nozzle (docs/hardware/water.md): 0.41 L/min, v0 = 9.6 m/s at 22.2 V. Same pan-tilt, camera and nozzle.
+# Bag: 1.95 L usable / 0.41 L/min = 285 s of pump time.
+CONCEPTS["F3"] = dict(CONCEPTS["F2"], controller=dict(CONCEPTS["F2"]["controller"], v0=9.6, tank_time=1.95 / (0.41 / 60)))
 CONCEPTS |= {
     "E": dict(  # nozzle and valve on a pan-tilt, cameras on a fixed mast (pod 6 deg down, RGB 14 deg more)
         pivot=(0.0, 0.0, T + 0.095),

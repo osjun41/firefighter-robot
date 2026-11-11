@@ -147,7 +147,7 @@ def robot_setup(concept):
     return cfg, ControllerConfig(**{**cfg.get("controller", {}), **CONF.get("aim", {}).get("controller", {})})
 
 
-def main(concept="F2", feedback=False, walk=True):
+def main(concept="F3", feedback=False, walk=True):
     cfg, cc = robot_setup(concept)
     ctl, v0_ref = Controller(cfg, cc), cc.v0
     rx, pose_rx = _socket(DET_PORT), _socket(POSE_PORT)
@@ -204,7 +204,7 @@ def main(concept="F2", feedback=False, walk=True):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("concept", nargs="?", default="F2", choices=sorted(CONCEPTS))
+    ap.add_argument("concept", nargs="?", default="F3", choices=sorted(CONCEPTS))
     ap.add_argument("--feedback", action="store_true", help="use the measured angles of actuators/actuator_node.py")
     ap.add_argument("--no-walk", action="store_true", help="bench test: the robot does not walk, pose stays (0, 0, 0)")
     a = ap.parse_args()

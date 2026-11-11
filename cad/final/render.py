@@ -1,13 +1,15 @@
-"""Blender renders of the final design F2 (DESIGN=F1: the old design F1), the print kit and the course BOM parts.
-F2 views are f2_* and turntable_f2. F1 views are f1_* and turntable_f1.
+"""Blender renders of the final design F3 (DESIGN=F2 or F1: the older designs), the print kit and the course BOM parts.
+F3 views are f3_* and turntable_f3, F2 views f2_* and turntable_f2, F1 views f1_* and turntable_f1.
 
     TMPDIR=$HOME/.cache PARTS_DIR=out_sts3215 blender -b --factory-startup -P cad/final/render.py -- \
         third_party/berkeley-humanoid-lite-assets/data/robots/berkeley_humanoid/berkeley_humanoid_lite cad/final/renders \
-        [f2_front f2_rear f2_cutaway f2_exploded f2_pod f2_holder f2_head turntable_f2]
+        [f3_front f3_rear f3_cutaway f3_exploded f3_pod f3_holder f3_head f3_anchor turntable_f3]
 
-Printed parts are the STLs of kit/stl (kit.py). Bought parts are boxes from <out>/layout.json (layout.py) and
-<out>/kit.json. The handles and the e-stop are simple shapes, sized from the photos (ESTIMATED).
+Printed parts are the STLs of the kit (kit.py: kit/ for F3, kit_f2/, kit_f1/). Bought parts are boxes from
+<out>/layout.json (layout.py) and <out>/kit.json. The handles, the e-stop, the hose and the signal plug are simple
+shapes. The handles and the e-stop are sized from the photos (ESTIMATED).
 Set F1_CPU=1 to render on the CPU (when the GPU is busy). TMPDIR holds the turntable frames (about 150 MB).
+Set TT_STILL=1 to render only the first turntable frame (turntable_<design>.jpg), without the video.
 Needs cad/bhl.py, cad/parts/render_module.py with cad/parts/out_sts3215/, and cad/torso_tank/render.py.
 """
 import json
@@ -25,13 +27,14 @@ import bhl  # noqa: E402
 import render_module as rm  # noqa: E402  reads <bhl_dir> <out> after "--"
 import render as tr  # noqa: E402  cad/torso_tank/render.py: pump(), cut(), still(), turntable()
 
-F2 = os.environ.get("DESIGN", "F2").upper() == "F2"
-D = "f2" if F2 else "f1"
-OUTD = os.path.join(HERE, "out_f2" if F2 else "out")
+DESIGN = os.environ.get("DESIGN", "F3").upper()
+F1, F2, F3 = (DESIGN == d for d in ("F1", "F2", "F3"))
+D = DESIGN.lower()
+OUTD = os.path.join(HERE, {"F1": "out", "F2": "out_f2", "F3": "out_f3"}[DESIGN])
 LAY = json.load(open(os.path.join(OUTD, "layout.json")))
 KIT = json.load(open(os.path.join(OUTD, "kit.json")))
-R1F = None if F2 else json.load(open(os.path.join(OUTD, "r1f.json")))
-STL = os.path.join(HERE, "kit" if F2 else "kit_f1", "stl")
+R1F = json.load(open(os.path.join(OUTD, "r1f.json"))) if F1 else None
+STL = os.path.join(HERE, {"F1": "kit_f1", "F2": "kit_f2", "F3": "kit"}[DESIGN], "stl")
 COLORS = {"lipo_6s": (0.05, 0.05, 0.06), "lipo_3s": (0.08, 0.1, 0.25), "relay_aep18024": (0.02, 0.02, 0.02),
           "shelf_acrylic": None, "rock3c": (0.05, 0.25, 0.12), "canable": (0.6, 0.45, 0.05), "buck_5v": (0.6, 0.08, 0.06),
           "boost_ham5925": (0.6, 0.08, 0.06), "imu_im10a": (0.15, 0.3, 0.7), "diode_mbrt400100": (0.25, 0.25, 0.27),
@@ -129,6 +132,8 @@ def tank(M):
         for n, pts in LAY["tubes_mm"].items():
             objs.append(bhl.tube(n, [tuple(v / 1000 for v in p) for p in pts], 0.003, M["hose"]))
         return objs
+    if F3:
+        return []                                  # the tank and the pump hang on the trolley
     return [tr._import(os.path.join(OUTD, "r1f_tank.stl"), M["tank"]),
             tr._import(os.path.join(OUTD, "water_r1f.stl"), M["water"])] + tr.pump(R1F["pump"]["box_mm"], M, +1)
 
@@ -147,13 +152,40 @@ def top(M):
     objs.append(stl(os.path.join(STL, "head_f1.stl"), M["part"], TILT))
     objs.append(stl(os.path.join(OUTD, "ref_camera_b0201.stl"), M["board"], TILT))
     objs.append(stl(os.path.join(OUTD, "ref_nozzle_brass.stl"), M["brass"], TILT))
-    objs.append(stl(os.path.join(STL, "hose_clip.stl"), M["part"]))
     tip = Vector([v / 1000 for v in KIT["head"]["nozzle_tip_mm"]])
     x0 = rm.INFO["pan_axis_mm"][0] / 1000
     zn = tip.z
+    if F3:
+        return objs + hose_end(M, x0, zn)
+    objs.append(stl(os.path.join(STL, "hose_clip.stl"), M["part"]))
     via = [TILT @ Vector((x0 - 0.008, 0, zn)), TILT @ Vector((x0 - 0.02, 0, zn)), TILT @ Vector((x0 - 0.045, 0, zn - 0.01)),
            Vector((x0 - 0.05, -0.03, rm.T + 0.03)), Vector((0.04, -0.03, rm.T + 0.02)), Vector((0.025, -0.038, rm.T - 0.01))]
     objs.append(bhl.tube("jet_hose", [tuple(v) for v in via], 0.0032, M["hose"]))
+    return objs
+
+
+def hose_end(M, x0, zn):
+    """F3: hose anchor, the hose from the trolley boom (cut 0.3 m behind the robot) down into the boom-side leg, the loop
+    from the head-side leg to the rear clip of the head, the zip tie stops, and the pump signal plug with the trolley
+    cable. The U-turn inside the anchor is hidden."""
+    a = KIT["anchor"]
+    (bx, by, bz), (hx, hy, hz) = ([v / 1000 for v in a["legs_mm"][k]] for k in ("boom", "head"))
+    objs = [stl(os.path.join(STL, "hose_anchor.stl"), M["part"])]
+    objs.append(bhl.tube("hose_boom", [(-0.30, by + 0.012, 1.08), (-0.20, by + 0.008, 0.98), (-0.125, by + 0.004, 0.89),
+                                       (bx, by, bz + 0.015), (bx, by, bz - 0.006)], 0.003, M["hose"]))
+    objs.append(bhl.tube("hose_loop", [(hx, hy, hz - 0.006), (hx, hy, hz + 0.02), (hx - 0.004, hy + 0.006, 0.885),
+                                       tuple(TILT @ Vector((x0 - 0.05, 0, zn + 0.004))),
+                                       tuple(TILT @ Vector((x0 - 0.024, 0, zn))), tuple(TILT @ Vector((x0 - 0.008, 0, zn)))],
+                         0.003, M["hose"]))
+    for y in (by, hy):                             # zip tie stops just above the legs
+        objs.append(bhl.cyl("hose_stop", 0.0042, 0.003, (bx, y, bz + 0.0035), M["black"]))
+    px, py, pd = (v / 1000 for v in a["plug_pocket_mm"])
+    xc, zt = KIT["parts"]["hose_anchor"]["box_mm"][1] / 1000 - 0.002 - px / 2, bz
+    objs.append(bhl.box("signal_plug", (px - 0.0003, py - 0.0003, pd), (xc, 0, zt - pd / 2), M["black"], bevel=0.001))
+    objs.append(bhl.box("trolley_plug", (px - 0.001, py - 0.001, 0.012), (xc, 0, zt + 0.006),
+                        bhl.mat("plug", (0.8, 0.8, 0.78), rough=0.4), bevel=0.0015))
+    objs.append(bhl.tube("trolley_cable", [(xc, 0.004, zt + 0.012), (xc - 0.01, 0.01, 0.87), (-0.13, by + 0.004, 0.905),
+                                           (-0.20, by + 0.002, 0.985), (-0.30, by + 0.006, 1.085)], 0.0015, M["black"]))
     return objs
 
 
@@ -213,12 +245,12 @@ def view(name):
                                  "estop_contacts")), []), (0, 0, 0.08))
         move(P["lipo_6s_a"], (0, 0.13, 0))
         move(P["lipo_6s_b"], (0, -0.15, 0))
-        if F2:                                     # pump and filter up with the shelf, the e-stop out to the left
+        if not F1:                                 # pump and filter up with the shelf, the e-stop out to the left
             move(P.get("pump_holder", []) + P.get("pump_dwp385", []) + P.get("filter_inline", []), (0, 0, 0.08))
             move(P["estop"], (0, 0.08, 0))
         move(sum((P[n] for n in P if n.startswith(("brake_resistor", "resistor_mount"))), []), (0.08, 0, 0))
         move(P["brake_resistor_1"] + P["brake_resistor_2"], (0.04, 0, 0))
-        if not F2:
+        if F1:
             move(P.get("pump_holder", []), (0, -0.07, 0))
             move(P.get("pump_dwp385", []), (0, -0.12, 0))
         move(sum((P[n] for n in ("pod_plate_al2", "pod_spacer_left", "pod_spacer_right", "diode_mbrt400100", "shunt_100a",
@@ -249,6 +281,12 @@ def view(name):
     elif name == D + "_head":
         box = [(x, y, z) for x in (-0.075, 0.03) for y in (-0.05, 0.05) for z in (0.865, 0.97)]
         tr.still(body, name, -38, 24, 70, res=(1200, 1200), box=box, margin=1.08)
+    elif name == D + "_anchor":                    # F3: hose anchor, hose end and loop, from the rear left
+        box = [(x, y, z) for x in (-0.13, -0.0) for y in (-0.06, 0.06) for z in (0.78, 0.96)]
+        tr.still(body, name, 145, 28, 70, res=(1300, 1200), box=box, margin=1.05)
+    elif os.environ.get("TT_STILL"):               # only the first frame of the turntable, as JPG
+        tr.turntable(body, "turntable_" + D, frames=1)
+        os.remove(os.path.join(rm.OUT, f"turntable_{D}.mp4"))
     elif os.environ.get("F1_CPU"):                 # CPU: fewer, smaller frames
         tr.turntable(body, "turntable_" + D, frames=96, res=(960, 540))
     else:
@@ -258,5 +296,5 @@ def view(name):
 if __name__ == "__main__":
     os.makedirs(rm.OUT, exist_ok=True)
     for v in sys.argv[sys.argv.index("--") + 3:] or [D + "_" + n for n in ("front", "rear", "cutaway", "exploded", "pod",
-                                                                          "holder", "head")]:
+                                                                          "holder", "head", *(("anchor",) if F3 else ()))]:
         view(v)

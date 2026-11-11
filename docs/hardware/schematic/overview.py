@@ -29,34 +29,38 @@ def draw(out):
     s = Sheet(406, 200)
     ax = s.ax
     # panels
-    ax.add_patch(Polygon([(2, 194), (404, 194), (404, 132), (202, 132), (202, 163), (2, 163)], closed=True,
+    ax.add_patch(Polygon([(2, 194), (300, 194), (300, 132), (202, 132), (202, 163), (2, 163)], closed=True,
                          fc=PANEL, ec="#d8d8d4", lw=0.3 * MM, zorder=0))
+    ax.add_patch(Rectangle((304, 132), 100, 62, fc=PANEL, ec=PROPOSED, lw=LW * MM, ls=(0, (4, 2)), zorder=0))
     ax.add_patch(Rectangle((2, 40), 196, 120, fc=PANEL, ec="#d8d8d4", lw=0.3 * MM, zorder=0))
     ax.add_patch(Rectangle((202, 12), 202, 118, fc=PANEL, ec="#d8d8d4", lw=0.3 * MM, zorder=0))
     s.text(5, 189.5, "MOTOR POWER  ·  2 × 6S LiPo, 22.2 V", size=7.0, weight="bold")
     s.text(5, 155.5, "CONTROL POWER  ·  3S LiPo, 11.1 V", size=7.0, weight="bold")
     s.text(205, 125.5, "COMPUTER, SENSORS AND ACTUATORS", size=7.0, weight="bold")
+    s.text(307, 189.5, "WATER TROLLEY  ·  own 6S LiPo, 22.2 V", size=7.0, weight="bold")
 
     packs = box(s, 0, 0, "BT1, BT2", "2 × 6S LiPo 5000 mAh")
     diode = box(s, 1, 0, "F1, F2 · D1", "pack fuses, OR diode")
     k1 = box(s, 2, 0, "K1 main relay", "AEP18024, 80 A")
     legl = box(s, 4, 1, "Left leg A1–A6", "6 × XDrive MINI")
     legr = box(s, 5, 1, "Right leg A7–A12", "6 × XDrive MINI")
-    pumpc = box(s, 6, 1, "U7 DMC-101", "pump controller, F14", proposed=True)
-    pump = box(s, 7, 1, "M1 pump", "Kamoer KLP02, 24 V")
+    bt4 = box(s, 6, 0, "BT4 · F20 · S10", "6S 1300 mAh, fuse, main switch")
+    s11 = box(s, 7, 0, "S11 KILL SWITCH", "e-stop at the push handle")
+    pumpc = box(s, 7, 1, "U7 DMC-101 · U8", "pump controller, opto", proposed=True)
+    pump = box(s, 6, 1, "M1 pump", "Kamoer KLP02, 24 V")
 
     bt3 = box(s, 0, 3, "BT3", "3S LiPo 6000 mAh")
     x1 = box(s, 1, 3, "F10 · X1", "fuse, distribution")
     s2 = box(s, 2, 3, "S2 PC POWER", "push-lock switch")
     buck = box(s, 3, 3, "U2 5 V buck", "Pololu D36V50F5")
     boost = box(s, 2, 2, "U1 24 V boost", "HAM5925")
-    s1 = box(s, 2, 1, "S1 E-STOP", "3 × NC contacts")
+    s1 = box(s, 2, 1, "S1 E-STOP", "4 × NC contacts")
     s3 = box(s, 3, 1, "S3 MOTOR POWER", "push-lock switch")
     k2 = box(s, 0, 4, "K2 servo relay", "KKA-K4, 40 A")
 
     can1 = box(s, 4, 2, "U4 CANable 1", "isolated USB–CAN")
     can2 = box(s, 5, 2, "U5 CANable 2", "isolated USB–CAN")
-    opto = box(s, 6, 2, "U8 opto-isolator", "pump on / off", proposed=True)
+    opto = box(s, 6, 2, "S1 NC4 · J10", "e-stop contact, rear plug")
     rock = box(s, 4, 3, "U3 RADXA ROCK 3C", "RK3566 · walking policy, fire detector, aiming, safety", wide=3)
     servoa = box(s, 4, 4, "U6 servo adapter", "Waveshare (A)")
     cam = box(s, 5, 4, "U10 camera", "Arducam B0201")
@@ -79,12 +83,16 @@ def draw(out):
     path([mid(packs, "right"), mid(diode, "left")], lw=P, arrow="right")
     path([mid(diode, "right"), mid(k1, "left")], lw=P, arrow="right")
     yb = 182.5
-    path([mid(k1, "right"), (156, mid(k1, "right")[1]), (156, yb), (mid(pumpc, "top")[0], yb)], lw=P)
-    for b in (legl, legr, pumpc):
+    path([mid(k1, "right"), (156, mid(k1, "right")[1]), (156, yb), (mid(legr, "top")[0], yb)], lw=P)
+    for b in (legl, legr):
         s.dot(mid(b, "top")[0], yb)
         path([(mid(b, "top")[0], yb), mid(b, "top")], lw=P, arrow="down")
-    s.text(160, yb + 1.6, "+24 V bus  ·  K1 open = drives and pump off", size=5.8, color=GREY)
-    path([mid(pumpc, "right"), mid(pump, "left")], lw=P, arrow="right")
+    s.text(160, yb + 1.6, "+24 V bus  ·  K1 open = drives off", size=5.8, color=GREY)
+
+    # water trolley: pack, fuse, main switch, kill switch, controller, pump
+    path([mid(bt4, "right"), mid(s11, "left")], lw=P, arrow="right")
+    path([mid(s11, "bottom"), mid(pumpc, "top")], lw=P, arrow="down")
+    path([mid(pumpc, "left"), mid(pump, "right")], lw=P, arrow="left")
     s.text(COL[4] + BW / 2, ROW[1] + 1.6, "brake resistor on hip roll", size=5.0, ha="center", color=GREY)
     s.text(COL[5] + BW / 2, ROW[1] + 1.6, "brake resistor on hip roll", size=5.0, ha="center", color=GREY)
 
@@ -119,10 +127,13 @@ def draw(out):
         x = mid(b, "bottom")[0]
         path([(x, ROW[3] + BH), (x, ROW[2])], arrow="up")
         s.text(x + 1.4, ROW[3] + BH + 3.8, lab, size=5.6, color=GREY)
-    for b, lab in ((can1, "CAN left"), (can2, "CAN right"), (opto, "on / off")):
+    for b, lab in ((can1, "CAN left"), (can2, "CAN right")):
         x = mid(b, "top")[0]
         path([(x, ROW[2] + BH), (x, ROW[1])], arrow="up")
         s.text(x + 1.4, ROW[2] + BH + 3.6, lab, size=5.6, color=GREY)
+    xo, xu = mid(opto, "top")[0], mid(pumpc, "bottom")[0]
+    path([(xo, ROW[2] + BH), (xo, 124.5), (xu, 124.5), (xu, ROW[1])], arrow="up")
+    s.text(xo + 1.4, 126.2, "on / off, 2-wire cable on the hose", size=5.6, color=GREY)
     for b, lab, d in ((servoa, "USB", "down"), (cam, "USB 3", "up"), (imu, "UART4", "up")):
         x = mid(b, "top")[0]
         if d == "down":

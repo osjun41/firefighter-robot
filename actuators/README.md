@@ -25,7 +25,7 @@ The pump line is a ROCK 3C GPIO (`robot/pump.py`). Its pins are in [robot/README
 - `st3215.py`: the Feetech STS protocol over pyserial. Its command line lists the servos, changes an id and reads positions.
 - `walk_bridge.py`: the class `AimGamepad`. It gives the policy `vx` and `yaw_rate` from `aim/run.py`.
 - `test_actuators.py`: the tests.
-- `selftest.py` and `pico_fw/main.py`: optional, not used on F2. A first-day check for an external Pico 2 relay board. On F2, use `robot/bench.py`.
+- `selftest.py` and `pico_fw/main.py`: optional, not used on F3. A first-day check for an external Pico 2 relay board. On F3, use `robot/bench.py`.
 
 ## Run it without hardware
 
@@ -98,7 +98,7 @@ python3 -c "import json,socket,time; s=socket.socket(2,2); [(s.sendto(json.dumps
 5. When the nozzle turns right instead of left, set the pan `direction` to -1 and start the node again.
 6. Do the same for the tilt with `tilt=0.2`. The nozzle must go up.
 7. Set `min_deg` and `max_deg` so that the nozzle and the hose cannot hit the robot, the tanks or the cables.
-   The F2 geometry allows pan -90 to 90 deg and tilt -40 to 45 deg. Then run `robot/bench.py pantilt` (robot/README.md, step 7).
+   The F3 geometry allows pan -90 to 90 deg and tilt -40 to 45 deg. Then run `robot/bench.py pantilt` (robot/README.md, step 7).
 8. After this, do the bore-sight of [aim/README.md](../aim/README.md), "Calibration".
 
 `actuator_node.py --calib file.json` takes the same keys from a JSON file and overrides `config.toml`.

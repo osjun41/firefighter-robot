@@ -2,10 +2,10 @@
 
 This folder holds the code between the fire detector and the actuators.
 It finds the fire position on the floor, aims the water jet, switches the water on and off, and tells the legs where to walk.
-The core uses only Python and numpy. `robot/launch.py` runs it as `aim/run.py F2 --feedback`.
+The core uses only Python and numpy. `robot/launch.py` runs it as `aim/run.py F3 --feedback` (`[robot] concept` of `robot/config.toml`).
 
-- **Assumed:** The F2 nozzle tip and camera poses on the tilt plate are estimates from the CAD (`geometry.py`).
-- **Assumed:** The jet speed v0 = 10.0 m/s and the drag 0.11 1/m are model values ([docs/hardware/water.md](../docs/hardware/water.md)). The KLP02 jet is not measured. The jet test gives the real v0.
+- **Assumed:** The nozzle tip and camera poses on the tilt plate are estimates from the CAD (`geometry.py`). F3 has the same head as F2.
+- **Assumed:** The F3 jet speed v0 = 9.6 m/s and the drag 0.11 1/m are model values ([docs/hardware/water.md](../docs/hardware/water.md)). The KLP02 jet is not measured. The jet test gives the real v0.
 - **Not verified:** Nobody has tested that the walking policy steps back. The controller sends vx = -0.25 m/s when the fire is too close.
 
 ## Status
@@ -31,7 +31,7 @@ The core uses only Python and numpy. `robot/launch.py` runs it as `aim/run.py F2
 - `sim_demo.py`: a small simulation with a plot. `send_test_detections.py`: a fake camera and detector for `run.py`.
 - `test_aim.py`: the tests. `sim_demo_F2.png`: the demo plot.
 
-`CONCEPTS["F2"]` is the current robot. `geometry.py` also keeps the earlier designs A, B, E and F1, because the tests and some simulations use them.
+`CONCEPTS["F3"]` is the current robot: the F2 head and pan-tilt with the jet of the water trolley. `geometry.py` also keeps F2 and the earlier designs A, B, E and F1, because the tests and some simulations use them.
 
 ## How to run
 
@@ -57,13 +57,13 @@ Then the robot checks the fire for 5 s and searches for other fires for 30 s. It
 3. Test `run.py` without the camera node. In a first terminal, start the runtime:
 
 ```sh
-uv run python aim/run.py F2
+uv run python aim/run.py F3
 ```
 
 4. In a second terminal, start the fake detector. It walks a simulated robot and puts a fire at (2.6, 0.8) m.
 
 ```sh
-uv run python aim/send_test_detections.py F2 --v2
+uv run python aim/send_test_detections.py F3 --v2
 ```
 
 Result on 2026-10-22: the states went SEARCH, APPROACH, AIM, SPRAY, VERIFY, SEARCH and DONE. The pump was on for 6.3 s.
@@ -111,7 +111,9 @@ The ports come from `robot/config.toml` `[ports]` ([docs/architecture.md](../doc
 - Without `--feedback`, a mock actuator reaches each command at once. Feedback older than 0.5 s gives the commanded angles and a warning.
 - `run.py` exits at DONE. It takes the camera size and field of view from `[camera]`, and `ControllerConfig` overrides from `[aim.controller]`.
 
-## F2 geometry
+## F3 geometry
+
+F3 keeps the head and the pan-tilt of F2.
 
 Robot frame: x forward, y left, z up, in metres. The origin is the floor point under the BHL base link (pelvis centre).
 Pan turns about z, positive to the left. Tilt is the elevation, positive up.
@@ -130,7 +132,7 @@ The camera and the nozzle then tilt about the base link, 0.64 m above the floor 
 ## Controller
 
 `Controller.step()` runs once per tick and returns `Command(pan, tilt, pump_on, vx, yaw_rate, state)`.
-The values below are the F2 values of `CONCEPTS["F2"]["controller"]`. The defaults are in `ControllerConfig` (`controller.py`).
+The values below are the F3 values of `CONCEPTS["F3"]["controller"]`. The defaults are in `ControllerConfig` (`controller.py`).
 
 | State | The robot does | Next state |
 |---|---|---|
@@ -142,7 +144,7 @@ The values below are the F2 values of `CONCEPTS["F2"]["controller"]`. The defaul
 | DONE | Stands still and holds the last commanded angles | none |
 | ABORT | Torso roll or pitch above 0.6 rad (a fall): pump off, stop, hold | none |
 
-- DONE also comes after 30 sprays, after 240 s of mission time, and when the tanks are empty (107 s of pump time).
+- DONE also comes after 30 sprays, after 240 s of mission time, and when the water bag is empty (285 s of pump time, F3).
 - After 15 s of pump time on one target, its box must be 10 % smaller than in the first 3 s. If not, the controller ignores that target (a lamp, a red object).
 - The BHL policy does not turn on the spot. So each turn gets a forward speed of at least 0.3 m/s, and the robot never turns while it steps back.
 - AIM, SPRAY and VERIFY never turn the body. The pan-tilt turns instead.

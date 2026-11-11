@@ -44,7 +44,7 @@ def _drain(sock):
             return out
 
 
-def main(concept="F2", seconds=90.0, feedback=False, v2=False):
+def main(concept="F3", seconds=90.0, feedback=False, v2=False):
     cfg = CONCEPTS[concept]
     cam = next(iter(cfg["cameras"]))
     rx_angles = _socket(FEEDBACK_PORT if feedback else CMD_PORTS[0])  # this fake camera sits on the pan-tilt
@@ -83,7 +83,7 @@ def main(concept="F2", seconds=90.0, feedback=False, v2=False):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("concept", nargs="?", default="F2", choices=sorted(CONCEPTS))
+    ap.add_argument("concept", nargs="?", default="F3", choices=sorted(CONCEPTS))
     ap.add_argument("--feedback", action="store_true", help="read the angles from actuators/actuator_node.py")
     ap.add_argument("--v2", action="store_true", help="send one frame message per image (interface v2)")
     a = ap.parse_args()

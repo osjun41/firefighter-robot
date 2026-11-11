@@ -31,7 +31,7 @@ Run these commands from the repository root.
 
 ## What `models.py` builds
 
-`models.py` reads the parts of `cad/final/out_f2/layout.json` (made by `cad/final/layout.py`).
+`models.py` reads the parts of `cad/final/out_f2/layout.json` and `cad/final/out_f3/layout.json` (made by `cad/final/layout.py`).
 Each part is a rigid body on the BHL torso, with a solid-box inertia. The water of both tanks is one body with the same inertia.
 The BHL battery (603 g) and PC (280 g) are not on our robot, so `models.py` takes their mass out of the BHL torso.
 
@@ -41,8 +41,32 @@ The BHL battery (603 g) and PC (280 g) are not on our robot, so `models.py` take
 | `bhl_F2.xml` | F2 with both tanks full (0.781 L) | 15.99 |
 | `bhl_F2_half.xml` | F2 with both tanks half full | 15.60 |
 | `bhl_F2_empty.xml` | F2 with empty tanks | 15.21 |
+| `bhl_F3.xml` | F3, the trolley version: no water system on the robot, the end of the hose (anchor, signal plug, hose) on the deck | 14.60 |
+| `bhl_F3_1pack.xml` | F3 with one 6S pack instead of two | 14.00 |
+| `bhl_F3_tether.xml` | F3 with no 6S pack: motor power by cable from the trolley | 13.46 |
 
 Each model has a "stand" keyframe: flat feet, 1 mm above the floor. The self-check of `models.py` compares every mass with the parts table.
+
+**Assumed:** the hose from the trolley adds no load other than the 20 g of hose and water in the F3 layout. The gap study tests a hose pull (`sim/sim2sim/gap_study.py`).
+
+## Weighed masses (`measured.py`)
+
+The CAD model guesses many masses. The team weighs the real parts, and `measured.py` puts them into the model.
+
+1. Weigh each part with a scale of 1 g resolution. Write the mass in grams in the `measured_g` column of [`masses.csv`](masses.csv).
+2. Weigh each actuator module with its drive board before you mount it. It counts in the body that holds its housing. For example, the knee actuator counts in the thigh (`leg_left_hip_pitch`).
+3. Weigh the printed parts, bearings and screws of each link together, in the row of that link.
+4. Weigh the whole robot at the end, in the `whole_robot` row. This row is only a check.
+5. When a body has a row with no mass, the model keeps its old mass for that body. You can fill the sheet step by step.
+6. Build the model with the weighed masses:
+   ```
+   uv run python sim/payload/measured.py
+   ```
+   It writes `models/bhl_F3_measured.xml` and `results/measured_F3.md` (body, model mass, weighed mass, change).
+
+- A torso or leg body keeps the centre of mass of the BHL model. Its inertia scales with its mass.
+- A row that is more than 20 % off the model gets a note. Check it before you trust it: a part may be in the wrong row.
+- `--design F3_1pack` uses another design. `--template new.csv` writes a blank sheet. `--check` runs the self-check.
 
 ## Results of the F2 check
 
@@ -100,6 +124,7 @@ Findings:
 | `torso_tank.py` | Walking and push test helpers. `final_check.py` and `sim/rl/f1_eval.py` use them. |
 | `report.py` | Plot palette and style of the simulation figures |
 | `final_check.py` | The F2 check: statics, walking, push test and drive cases |
+| `measured.py`, `masses.csv` | The sheet of parts to weigh, and the script that puts the weighed masses into the model |
 | `results/final_f2.md`, `results/final_f2.json` | Results of `final_check.py` |
 
 ## Open points

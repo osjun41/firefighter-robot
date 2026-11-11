@@ -1,32 +1,36 @@
 # Parts to order
 
-Parts for the final design F2 that are **not** in the course BOM. The course BOM already has the batteries, D1, K1, U1, the e-stop, the push-lock switches, the meters, the shunt, the CANables, the EC5, XT30 and XT60 connectors and 18 AWG wire. Ask the TA how many EC5 (3 needed) and XT60 pairs (2 needed) the course gives.
+Parts for design F3 that are **not** in the course BOM. F3 is the F2 robot without its water system, plus the water trolley ([trolley.md](trolley.md)). The course BOM already has the robot batteries, D1, K1, U1, the e-stop and the push-lock switches S2 and S3. It also has the meters, the shunt, the CANables, the EC5, XT30 and XT60 connectors and 18 AWG wire. Ask the TA how many EC5 (3 needed) and XT60 pairs (2 on the robot, 1 on the trolley) the course gives.
 
-Status: planned. We read the prices on 2026-10-15. Prices change: check each one before you order. "Search result" means the price comes from the search page, not from the product page. AliExpress prices have no shipping.
+Status: planned. We read the prices on 2026-10-15, the trolley prices on 2026-10-30. Prices change: check each one before you order. "Search result" means the price comes from the search page, not from the product page. AliExpress prices have no shipping. **GUESS** marks an estimate without a shop price.
 
 **Assumed:** where a shop shows the price without VAT, we added 10 % VAT. Devicemart ships free above 66,000 KRW.
 
-The reference designators (U2, F14 …) are the ones of the [electrical drawings](electrical.md). The printed parts and the screws of the print kit are in [cad/final/kit/hardware.md](../../cad/final/kit/hardware.md).
+The reference designators (U2, F20 …) are the ones of the [electrical drawings](electrical.md). The printed parts and the screws of the print kit are in [cad/final/kit/hardware.md](../../cad/final/kit/hardware.md).
 
 ## Totals
 
-| Group | KRW |
-|---|---|
-| Water system | 41,422 |
-| Electrical | 187,013 |
-| Mounting hardware | 24,072 |
-| **Total of the priced rows** | **252,507** |
+| Group | Priced rows (KRW) | GUESS rows (KRW) |
+|---|---|---|
+| Water system | 58,332 | — |
+| Electrical | 187,013 | 7,500 |
+| Mounting hardware | 21,784 | — |
+| Water trolley | 78,640 | 119,000 |
+| **Total** | **345,769** | **126,500** |
 
-The rows marked — have no price yet: the pump, the DMC-101, the opto-isolator, the tee, the stoppers, the M5 × 55 screws, the strap and the tube adapters.
+The rows marked — have no price yet: the pump, the DMC-101, the opto-isolator, the tube adapters and the reducing barb.
+The F2 tank parts are marked **not needed (F3)**. They are the M5 tank barbs, the tee, the tank stoppers, the tank screws, 8 T-nuts and the pump strap.
 
-| Shop | KRW |
+| Shop (priced rows) | KRW |
 |---|---|
-| devicemart | 162,477 |
+| devicemart | 160,189 |
+| icbanq | 51,150 |
+| navimro | 41,712 |
 | eleparts | 40,308 |
-| navimro | 23,925 |
+| fruugo.kr | 27,490 |
 | Gmarket | 8,780 |
-| AliExpress | 8,717 |
 | mechasolution | 8,300 |
+| AliExpress | 7,840 |
 
 ## 1. Water system
 
@@ -36,14 +40,15 @@ The rows marked — have no price yet: the pump, the DMC-101, the opto-isolator,
 | W2 | DMC-101 DC pump controller | 1 | — | — | team |  | the team orders it |
 | W3 | MK8 large-bore brass nozzle kit, 1.0 / 1.2 / 1.5 / 3 mm | 1 | 8,780 | 8,780 | Gmarket | https://item.gmarket.co.kr/Item?goodsCode=4039267557 | search result. Check the M6 thread. |
 | W4 | Brass M6 female × 3 mm hose barb (nozzle holder) | 2 | 3,920 | 7,840 | AliExpress | https://ko.aliexpress.com/item/1005005947571818.html | search list, no shipping |
-| W5 | Brass M5 male × 3 mm hose barb, 5 pieces (tank outlets: 2 needed) | 1 | 877 | 877 | AliExpress | https://ko.aliexpress.com/item/33050288194.html | search list, no shipping |
-| W6 | Silicone tube 3 × 6 mm, per m (1.5 m needed) | 2 | 1,749 | 3,498 | navimro | https://www.navimro.com/p/K15538679/ | shop page |
-| W7 | Hose tee for 3 mm tube (joins the two tank lines) | 1 | — | — | AliExpress |  | to check |
-| W8 | Check valve Sansyo SB, 3 mm, opens at 10 kPa. Add a second one if bench test T8 shows air at the tee. | 1 | 14,289 | 14,289 | navimro | https://www.navimro.com/p/K51663439/ | shop page |
-| W9 | Inline filter ARAM, 3 mm, 100 mesh (1 spare) | 2 | 3,069 | 6,138 | navimro | https://www.navimro.com/p/K92574648/ | shop page |
-| W10 | Silicone stopper for a 16 mm bore, with a vent hole (tank fill necks) | 2 | — | — |  |  | to check |
+| W5 | ~~Brass M5 male × 3 mm hose barb, 5 pieces (tank outlets)~~ **Not needed (F3):** no tanks | 0 | 877 | — | AliExpress | https://ko.aliexpress.com/item/33050288194.html | search list, no shipping |
+| W6 | Silicone tube 3 × 6 mm, per m: 3.0 m hose, 0.3 m filter to pump, spare | 4 | 1,749 | 6,996 | navimro | https://www.navimro.com/p/K15538679/ | shop page |
+| W7 | ~~Hose tee for 3 mm tube (joins the two tank lines)~~ **Not needed (F3):** one bag | 0 | — | — | AliExpress |  | |
+| W8 | Check valve Sansyo SB, 3 mm, opens at 10 kPa: CV1 at the pump outlet, CV2 on the tilt arm | 2 | 14,289 | 28,578 | navimro | https://www.navimro.com/p/K51663439/ | shop page |
+| W9 | Inline filter ARAM, 3 mm, 100 mesh, on the bag hose (1 spare) | 2 | 3,069 | 6,138 | navimro | https://www.navimro.com/p/K92574648/ | shop page |
+| W10 | ~~Silicone stopper for a 16 mm bore, with a vent hole (tank fill necks)~~ **Not needed (F3)** | 0 | — | — |  |  | |
 | W11 | Tube adapters to the KLP02 ports | 1 | — | — |  |  | to check when the pump arrives: port size not published |
-| | **Subtotal of the priced rows** | | | **41,422** | | | |
+| W12 | Reducing barb, bag hose (about 6 to 8 mm bore) to 3 mm | 1 | — | — |  |  | to check when the bag arrives |
+| | **Subtotal of the priced rows** | | | **58,332** | | | |
 
 ## 2. Electrical
 
@@ -54,11 +59,11 @@ The rows marked — have no price yet: the pump, the DMC-101, the opto-isolator,
 | E3 | Spare buck SZH-EK366, 9–36 V → 5 V 5 A | 1 | 2,420 | 2,420 | devicemart | https://www.devicemart.co.kr/goods/view?no=1386375 | search result |
 | E4 | Opto-isolator module, 1 channel, PC817 type (U8) | 2 | — | — | devicemart |  | to check. Choose it after the DMC-101 datasheet (electrical.md, section 5). |
 | E5 | In-line fuse holder MTA 0100335, mini blade, 30 A, 4 mm² leads (F1–F4, 1 spare) | 5 | 3,790 | 18,950 | eleparts | https://www.eleparts.co.kr/goods/view?no=18224538 | shop page |
-| E6 | In-line mini fuse holder Coms BE151 (F5, F10–F14, 1 spare) | 7 | 1,450 | 10,150 | eleparts | https://www.eleparts.co.kr/goods/view?no=4063235 | shop page |
+| E6 | In-line mini fuse holder Coms BE151 (F5, F10–F13, F20 on the trolley, 1 spare) | 7 | 1,450 | 10,150 | eleparts | https://www.eleparts.co.kr/goods/view?no=4063235 | shop page |
 | E7 | Mini blade fuse MTA MINIVAL 2 A, pack of 10 (F5, F12) | 1 | 2,530 | 2,530 | eleparts | https://www.eleparts.co.kr/goods/view?no=18406815 | shop page |
 | E8 | Mini blade fuse MTA MINIVAL 5 A, pack of 10 (F11) | 1 | 2,120 | 2,120 | eleparts | https://www.eleparts.co.kr/goods/view?no=18406818 | shop page |
 | E9 | Mini blade fuse MTA MINIVAL 10 A, pack of 10 (F10, F13) | 1 | 1,930 | 1,930 | eleparts | https://www.eleparts.co.kr/goods/view?no=18406811 | shop page |
-| E10 | Mini auto fuse 3 A (F14) | 5 | 165 | 825 | devicemart | https://www.devicemart.co.kr/goods/view?no=10901863 | search result |
+| E10 | Mini auto fuse 3 A (F20 on the trolley) | 5 | 165 | 825 | devicemart | https://www.devicemart.co.kr/goods/view?no=10901863 | search result |
 | E11 | Mini auto fuse 20 A (F1–F4) | 10 | 165 | 1,650 | devicemart | https://www.devicemart.co.kr/goods/view?no=10903008 | search result |
 | E12 | Varistor Bourns MOV-10D390K, 39 V (RV1, 1 spare) | 2 | 538 | 1,076 | eleparts | https://www.eleparts.co.kr/goods/view?no=1195942 | shop page |
 | E13 | Schottky diode SB560, 5 A 60 V (D2, pump flyback if needed, spares) | 4 | 228 | 912 | eleparts | https://www.eleparts.co.kr/goods/view?no=17046478 | shop page |
@@ -74,7 +79,10 @@ The rows marked — have no price yet: the pump, the DMC-101, the opto-isolator,
 | E23 | Heat-shrink set NT-DIY, 280 pieces | 1 | 8,800 | 8,800 | devicemart | https://www.devicemart.co.kr/goods/view?no=1320937 | search result |
 | E24 | Relay KKA-K4, 24 V coil, 40 A (K2, 1 spare) | 2 | 7,150 | 14,300 | devicemart | https://www.devicemart.co.kr/goods/view?no=14822397 | search result. Coil current not listed. |
 | E25 | Crimp spade terminal set, 180 pieces, incl. 6.3 mm (K2 terminals) | 1 | 16,500 | 16,500 | devicemart | https://www.devicemart.co.kr/goods/view?no=15356628 | search result |
+| E26 | Contact block Menics A20-E01P, 1 NC: the fourth block NC4 on the e-stop S1 | 1 | 4,500 | 4,500 | Menics dealer | https://www.wolfautomation.com/contact-block-1nc-for-pushbuttons-o22mm | **GUESS** from a US listing (3.28 USD). Check that S1 takes a fourth block. |
+| E27 | JST SM 2-pin connector pairs with leads, pack of 5 (J10) | 1 | 3,000 | 3,000 | devicemart |  | **GUESS** |
 | | **Subtotal of the priced rows** | | | **187,013** | | | |
+| | **Subtotal of the GUESS rows** | | | **7,500** | | | |
 
 ## 3. Mounting hardware
 
@@ -82,18 +90,44 @@ The rows marked — have no price yet: the pump, the DMC-101, the opto-isolator,
 |---|---|---|---|---|---|---|---|
 | M1 | Brass insert M3 × 5 × 5 mm (pump holder, buck, modules) | 30 | 88 | 2,640 | eleparts | https://www.eleparts.co.kr/goods/view?no=11045755 | shop page. Check that it is a heat-set insert. |
 | M2 | Stainless hex socket screw kit NT-KIT-LS012, M3–M5, 6–30 mm | 1 | 18,000 | 18,000 | devicemart | https://www.devicemart.co.kr/goods/catalog?code=001500070037 | search result |
-| M3 | Spring nut M5 for 20-series profile. 32 needed (cad/final/kit/hardware.md), 20 already ordered: order 12 more. | 12 | 286 | 3,432 | devicemart | https://www.devicemart.co.kr/goods/view?no=12530574 | search result |
-| M4 | Stainless socket head screw M5 × 55 with washer (tanks to the post side slots) | 8 | — | — | devicemart |  | to check. The M2 kit stops at 30 mm. |
-| M5 | Hook-and-loop strap 20 × 250 mm (pump) | 1 | — | — |  |  | to check |
-| | **Subtotal of the priced rows** | | | **24,072** | | | |
+| M3 | Spring nut M5 for 20-series profile. F3 needs 24 (cad/final/kit/hardware.md lists 32, with 8 for the tanks). 20 already ordered: order 4 more. | 4 | 286 | 1,144 | devicemart | https://www.devicemart.co.kr/goods/view?no=12530574 | search result |
+| M4 | ~~Stainless socket head screw M5 × 55 with washer (tanks to the post side slots)~~ **Not needed (F3):** no tanks | 0 | — | — | devicemart |  | |
+| M5 | ~~Hook-and-loop strap 20 × 250 mm (pump)~~ **Not needed (F3):** the pump is in the trolley box | 0 | — | — |  |  | |
+| | **Subtotal of the priced rows** | | | **21,784** | | | |
 
-## 4. From lab stock
+## 4. Water trolley
+
+The trolley design, the heights and the tests are in [trolley.md](trolley.md). The references (BT4, S10 …) are the ones of the electrical drawings.
+
+| # | Part | Qty | Unit KRW | Line KRW | Shop | Link | Price source |
+|---|---|---|---|---|---|---|---|
+| T1 | IV stand, 5 legs on casters, height adjustable to about 2 m, 2 hooks. A heavy stand (8 to 10 kg) doubles the tip force. | 1 | 45,000 | 45,000 | Coupang or a medical shop |  | **GUESS**. Search "링거대". |
+| T2 | 2 L hydration bag with a wide top opening and a bottom hose outlet | 1 | 27,490 | 27,490 | fruugo.kr | https://www.fruugo.kr/2l-hydration-bladder-with-bite-valve-for-running-cycling-and-hiking-backpacks/p-415753957 | search result, overseas shop. A sports shop in Korea may be cheaper. |
+| T3 | 6S LiPo 1300 mAh, XT60 (BT4), for example GNB, CNHL or Tattu | 1 | 45,000 | 45,000 | RC shop |  | **GUESS** from US prices of 29 to 38 USD |
+| T4 | XT60 female lead, 14 AWG, 10 cm (trolley side of BT4) | 1 | 2,000 | 2,000 |  |  | **GUESS**. Ask the TA first: the course has XT60. |
+| T5 | E-stop button Kuhnshin KSEB-2543C-02 (S11) | 1 | 19,800 | 19,800 | icbanq | https://icbanq.com/P017196638 | course BOM sheet |
+| T6 | E-stop box Kuhnshin KSE-251-1, one hole (S11 at the push handle) | 1 | 13,200 | 13,200 | icbanq | https://icbanq.com/P017197874 | course BOM sheet. Check that T5 fits its hole. |
+| T7 | Push-lock switch 1A1B with a 24 V lamp (S10 with H10), the S3 type | 1 | 18,150 | 18,150 | icbanq | https://icbanq.com/P017196445 | course BOM sheet |
+| T8 | ABS box about 150 × 100 × 70 mm (pump box) | 1 | 6,000 | 6,000 | devicemart |  | **GUESS** |
+| T9 | Aluminium profile 2020: 600 mm (boom) and 200 mm (push handle) | 1 set | 5,000 | 5,000 | devicemart |  | **GUESS**. The course sheet lists 200 mm at 1,540. |
+| T10 | Printed parts: 2 pole clamps (boom, handle), breakaway clip, hose clips, pump box brackets | 1 set | — | — | print |  | filament only. **Open:** not drawn yet |
+| T11 | Pinch clamp for 6 to 8 mm tube (bag outlet) | 1 | 2,000 | 2,000 |  |  | **GUESS** |
+| T12 | LiPo voltage alarm 1S–8S with buzzer, on the BT4 balance lead | 1 | 3,000 | 3,000 |  |  | **GUESS** |
+| T13 | LiPo safe bag, small (BT4) | 1 | 8,000 | 8,000 |  |  | **GUESS** |
+| T14 | Hook-and-loop strap 20 × 400 mm (pack and cables on the pole) | 2 | 1,500 | 3,000 |  |  | **GUESS** |
+| | **Subtotal of the priced rows** | | | **78,640** | | | |
+| | **Subtotal of the GUESS rows** | | | **119,000** | | | |
+
+The trolley also uses parts from the lists above. They are the opto-isolator U8 (E4), the holder and fuse of F20 (E6, E10), the filter (W9) and CV1 (W8). The cable W60 is a twisted pair from the 22 AWG wire kit (E21). W70 uses 18 AWG wire from the course BOM.
+
+## 5. From lab stock
 
 - Three resistors: R1 10 kΩ (e-stop pull-up), R8 10 kΩ (pump pull-down), R7 470 Ω (opto LED).
 - Thermal paste (brake resistors), PTFE tape (nozzle and barbs), cable ties, crimp ferrules and a crimp tool.
-- 18 AWG wire for W10, W11, W29 and W32 comes from the course BOM.
+- 18 AWG wire for W10, W11, W29 and W70 comes from the course BOM.
+- Ballast for the trolley base, if test TT1 needs it: a sandbag or a dumbbell plate (trolley.md, section 9).
 
-## 5. Alternatives
+## 6. Alternatives
 
 | Part | When | KRW | Link |
 |---|---|---|---|
@@ -101,5 +135,6 @@ The rows marked — have no price yet: the pump, the DMC-101, the opto-isolator,
 | Pololu #3779 shunt regulator | if the AUX brake path does not work | 37,400 | https://www.pololu.com/product/3779 |
 | RH50C2R20J, 2.2 Ω 50 W | if the 4.7 Ω part is out of stock. Then raise `dc_max_positive_current` on the two brake drives (electrical.md, 4.3). | 4,840 | https://www.devicemart.co.kr/goods/view?no=33447 |
 | Littelfuse FHAC0002ZXJ ATO holder, 30 A, 12 AWG, IP67 | if the MTA holders are out of stock | 16,248 | https://www.digikey.kr/en/products/result?keywords=FHAC0002ZXJ |
+| Menics A20-E02P, 2 NC in one block | if the S1 operator takes only three blocks: it replaces one A20-E01P | **GUESS** 9,000 (6.24 USD in a US listing) | https://wolfautomation.com/contact-block-2nc-double-for-o22mm-pushbutton |
 
 Each XDrive MINI ships with one brake resistor. Its value is not published. Measure it when the drives arrive: if it is 4 to 5 Ω, you do not need E1.
