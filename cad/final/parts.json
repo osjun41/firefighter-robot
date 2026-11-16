@@ -365,15 +365,15 @@
   },
   {
     "id": "pump_klp02",
-    "name": "Kamoer KLP02 24 V brushless pump, with a DMC-101 DC pump controller (team choice, 2026-10-22)",
-    "qty": 1,
+    "name": "Kamoer KLP02 24 V brushless pump, with a DMC-101 DC pump controller (team choice, 2026-10-22). F3: on the trolley",
+    "qty": 0,
     "size_mm": null,
     "mass_g": 250,
-    "mount": "Not drawn yet. Kamoer does not publish the size. The printed pump holder fits the DWP-385 (pump_dwp385). We will draw a KLP02 holder when the pump arrives and is measured.",
+    "mount": "F3 (2026-10-29): on the trolley, with the water tank. Not drawn in cad/final. Kamoer does not publish the size. The F2 pump holder fits the DWP-385 (pump_dwp385).",
     "electrical": "Kamoer data for the 24 V brushless KLP02: flow 0.7 L/min or more, head 30 m or more, suction lift 4 m or more, 12 W or less, switch control. Proposed wiring: 24 V from the motor bus after relay K1 (the e-stop cuts it), fuse F14 3 A, DMC-101 controller, on/off from ROCK 3C pin 11 (GPIO3_A1) through an opto-isolator (robot/pump.py).",
     "source_url": null,
     "confidence": "datasheet",
-    "notes": "Size: not published. Mass: about 250 g (Kamoer, 24 V brushless type). Port size: not published. The DMC-101 datasheet is not available yet, so its size, mass and control input are not known. The CAD layout and the robot mass still use the DWP-385 (130 g) in its holder."
+    "notes": "Size: not published. Mass: about 250 g (Kamoer, 24 V brushless type). Port size: not published. The DMC-101 datasheet is not available yet, so its size, mass and control input are not known. The F3 layout has no pump. The F2 layout and its robot mass used the DWP-385 (130 g) in its holder."
   },
   {
     "id": "pump_dwp385",
@@ -385,11 +385,11 @@
       48.0
     ],
     "mass_g": 130,
-    "mount": "Two ears on the pump head (hole spacing not published). The printed pump holder (kit/stl/pump_holder.stl) on the rear of the middle shelf fits this pump: two saddles and a 250 mm strap. The holder does not use the ears.",
+    "mount": "Two ears on the pump head (hole spacing not published). The printed pump holder (kit_f2/stl/pump_holder.stl, design F2) on the rear of the middle shelf fits this pump: two saddles and a 250 mm strap. The holder does not use the ears.",
     "electrical": "12 V brushed, 0.7-1.1 A at 11.1 V. On/off through the DFR0457 MOSFET module. SB560 flyback diode across the leads.",
     "source_url": "https://www.eleparts.co.kr/goods/view?no=3850995",
     "confidence": "estimate",
-    "notes": "About 87 mm long, 32 mm motor, 130 g. Size here = 87 mm body + 12 mm barbs, 34 mm head, 48 mm ear span: the head and ear sizes are guesses. The CAD layout and the robot mass use this pump in its holder until a KLP02 holder exists."
+    "notes": "About 87 mm long, 32 mm motor, 130 g. Size here = 87 mm body + 12 mm barbs, 34 mm head, 48 mm ear span: the head and ear sizes are guesses. The F2 layout uses this pump in its holder. F3 has no pump on the robot."
   },
   {
     "id": "mosfet_dfr0457",
@@ -401,7 +401,7 @@
       15.0
     ],
     "mass_g": 10,
-    "mount": "Rail pocket on the pod basket lip with 1 mm foam tape. The pocket stays in the basket. The CAD layout still counts this module.",
+    "mount": "Rail pocket on the pod basket lip with 1 mm foam tape. The pocket stays in the basket and is empty in F3. The F2 layout counts this module.",
     "electrical": "Control 3.3-10 V, load 5-36 V DC, 20 A. Gate from ROCK 3C pin 11 with a 10 kOhm pull-down.",
     "source_url": "https://www.icbanq.com/P007616427",
     "confidence": "estimate",

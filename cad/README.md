@@ -1,6 +1,7 @@
 # CAD
 
-This folder holds the parametric CAD of the firefighter robot, final design F2, on the Berkeley Humanoid Lite (BHL) legs.
+This folder holds the parametric CAD of the firefighter robot, final design F3, on the Berkeley Humanoid Lite (BHL) legs.
+In F3 a trolley carries the water tank and the pump. Only the delivery hose comes down to the robot.
 The part code uses build123d (Python). The renders use Blender.
 
 Status: the CAD and the print kit are **built**. The checks are **tested in simulation**: they run on the CAD geometry and the BHL meshes. Nothing is printed or measured.
@@ -9,10 +10,10 @@ Status: the CAD and the print kit are **built**. The checks are **tested in simu
 
 | Path | What it is |
 |---|---|
-| [`final/`](final/README.md) | Design F2: every part of the course bill of materials (BOM) in the course torso, the two R2 water tanks, the checks and the renders. Start here. |
+| [`final/`](final/README.md) | Design F3: every part of the course bill of materials (BOM) in the course torso, the hose anchor, the checks and the renders. Start here. |
 | [`final/kit/`](final/kit/README.md) | The print kit for the hardware team: STL files, cut drawings, print sheet, hardware list and assembly steps |
 | [`parts/`](parts/README.md) | Code of the ST3215 pan-tilt and the deck. `final/` uses it. |
-| [`torso_tank/`](torso_tank/README.md) | Code of the R2 tank. `final/tank.py` uses it. |
+| [`torso_tank/`](torso_tank/README.md) | Code of the R2 tank of the older design F2. `final/tank.py` uses its helpers. |
 | [`backpack/`](backpack/README.md) | Shared helpers: path to the BHL assets, print bed size, leg check |
 | `bhl.py` | Blender helpers: place the BHL meshes from the URDF, add simple shapes, set up the studio, render |
 | `pyproject.toml`, `uv.lock` | Python environment of the CAD code (build123d, trimesh, scipy) |
@@ -27,13 +28,13 @@ Run the commands from the repository root. The first `uv run` installs the envir
 scripts/fetch_bhl_assets.sh
 ```
 
-2. Build the tanks and the deck (15 s):
+2. Build the deck (5 s):
 
 ```
 uv run --project cad python cad/final/tank.py
 ```
 
-3. Build the print kit and run its checks (30 s):
+3. Build the print kit and run its checks (1 min):
 
 ```
 uv run --project cad --with matplotlib python cad/final/kit.py

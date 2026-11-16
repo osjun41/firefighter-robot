@@ -11,7 +11,7 @@ What is the same as BHL (biped/env_cfg.py at commit 984741a):
   a constant external force and torque on the torso for each episode (BHL +-2 N, +-2 Nm, here +-1 by default).
 What is new for our robot and hardware:
 - model sim/payload/models/bhl_F2.xml (final design F2, 15.99 kg with full tanks; FF_DESIGN=<name> loads
-  bhl_<name>.xml instead);
+  bhl_<name>.xml instead, for example FF_DESIGN=F3 for the trolley version, which has no water on the robot);
   water 0 to full, payload masses x0.8-1.2, payload CoM +-3 cm;
 - knee range 0 to 1.4 rad, and the knee target is clipped at 1.4 rad (legs/run_policy.py --knee-max 1.4);
 - torque limit 6-9 Nm; command latency 0-20 ms and observation latency 0-20 ms (5 ms steps);
@@ -20,6 +20,14 @@ What is new for our robot and hardware:
 - a command mix with stand, turn on the spot and slow walking; command changes every 3-8 s;
 - a recoil force at the nozzle (0.9 m), on and off, and velocity pushes;
 - standing: a penalty for each foot in the air when the command is zero.
+Terms for the real drives and parts (the defaults keep the task of f1_v1):
+- armature per motor type (hip and knee, ankle) and joint friction loss ranges.
+- torque_scale: an error of the motor torque constant, one value per motor type. It scales kp, kd and the torque
+  limit together, because the drive computes all three from the same torque constant.
+- leg_mass: each leg link x a random factor (printed parts and motors).
+- imu_tilt: an IMU mounting error, a fixed roll and pitch per episode on the gravity and gyro inputs.
+- hose: a horizontal pull at the nozzle (F3: the hose comes from the trolley): a constant backward part per episode
+  plus a slowly changing part, mostly backward.
 
     uv run python f1_env.py      self-check on the CPU: model, observation layout against sim/sim2sim/run.py
 """
@@ -55,10 +63,19 @@ def default_config():
       impl="warp", naconmax=16 * 8192, njmax=96,  # naconmax: all envs together
       noise=1.0,  # x OBS_NOISE
       torque_range=[6.0, 9.0],  # Nm
+      torque_scale=[1.0, 1.0],  # x kp, kd and torque limit together, one value per motor type (torque constant error)
+      armature=config_dict.create(hip_knee=[0.004, 0.008], ankle=[0.004, 0.008]),  # kg m^2 at the joint
+      frictionloss=[0.05, 0.15],  # Nm at the joint
+      payload_mass=[0.8, 1.2],  # x all payload parts together
+      leg_mass=[1.0, 1.0],  # x mass and inertia, each leg link
+      imu_tilt=0.0,  # rad, max IMU mounting error in roll and in pitch
       act_delay_steps=4, obs_delay_steps=4,  # max command and observation latency, in 5 ms physics steps (20 ms)
       zero_offset=0.05,  # rad, BHL default joint position offset
       push=config_dict.create(enable=True, interval=[6.0, 12.0], magnitude=[0.1, 0.5]),  # m/s velocity kick
       recoil=config_dict.create(force=[0.0, 1.5], on=[0.5, 3.0], off=[0.5, 4.0]),  # N, s
+      # hose pull at the nozzle. base: N, constant backward part per episode. force: N, changing part, which moves
+      # toward a new goal (backward +- angle rad) every time s, with the time constant tau s
+      hose=config_dict.create(base=[0.0, 0.0], force=[0.0, 0.0], angle=1.0, time=[1.0, 4.0], tau=1.0),
       reset_wrench=[1.0, 1.0],  # N, Nm (BHL base_external_force_torque uses 2, 2)
       cmd_time=[3.0, 8.0],  # s between command changes
       cmd_mix=[0.2, 0.25, 0.35, 0.2],  # stand, turn on the spot, walk forward, BHL general range
@@ -151,7 +168,7 @@ class F1Joystick(mjx_env.MjxEnv):
     self._base = m.body("base").id
     self._contact_adr = np.array([m.sensor_adr[m.sensor(f"{f}_contact").id] for f in ("left", "right")])
     self._vel_adr = np.array([m.sensor_adr[m.sensor(f"{f}_vel").id] + np.arange(3) for f in ("left", "right")])
-    self._water = m.body("payload_water").id
+    self._water = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, "payload_water")  # -1: no water on the robot (F3)
     self._payload = np.array([i for i in range(m.nbody) if m.body(i).name.startswith("payload_")])
     self._init_q = np.r_[0, 0, 0, 1, 0, 0, 0, DEFAULT].astype(np.float32)  # BHL start: base at the origin, then a drop
 
@@ -184,6 +201,13 @@ class F1Joystick(mjx_env.MjxEnv):
   def _steps(self, key, lo_hi):
     return jp.round(jax.random.uniform(key, minval=lo_hi[0], maxval=lo_hi[1]) / self.dt).astype(jp.int32)
 
+  def _hose_goal(self, key):
+    """Hose pull at the nozzle in the heading frame (x forward, y left): backward +- hose.angle."""
+    h = self._config.hose
+    k1, k2 = jax.random.split(key)
+    ang = jp.pi + jax.random.uniform(k2, minval=-h.angle, maxval=h.angle)
+    return jax.random.uniform(k1, minval=h.force[0], maxval=h.force[1]) * jp.array([jp.cos(ang), jp.sin(ang)])
+
   # ---------------- reset ----------------
   def reset(self, rng):
     c = self._config
@@ -201,7 +225,14 @@ class F1Joystick(mjx_env.MjxEnv):
                              naconmax=c.naconmax, njmax=c.njmax)
     data = mjx.forward(self.mjx_model, data)
     f_n, t_n = c.reset_wrench
+    kn = jax.random.split(jax.random.fold_in(rng, 1), 3)  # keys of the newer terms, so the older draws stay the same
+    hose = self._hose_goal(kn[0])
     info = {
+        "imu_tilt": jax.random.uniform(kn[1], (2,), minval=-c.imu_tilt, maxval=c.imu_tilt),  # roll, pitch of the mount
+        "hose": hose,  # N, heading frame, changing part
+        "hose_base": jax.random.uniform(jax.random.fold_in(rng, 2), minval=c.hose.base[0], maxval=c.hose.base[1]),
+        "hose_goal": hose,
+        "hose_left": self._steps(kn[2], c.hose.time),
         "rng": k[5],
         "command": self.sample_command(k[6]),
         "cmd_left": self._steps(k[7], c.cmd_time),
@@ -250,9 +281,18 @@ class F1Joystick(mjx_env.MjxEnv):
     q = data.qpos[3:7]
     fwd = quat_rotate(q, jp.array([1.0, 0.0, 0.0]))
     f_rec = info["recoil_on"] * info["recoil_level"] * jp.array([fwd[0], fwd[1], 0.0])
+    # hose from the trolley: the pull moves toward a new goal every hose.time, with the time constant hose.tau
+    k_hose, k_ht = jax.random.split(jax.random.fold_in(k_rec, 1))
+    info["hose_left"] -= 1
+    new_hose = info["hose_left"] <= 0
+    info["hose_goal"] = jp.where(new_hose, self._hose_goal(k_hose), info["hose_goal"])
+    info["hose_left"] = jp.where(new_hose, self._steps(k_ht, c.hose.time), info["hose_left"])
+    info["hose"] = info["hose"] + (info["hose_goal"] - info["hose"]) * min(1.0, self.dt / c.hose.tau)
+    yaw, (hx, hy) = yaw_of(q), info["hose"] - jp.array([info["hose_base"], 0.0])  # heading frame, constant part back
+    f_hose = jp.array([hx * jp.cos(yaw) - hy * jp.sin(yaw), hx * jp.sin(yaw) + hy * jp.cos(yaw), 0.0])
     nozzle = data.xpos[self._base] + quat_rotate(q, jp.array(NOZZLE))
-    torque = jp.cross(nozzle - data.xipos[self._base], f_rec)
-    xfrc = jp.zeros((self.mjx_model.nbody, 6)).at[self._base].set(info["wrench"] + jp.r_[f_rec, torque])
+    torque = jp.cross(nozzle - data.xipos[self._base], f_rec + f_hose)
+    xfrc = jp.zeros((self.mjx_model.nbody, 6)).at[self._base].set(info["wrench"] + jp.r_[f_rec + f_hose, torque])
     data = data.replace(xfrc_applied=xfrc)
 
     # policy target -> drive, with the runtime target clip and the joint zero error (drive sees q + zero_off)
@@ -295,16 +335,23 @@ class F1Joystick(mjx_env.MjxEnv):
   # ---------------- observation ----------------
   def _get_obs(self, data, info, reading, contact):
     quat, gyro, q, qd = reading
-    grav = quat_rotate_inverse(quat, jp.array([0.0, 0.0, -1.0]))
+    r, p = info["imu_tilt"] / 2  # IMU mount: roll, then pitch, relative to the torso
+    q_imu = jp.array([jp.cos(r) * jp.cos(p), jp.sin(r) * jp.cos(p), jp.cos(r) * jp.sin(p), jp.sin(r) * jp.sin(p)])
+    grav = quat_rotate_inverse(q_imu, quat_rotate_inverse(quat, jp.array([0.0, 0.0, -1.0])))
+    gyro = quat_rotate_inverse(q_imu, gyro)
     clean = jp.concatenate([info["command"], gyro, grav, q + info["zero_off"] - jp.array(DEFAULT), qd, info["last_act"]])
     info["rng"], key = jax.random.split(info["rng"])
     noise = (2 * jax.random.uniform(key, (45,)) - 1) * jp.array(OBS_NOISE) * self._config.noise
     m = self.mjx_model
+    water = m.body_mass[self._water] if self._water >= 0 else jp.zeros(())
     priv = jp.concatenate([
         clean, quat_rotate_inverse(data.qpos[3:7], data.qvel[0:3]), data.qpos[2:3], contact.astype(jp.float32),
         info["air_time"], info["contact_time"], info["wrench"], info["recoil_on"] * info["recoil_level"] * jp.ones(1),
         m.actuator_forcerange[0, 1:2] / 6.0, info["act_delay"] * jp.ones(1) / 4.0, info["obs_delay"] * jp.ones(1) / 4.0,
-        m.body_mass[self._water] * jp.ones(1), m.body_ipos[self._base], m.geom_friction[0, 0:1],
+        water * jp.ones(1), m.body_ipos[self._base], m.geom_friction[0, 0:1],
+        # newer terms, for the critic only
+        m.actuator_forcerange[4, 1:2] / 6.0, m.actuator_gainprm[:, 0] / KP, m.dof_armature[6:] * 50.0,
+        m.dof_frictionloss[6:] * 2.0, (info["hose"] - jp.array([info["hose_base"], 0.0])) / 3.0, info["imu_tilt"] * 20.0,
     ])
     return {"state": clean + noise, "privileged_state": priv}
 
@@ -361,33 +408,43 @@ class F1Joystick(mjx_env.MjxEnv):
     }
 
 
-def domain_randomize(model, rng, mj_model, torque_range=(6.0, 9.0)):
-  """Per-environment model changes (BHL startup events + payload + torque limit). Returns (model, in_axes)."""
+def domain_randomize(model, rng, mj_model, cfg=None):
+  """Per-environment model changes (BHL startup events + payload + drives and gearboxes). cfg: default_config() or a
+  changed copy. Returns (model, in_axes)."""
+  c = cfg or default_config()
   floor = mj_model.geom("floor").id
   base = mj_model.body("base").id
-  water = mj_model.body("payload_water").id
+  water = mujoco.mj_name2id(mj_model, mujoco.mjtObj.mjOBJ_BODY, "payload_water")  # -1: no water on the robot (F3)
   payload = np.array([i for i in range(mj_model.nbody) if mj_model.body(i).name.startswith("payload_")])
+  legs = np.array([i for i in range(mj_model.nbody) if mj_model.body(i).name.startswith("leg_")])
   upper = np.r_[base, payload]
+  ankle = np.array(["ankle" in j for j in JOINTS])  # 5010 motors. The hip and knee joints have the 6512 motor
+  arm_lo = np.where(ankle, c.armature.ankle[0], c.armature.hip_knee[0])
+  arm_hi = np.where(ankle, c.armature.ankle[1], c.armature.hip_knee[1])
 
   @jax.vmap
   def rand(key):
     k = jax.random.split(key, 10)
+    kn = jax.random.split(jax.random.fold_in(key, 1), 2)  # keys of the newer terms, so the older draws stay the same
     u = lambda kk, lo, hi, shape=(): jax.random.uniform(kk, shape, minval=lo, maxval=hi)
     friction = model.geom_friction.at[floor, 0].set(u(k[0], 0.4, 1.2))
-    scale = jp.ones(model.nbody).at[payload].set(u(k[1], 0.8, 1.2))  # payload parts +-20 %
-    scale = scale.at[water].set(u(k[2], 0.0, 1.0))  # water: empty to full
+    scale = jp.ones(model.nbody).at[payload].set(u(k[1], *c.payload_mass))  # all payload parts together
+    if water >= 0:
+      scale = scale.at[water].set(u(k[2], 0.0, 1.0))  # water: empty to full
     scale = scale.at[base].set(u(k[3], 0.9, 1.1))  # BHL torso structure +-10 %
+    scale = scale.at[legs].set(u(kn[0], *c.leg_mass, (len(legs),)))  # each leg link
     body_mass = model.body_mass * scale
     body_inertia = model.body_inertia * scale[:, None]
     body_ipos = model.body_ipos.at[upper].add(u(k[4], -0.03, 0.03, (3,)))  # payload CoM +-3 cm
-    kp = KP * u(k[5], 0.8, 1.2, (12,))
-    kd = KD * u(k[6], 0.8, 1.2, (12,))
+    ts = u(kn[1], *c.torque_scale, (2,))[ankle.astype(int)]  # torque constant error of the 6512 and the 5010 motors
+    kp = KP * u(k[5], 0.8, 1.2, (12,)) * ts
+    kd = KD * u(k[6], 0.8, 1.2, (12,)) * ts
     gainprm = model.actuator_gainprm.at[:, 0].set(kp)
     biasprm = model.actuator_biasprm.at[:, 1].set(-kp).at[:, 2].set(-kd)
-    lim = u(k[7], *torque_range)
-    forcerange = jp.stack([-lim * jp.ones(12), lim * jp.ones(12)], axis=1)
-    armature = model.dof_armature.at[6:].set(u(k[8], 0.004, 0.008, (12,)))
-    frictionloss = model.dof_frictionloss.at[6:].set(u(k[9], 0.05, 0.15, (12,)))
+    lim = u(k[7], *c.torque_range) * ts
+    forcerange = jp.stack([-lim, lim], axis=1)
+    armature = model.dof_armature.at[6:].set(arm_lo + (arm_hi - arm_lo) * u(k[8], 0.0, 1.0, (12,)))
+    frictionloss = model.dof_frictionloss.at[6:].set(u(k[9], *c.frictionloss, (12,)))
     return friction, body_mass, body_inertia, body_ipos, gainprm, biasprm, forcerange, armature, frictionloss
 
   keys = ["geom_friction", "body_mass", "body_inertia", "body_ipos", "actuator_gainprm", "actuator_biasprm",
@@ -398,8 +455,9 @@ def domain_randomize(model, rng, mj_model, torque_range=(6.0, 9.0)):
 
 
 def check():
-  """CPU self-check: the training model has the masses of the model file, and the observation matches
-  sim/sim2sim/run.py."""
+  """CPU self-check: the training model has the masses of the model file, the observation matches
+  sim/sim2sim/run.py, the IMU mounting error tilts the gravity input, and the torque constant error scales kp, kd
+  and the torque limit together, per motor type."""
   import sys
   sys.path.insert(0, str(HERE.parent / "sim2sim"))
   import bhl_legacy as s2s  # legacy BHL simulator shared helpers
@@ -420,15 +478,30 @@ def check():
   env = F1Joystick(config_overrides={"impl": "jax"})
   info = {"command": jp.array(cmd), "zero_off": jp.zeros(12), "last_act": jp.array(act), "rng": jax.random.PRNGKey(0),
           "air_time": jp.zeros(2), "contact_time": jp.zeros(2), "wrench": jp.zeros(6), "recoil_on": jp.zeros((), bool),
-          "recoil_level": jp.zeros(()), "act_delay": jp.zeros((), int), "obs_delay": jp.zeros((), int)}
+          "recoil_level": jp.zeros(()), "act_delay": jp.zeros((), int), "obs_delay": jp.zeros((), int),
+          "imu_tilt": jp.zeros(2), "hose": jp.zeros(2), "hose_base": jp.zeros(())}
   d = mujoco.MjData(m)
   d.qpos[:], d.qvel[:] = d_ref.qpos, d_ref.qvel
   dd = mjx.forward(env.mjx_model, mjx.put_data(m, d, impl="jax"))
   reading = (dd.qpos[3:7], dd.qvel[3:6], dd.qpos[7:19], dd.qvel[6:18])
   got = np.asarray(env._get_obs(dd, info, reading, jp.zeros(2, bool))["privileged_state"][:45])
   assert np.allclose(got, want, atol=1e-4), f"observation differs: {np.abs(got - want).max()}"
-  print(f"check passed: model mass {m.body_subtreemass[1]:.2f} kg, observation matches run.py (max diff "
-        f"{np.abs(got - want).max():.1e})")
+  # IMU mount rolled by 0.05 rad on an upright torso: gravity input (0, -sin 0.05, -cos 0.05)
+  info["imu_tilt"] = jp.array([0.05, 0.0])
+  upright = (jp.array([1.0, 0.0, 0.0, 0.0]),) + reading[1:]
+  g = np.asarray(env._get_obs(dd, info, upright, jp.zeros(2, bool))["privileged_state"][6:9])
+  assert np.allclose(g, [0.0, -np.sin(0.05), -np.cos(0.05)], atol=1e-6), f"IMU tilt: {g}"
+  # torque constant error: forcerange / 6 Nm is the scale of each motor type, kp includes the same scale
+  cfg = default_config()
+  cfg.torque_range, cfg.torque_scale = [6.0, 6.0], [0.85, 1.15]
+  mr, _ = domain_randomize(env.mjx_model, jax.random.split(jax.random.PRNGKey(1), 64), m, cfg)
+  s = np.asarray(mr.actuator_forcerange[:, :, 1]) / 6.0
+  kp = np.asarray(mr.actuator_gainprm[:, :, 0]) / KP / s
+  assert ((s > 0.85 - 1e-6) & (s < 1.15 + 1e-6)).all() and (s.std(axis=0) > 0.05).all(), "torque scale range"
+  assert np.allclose(s[:, :4], s[:, :1]) and np.allclose(s[:, 4:6], s[:, 4:5]) and np.allclose(s[:, :6], s[:, 6:])
+  assert ((kp > 0.8 - 1e-6) & (kp < 1.2 + 1e-6)).all(), "kp / torque scale outside the BHL +-20 %"
+  print(f"check passed: {F1_XML.name}, model mass {m.body_subtreemass[1]:.2f} kg, observation matches run.py "
+        f"(max diff {np.abs(got - want).max():.1e}), IMU tilt and torque scale terms work")
 
 
 if __name__ == "__main__":

@@ -1,6 +1,7 @@
 """Water pump on/off on one GPIO line, with two watchdogs and an optional e-stop input.
 
-F2: header pin 11 drives an opto-isolator, which switches the DMC-101 controller of the KLP02 pump (config.toml [pump]).
+F3: header pin 11 drives the opto-isolator on the water trolley, through the e-stop contact NC4 and a 2-wire cable.
+The opto-isolator switches the DMC-101 controller of the KLP02 pump (config.toml [pump], docs/hardware/trolley.md).
 
 The actuator node calls pump.set(on) at each tick. The pump switches off:
 - when it has been on for max_spray_s: it stays off until set(False) arrives (the spray must end first),

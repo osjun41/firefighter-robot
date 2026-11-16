@@ -34,7 +34,7 @@ All ports, devices, pins, ids and limits are in one file: `config.toml`. The por
 | `actuators/actuator_node.py` | mock servos, mock pump pin (a file) | ST3215 servos, pump GPIO | as `--bench` |
 | `robot/camera_node.py` | synthetic camera, colour-threshold detector | Arducam B0201, `vision/detector.py` | as `--bench` |
 | `legs/run_policy.py --udp` | fake CAN bus with the ASMR 2026 MuJoCo model | not started | 12 drives and the IMU |
-| `aim/run.py F2 --feedback` | walks | `--no-walk`: stands still | walks |
+| `aim/run.py F3 --feedback` | walks | `--no-walk`: stands still | walks |
 
 - `--sim --bench` runs the fake world without legs.
 - `--send ready` tells a running `launch.py` that the robot stands, so the policy starts. Enter in its terminal does the same.
@@ -84,7 +84,7 @@ Result on 2026-10-22: 66 tests pass in step 4, 6 tests in step 5, and 3 of 3 sce
 
 ## Software-in-the-loop (SIL) results
 
-`sil.py` runs the real `launch.py --sim` with the F2 config and injects faults.
+`sil.py` runs the real `launch.py --sim` with the F3 config and injects faults.
 The legs run on the fake CAN bus with the MuJoCo biped. The servos and the pump are mocks.
 The detector is the colour-threshold baseline. The full table is in [results/sil_results.md](results/sil_results.md).
 
@@ -335,7 +335,7 @@ To use pins 8 and 10 anyway, set `[imu] uart = "ttyS2"` and `overlay = "rk3568-u
 | A program exits | `launch.py` does the safe stop | 0.05 s, then the stop sequence |
 | A program hangs (no heartbeat) | `launch.py` kills it and does the safe stop. For the actuator node, it forces the pump pin low at once. | camera 1.5 s, aim 1.0 s, actuator 0.5 s, legs 0.5 s |
 | The actuator loop stops updating the pump | a thread in `pump.py` switches the pump off | 0.3 s (`keepalive_s`) |
-| The pump is on too long | `pump.py` switches it off until the next "off" command | 12 s (`max_spray_s`). One F2 spray is 11 s at most. |
+| The pump is on too long | `pump.py` switches it off until the next "off" command | 12 s (`max_spray_s`). One F3 spray is 11 s at most. |
 | `aim/run.py` stops sending | the actuator node switches the water off and the servos hold. The walking bridge sends speed 0. | 0.5 s |
 | `launch.py` dies | each program gets SIGTERM (Linux parent-death signal) and stops | at once |
 | Drive error, lost drive, joint beyond its limits, torso tilt above 0.78 rad | `run_policy.py`: damping for 3 s, then motors off. `launch.py` stops the rest. | one policy tick (40 ms) |

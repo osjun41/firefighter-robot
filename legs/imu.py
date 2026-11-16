@@ -2,6 +2,7 @@
 
     uv run python legs/imu.py --setup   one time: gyro + quaternion output, 200 Hz, 230400 baud, saved in the IMU
     uv run python legs/imu.py           live gravity direction and gyro in the ASMR base frame, to check IMU_TO_BODY
+    uv run python legs/imu.py --level   torso on a level table: the mounting tilt, and IMU_TO_BODY corrected for it
 
 Frame: 0x55, type, 4 x int16 little-endian, checksum = low byte of the sum of the first 10 bytes.
 Type 0x52: angular velocity = value / 32768 * 2000 deg/s. Type 0x59: quaternion (w, x, y, z) = value / 32768.
@@ -49,6 +50,15 @@ def to_body(quat_raw, gyro_raw, rot=IMU_TO_BODY):
     imu_to_body = Rotation.from_matrix(rot)
     q = Rotation.from_quat(np.array(quat_raw) / 32768.0, scalar_first=True) * imu_to_body.inv()
     return q.as_quat(scalar_first=True), imu_to_body.apply(np.radians(np.array(gyro_raw[:3]) * 2000.0 / 32768.0))
+
+
+def level_fix(g, rot=IMU_TO_BODY):
+    """Tilt (deg) of the mean gravity g read in the torso frame on a level table, and IMU_TO_BODY corrected so that
+    this gravity points straight down. The walking policy falls more with a tilt of 4 deg (docs/plan/walking.md)."""
+    g = np.asarray(g, float) / np.linalg.norm(g)
+    tilt = float(np.degrees(np.arccos(np.clip(-g[2], -1.0, 1.0))))
+    fix = Rotation.align_vectors([[0.0, 0.0, -1.0]], [g])[0]
+    return tilt, fix.as_matrix() @ rot
 
 
 class Im10a:
@@ -102,6 +112,18 @@ if __name__ == "__main__":
         sys.exit()
     imu = Im10a()
     time.sleep(0.5)
+    if "--level" in sys.argv:
+        gs = []
+        for _ in range(60):                       # 3 s
+            q, _ = imu.read()
+            gs.append(Rotation.from_quat(q, scalar_first=True).inv().apply([0, 0, -1.0]))
+            time.sleep(0.05)
+        tilt, rot = level_fix(np.mean(gs, axis=0))
+        print(f"IMU mounting tilt: {tilt:.2f} deg")
+        if tilt > 1.0:
+            print("More than 1 deg. Replace IMU_TO_BODY in legs/imu.py with:")
+            print("IMU_TO_BODY = np." + repr(np.round(rot, 5)))
+        sys.exit()
     print("Upright: gravity = (0, 0, -1). Tilt forward: gravity x > 0. Tilt to the left: gravity y > 0. Ctrl+C stops.")
     while True:
         q, w = imu.read()

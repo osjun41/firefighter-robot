@@ -1,9 +1,11 @@
 """Labelled section drawing of the layout: side view (x-z), front view (y-z) and the middle shelf from the top.
 
-    uv run --project cad --with matplotlib python cad/final/views.py     # F2 -> out_f2/layout_views.png
+    uv run --project cad --with matplotlib python cad/final/views.py     # F3 -> out_f3/layout_views.png
+    DESIGN=F2 uv run --project cad --with matplotlib python cad/final/views.py     # F2 -> out_f2/layout_views.png
     DESIGN=F1 uv run --project cad --with matplotlib python cad/final/views.py     # F1 -> out/layout_views.png
 
-Reads <out>/layout.json (cad/final/layout.py) and the tank STLs (cad/final/tank.py).
+Reads <out>/layout.json (cad/final/layout.py), <out>/kit.json and the tank STLs (cad/final/tank.py). F3: the hose
+anchor STL of kit/stl.
 """
 import json
 import os
@@ -17,10 +19,13 @@ import matplotlib.pyplot as plt  # noqa: E402
 from matplotlib.patches import Rectangle  # noqa: E402
 
 HERE = Path(__file__).parent
-F2 = os.environ.get("DESIGN", "F2").upper() == "F2"
-OUT = HERE / ("out_f2" if F2 else "out")
-TANKS = ["tank_left.stl", "tank_right.stl"] if F2 else ["r1f_tank.stl"]
+DESIGN = os.environ.get("DESIGN", "F3").upper()
+F2, F3 = DESIGN == "F2", DESIGN == "F3"
+OUT = HERE / {"F1": "out", "F2": "out_f2", "F3": "out_f3"}[DESIGN]
+TANKS = ["tank_left.stl", "tank_right.stl"] if F2 else [] if F3 else ["r1f_tank.stl"]
+ANCHOR = HERE / "kit/stl/hose_anchor.stl"
 LAY = json.loads((OUT / "layout.json").read_text())
+DECK = json.loads((OUT / "kit.json").read_text())["parts"]["deck_f1"]["box_mm"]
 B = LAY["boxes_mm"]
 INK, GRID = "#222222", "#bbbbbb"
 FILL = {"battery": "#4a4a4a", "power": "#c9c9c9", "compute": "#9fc5a8", "printed": "#eeeeee", "water": "#9cc3e6"}
@@ -64,12 +69,12 @@ def boxes(ax, h, v, select=lambda n, b: True, labels=True):
                     color="white" if g == "battery" else INK)
 
 
-def tank(ax, normal, origin, h, v):
+def tank(ax, normal, origin, h, v, files=None, fc=FILL["water"], ec="#2a5d8f"):
     idx = {"x": 0, "y": 1, "z": 2}
-    for f in TANKS:
-        s = trimesh.load(OUT / f).section(normal, origin)
+    for f in files or [OUT / t for t in TANKS]:
+        s = trimesh.load(f).section(normal, origin)
         for e in (s.discrete if s is not None else []):
-            ax.fill(e[:, idx[h]], e[:, idx[v]], fc=FILL["water"], ec="#2a5d8f", lw=0.6, alpha=0.6)
+            ax.fill(e[:, idx[h]], e[:, idx[v]], fc=fc, ec=ec, lw=0.6, alpha=0.6)
 
 
 def tubes(ax, h, v):
@@ -89,19 +94,26 @@ def main():
     tubes(a, "x", "z")
     if F2:
         a.text(-4, 822, f"blue: left R2 tank (section) and tubes, {LAY['volume_l']:.2f} L in 2 tanks", ha="center", fontsize=8, color="#1d4a73")
+    elif F3:
+        tank(a, [0, 1, 0], [0, 0.01, 0], "x", "z", [ANCHOR], FILL["printed"], INK)
+        a.text(-94, 840, "hose anchor", ha="center", fontsize=7)
     else:
         a.text(0, 752, "R1F tank\n0.59 L", ha="center", fontsize=8, color="#1d4a73")
     a.annotate("front →", (75, 545), fontsize=8, ha="right")
     a.add_patch(Rectangle((-136, 583), 61, 205.5, fc="none", ec=INK, lw=0.8, ls="--"))
-    a.text(-105, 795, "pod cover", ha="center", fontsize=7)
-    a.set(xlim=(-145, 100), ylim=(540, 850), title=f"Side view (tank section at y = {101 if F2 else 20} mm, parts projected)",
+    a.text(-105, 575 if F3 else 795, "pod cover", ha="center", fontsize=7)
+    a.set(xlim=(-145, 100), ylim=(540, 850), title="Side view (anchor section at y = 0, parts projected)" if F3 else
+          f"Side view (tank section at y = {101 if F2 else 20} mm, parts projected)",
           xlabel="x (mm), front to the right", ylabel="z above the floor (mm)")
-    a.add_patch(Rectangle((-83, 791), 158, 6, fc="#e08a5a", ec=INK, lw=0.6))
+    a.add_patch(Rectangle((DECK[0], 791), DECK[1] - DECK[0], 6, fc="#e08a5a", ec=INK, lw=0.6))
     a.text(-4, 800, "deck 96 mm wide, pan-tilt above", ha="center", fontsize=7)
     # front view
     frame(f, "y", "z")
     tank(f, [1, 0, 0], [-20, 0, 0], "y", "z")
     tubes(f, "y", "z")
+    if F3:
+        tank(f, [1, 0, 0], [-97, 0, 0], "y", "z", [ANCHOR], FILL["printed"], INK)
+        f.text(0, 840, "hose anchor, x = -97", ha="center", fontsize=7)
     boxes(f, "y", "z", select=lambda n, b: b[1] > -75 and n != "imu_im10a")  # the rear pod and the IMU hide the inside
     for s in (1, -1):
         f.add_patch(Rectangle((s * 65 - 15, 791), 30, 45, fc="#333333", ec=INK, lw=0.6))
@@ -112,12 +124,12 @@ def main():
     boxes(t, "x", "y", select=lambda n, b: b[4] < (730 if F2 else 700) and b[5] > 645 and b[0] > -76
           and n not in ("battery_holder", "estop_head"))
     t.add_patch(Rectangle((-136, -77.5), 61, 155, fc=FILL["compute"], ec=INK, lw=0.7, alpha=0.6))
-    t.text(-105.5, 0, "rear pod:\nROCK 3C, CAN ×2,\n5 V buck, FET,\ndiode, shunt, K2,\n3S pack,\nmeters, switches",
+    t.text(-105.5, 0, "rear pod:\nROCK 3C, CAN ×2,\n5 V buck," + ("" if F3 else " FET,") + "\ndiode, shunt, K2,\n3S pack,\nmeters, switches",
            ha="center", va="center", fontsize=6.2)
     if F2:
         tank(t, [0, 0, 1], [0, 0, 640], "x", "y")
         tubes(t, "x", "y")
-    else:
+    elif not F3:
         for x, y, _ in json.loads((OUT / "r1f.json").read_text())["legs_mm"]:
             t.add_patch(plt.Circle((x, y), 6, fc="white", ec=INK, lw=0.7))
         t.text(44, 56, "tank legs", fontsize=6.5, ha="center")

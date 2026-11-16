@@ -7,7 +7,7 @@ All ports, devices, pins and limits are in one file: `robot/config.toml`. How to
 ```mermaid
 flowchart LR
     CAM["RGB camera Arducam B0201<br/>(planned)"] --> DET["robot/camera_node.py<br/>+ vision/detector.py, YOLO11n<br/>(measured on laptop)"]
-    DET -- "frame messages<br/>UDP 5600" --> AIM["aim/run.py F2<br/>localise, aim, spray logic<br/>(tested in simulation)"]
+    DET -- "frame messages<br/>UDP 5600" --> AIM["aim/run.py F3<br/>localise, aim, spray logic<br/>(tested in simulation)"]
     AIM -- "pan, tilt, pump_on<br/>UDP 5601" --> ACT["actuators/actuator_node.py<br/>(tested in simulation, mock)"]
     AIM -- "vx, yaw_rate<br/>UDP 5602" --> POL["legs/run_policy.py --udp<br/>walking policy, ONNX, 25 Hz<br/>(tested in simulation)"]
     POL -- "CAN 500 kbit/s<br/>can_left, can_right" --> MOT["12 XDrive MINI drives<br/>(planned)"]

@@ -1,7 +1,9 @@
-"""Tanks and deck of the final design F2: two R2 tanks on the side faces of the torso posts, and the 96 mm deck.
-DESIGN=F1 builds the old design F1 (tank R1F inside the torso).
+"""Deck and tanks of the final design. F3 (default): the deck only, with a tongue at the rear centre for the hose
+anchor of kit.py. The water stays on the trolley. DESIGN=F2: two R2 tanks on the side faces of the torso posts, and the
+96 mm deck. DESIGN=F1 builds the old design F1 (tank R1F inside the torso).
 
-    uv run --project cad python cad/final/tank.py              # F2: out_f2/tank_*.step/.stl, out_f2/deck_f1.*, out_f2/r2.json
+    uv run --project cad python cad/final/tank.py              # F3: out_f3/deck_f1.step/.stl, out_f3/deck.json
+    DESIGN=F2 uv run --project cad python cad/final/tank.py    # F2: out_f2/tank_*.step/.stl, out_f2/deck_f1.*, out_f2/r2.json
     DESIGN=F1 uv run --project cad python cad/final/tank.py    # F1: out/r1f_*.step/.stl, out/deck_f1.*, out/r1f.json
 
 The R2 tank shape comes from cad/torso_tank/body.py, with the fixes below and without the inner pocket for the BHL
@@ -20,10 +22,10 @@ import trimesh
 from build123d import Pos, Rot, export_step, export_stl
 
 HERE = Path(__file__).parent
-DESIGN = os.environ.get("DESIGN", "F2").upper()
-assert DESIGN in ("F1", "F2"), DESIGN
-F2 = DESIGN == "F2"
-OUT = HERE / ("out_f2" if F2 else "out")      # F1 outputs stay in out/ and kit_f1/, F2 in out_f2/ and kit/
+DESIGN = os.environ.get("DESIGN", "F3").upper()
+assert DESIGN in ("F1", "F2", "F3"), DESIGN
+F1, F2, F3 = (DESIGN == d for d in ("F1", "F2", "F3"))
+OUT = HERE / {"F1": "out", "F2": "out_f2", "F3": "out_f3"}[DESIGN]   # kits: kit_f1/, kit_f2/ and kit/ (F3)
 sys.path[:0] = [str(HERE.parent / "backpack"), str(HERE.parent / "parts")]
 _spec = importlib.util.spec_from_file_location("torso_tank_body", HERE.parent / "torso_tank/body.py")
 tt = importlib.util.module_from_spec(_spec)  # cad/torso_tank/body.py, loaded by path: its name clashes with
@@ -35,6 +37,13 @@ SHELF_TOP = 646.0                                        # cad/final/layout.py: 
 RELAY_NOTCH = (5.0, 51.0, -40.0, 40.0, 700.0, 727.0)     # relay x 8..48, y +-37.8, top z 724, plus 3 mm
 DECK_Y, DECK_SCREW_Y, DECK_SLOT = 96.0, 40.0, (25.0, -38.0)
 HANDLE_Y_IN = 50.0                                       # inner face of the handles, ESTIMATED from photos
+# F3: tongue at the rear centre of the deck for the hose anchor (kit.py), 2.5 mm over the pod cover like the deck. The
+# anchor stands on it with 2 M4 x 12 screws into nuts pressed into pockets under the tongue. The pan base cannot take
+# the anchor: its nuts sit in pockets open to the top of the deck, so its screws do not hold the deck. The pump signal
+# cable goes down through the anchor, the tongue and the pod cover top (PLUG_HOLE) into the pod.
+TONGUE = (-104.5, -83.0, 37.0)                           # x range, half width
+ANCHOR_SCREWS = [(-93.0, s * 30.0) for s in (-1, 1)]
+PLUG_HOLE = (-88.5, 0.0, 6.0)                            # x, y, diameter
 
 tt.R1_PILLARS = []
 tt.R1_EXTRA_NOTCHES = [RELAY_NOTCH]
@@ -69,7 +78,14 @@ def pan_sweep_clearance():
 
 
 def deck_shape():
-    return Pos(0, 0, tt.T) * st.deck()   # tm.deck() plus the ST3215 window (tm.deck() alone hits the pan servo)
+    d = Pos(0, 0, tt.T) * st.deck()   # tm.deck() plus the ST3215 window (tm.deck() alone hits the pan servo)
+    if F3:
+        (x0, x1, w), z0, z1 = TONGUE, tt.T, tt.T + tm.DECK_T
+        d += tm.box(x0, x1 + 1, -w, w, z0, z1)
+        for x, y in ANCHOR_SCREWS:
+            d -= tm.cyl(tm.M4_CLR, z0 - 1, z1 + 1, x, y) + tm.hexagon(tm.M4_NUT_AF + tm.FIT, z0 - 1, z0 + tm.M4_NUT_T + 0.3, x, y)
+        d -= tm.cyl(PLUG_HOLE[2], z0 - 1, z1 + 1, *PLUG_HOLE[:2])
+    return d
 
 
 def check_deck(deck):
@@ -137,7 +153,28 @@ def main_f2():
           f"{sum(v['mass_kg'] for v in shells.values()) * 1000:.0f} g, prints fit the bed and are closed")
 
 
+def main_f3():
+    """Deck only: the tank and the pump hang on the trolley. Checks bed fit, closed mesh and the handle clearance."""
+    OUT.mkdir(exist_ok=True)
+    deck = deck_shape()
+    export_stl(deck, str(OUT / "deck_f1.stl"), tolerance=0.05, angular_tolerance=0.2)
+    export_step(deck, str(OUT / "deck_f1.step"))
+    m = trimesh.load(OUT / "deck_f1.stl")
+    assert all(a <= b for a, b in zip(sorted(m.extents), sorted(tt.BED))), "deck_f1 does not fit the bed"
+    assert m.is_watertight and len(m.split(only_watertight=False)) == 1, "deck_f1 STL is not one closed body"
+    db, sweep = check_deck(deck)
+    out = {"design": "F3", "deck": tt.props(deck, tt.RHO),
+           "deck_mm": {"y": DECK_Y, "screw_y": DECK_SCREW_Y, "slot": DECK_SLOT,
+                       "bbox": [round(v, 1) for v in (db.min.X, db.max.X, db.min.Y, db.max.Y)]},
+           "tongue_mm": TONGUE, "anchor_screws_mm": ANCHOR_SCREWS, "plug_hole_mm": PLUG_HOLE,
+           "pan_sweep_to_handles_mm": round(sweep, 1)}
+    (OUT / "deck.json").write_text(json.dumps(out, indent=1))
+    print(f"F3 deck: {out['deck']['mass_kg'] * 1000:.0f} g solid, fits the bed, closed")
+
+
 def main():
+    if F3:
+        return main_f3()
     if F2:
         return main_f2()
     OUT.mkdir(exist_ok=True)

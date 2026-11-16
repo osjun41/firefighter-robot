@@ -45,3 +45,4 @@ docs/share/
 # Isaac Lab training (sim/locomotion): logs, recordings, and the config play.py writes
 logs/
 sim/locomotion/configs/policy_latest.yaml
+/outputs/

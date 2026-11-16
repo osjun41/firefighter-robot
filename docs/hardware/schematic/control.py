@@ -2,7 +2,8 @@
 from sheetlib import GREY, LW, LW_PWR, Sheet
 
 REVS = [("A", "2026-10-15", "First wiring plan (final design F1, 12 V pump)"),
-        ("B", "2026-10-22", "Final design F2: 24 V pump on the motor bus, new drawing set")]
+        ("B", "2026-10-22", "Final design F2: 24 V pump on the motor bus, new drawing set"),
+        ("C", "2026-10-30", "F3: pump on the water trolley with its own pack, e-stop NC4, J10")]
 
 LEFT = [("A1", 1, "hip roll", "M6C12"), ("A2", 3, "hip yaw", "M6C12"), ("A3", 5, "hip pitch", "M6C12"),
         ("A4", 7, "knee", "M6C12"), ("A5", 11, "ankle pitch", "MAD 5010"), ("A6", 13, "ankle roll", "MAD 5010")]
@@ -88,7 +89,7 @@ def draw(out, z2):
     s.flag(ESTOP[0], Y("25  GND"), "GND_3S", "1/" + z2["estop"] + "  S1-32", direction="left")
     s.text(110.5, ESTOP[1] + 1.4, "W34 · 0 = released, 1 = pressed", size=5.0, color=GREY)
 
-    # ---- pump on/off: pin 11 -> R8 pull-down, R7 -> opto-isolator U8 (sheet 2)
+    # ---- pump on/off: pin 11 -> R8 pull-down, R7 -> e-stop contact S1 NC4 -> plug J10 -> opto U8 on the trolley (sheet 1)
     y11, y9 = Y("11  GPIO3_A1"), Y("9  GND")
     s.wire(u3["11  GPIO3_A1"], (132, y11))
     s.dot(142, y11)
@@ -99,9 +100,9 @@ def draw(out, z2):
     s.ref(119.0, y11 - 4.8, "R7", None)
     s.text(125.0, y11 - 4.8, "470 Ω", size=5.0, color=GREY)
     s.wire((116, y11), PUMP)
-    s.flag(PUMP[0], PUMP[1], "PUMP_ON", "1/" + z2["pump"] + "  U8-A", direction="left")
+    s.flag(PUMP[0], PUMP[1], "PUMP_EN", "1/" + z2["pump"] + "  S1-41", direction="left")
     s.wire(u3["9  GND"], (PUMP[0], y9))
-    s.flag(PUMP[0], y9, "GND_3S", "1/" + z2["pump"] + "  U8-K", direction="left")
+    s.flag(PUMP[0], y9, "GND_3S", "1/" + z2["pump_gnd"] + "  J10:2", direction="left")
     s.text(110.5, y9 - 4.4, "W33 · R8 holds the pump off during boot", size=5.0, color=GREY)
     s.proposed(64, y9 - 8.0, 84, y11 - y9 + 13.0, tag="PROPOSED")
 
@@ -177,11 +178,11 @@ def draw(out, z2):
         "Do not use header pins 8 and 10: they carry the boot console. Enable UART4-M1 with rsetup.",
         "gpiochip numbers are not verified: check GPIO3_A1 and GPIO3_A2 with gpiodetect on the board.",
     ]
-    s.frame("Control and communication", "SOB-E-02", 2, 2, "B", "2026-10-22", REVS, notes)
+    s.frame("Control and communication", "SOB-E-02", 2, 2, "C", "2026-10-30", REVS, notes)
     s.save(out)
     return s
 
 
 if __name__ == "__main__":
     import sys
-    draw(sys.argv[1], {"plus5v": "C4", "estop": "E4", "pump": "D6", "act": "E3"})
+    draw(sys.argv[1], {"plus5v": "C4", "estop": "E4", "pump": "E4", "pump_gnd": "E5", "act": "E3"})

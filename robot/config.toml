@@ -14,7 +14,7 @@ supervisor = 5606    # every node -> robot/launch.py (heartbeats), and launch.py
 sim_truth = 5607     # fake legs -> fake camera: the true MuJoCo torso pose (--sim only)
 
 [robot]
-concept = "F2"  # final design F2: pan-tilt, camera and nozzle geometry and controller values of aim/geometry.py CONCEPTS
+concept = "F3"  # design F3 (water trolley): pan-tilt, camera and nozzle geometry and controller values of aim/geometry.py CONCEPTS
 
 [camera]
 detector = ""                  # file with detect(rgb, t). "" = vision/detector.py when it exists, else sim/sim2sim/baseline_detector.py (colour threshold)
@@ -29,7 +29,7 @@ hfov_deg = 67.8                # B0201 at 640 x 480, pinhole value of the calibr
 latency_s = 0.25               # image age when the frame arrives, for the aim delay compensation. Screen bench, 5 Nov: screen change to camera frame, median 251 to 259 ms in 3 runs. Upper bound: it also holds the screen delay.
 
 [aim.controller]  # overrides of ControllerConfig fields in aim/controller.py. Empty = the defaults there.
-# v0 = 10.0       # m/s, jet speed. Put the mean v0 of `robot/bench.py pump` here (robot/README.md, bring-up step 8).
+# v0 = 9.6        # m/s, jet speed. Put the mean v0 of `robot/bench.py pump` here (robot/README.md, bring-up step 8).
 
 [actuator]
 rate_hz = 50
@@ -42,7 +42,7 @@ servo_usb = "1a86:55d3"        # CH343 on the adapter, cdc_acm driver (/dev/ttyA
 id = 1
 zero = 2048
 direction = 1
-min_deg = -90     # the pan limits of aim/geometry.py F2: -90 to 90 deg
+min_deg = -90     # the pan limits of aim/geometry.py F3: -90 to 90 deg
 max_deg = 90
 max_speed_dps = 180
 
@@ -50,16 +50,17 @@ max_speed_dps = 180
 id = 2
 zero = 2048
 direction = 1
-min_deg = -40     # the tilt limits of aim/geometry.py F2: -40 to 45 deg. Make them smaller if the nozzle touches something.
+min_deg = -40     # the tilt limits of aim/geometry.py F3: -40 to 45 deg. Make them smaller if the nozzle touches something.
 max_deg = 45
 max_speed_dps = 180
 
-[pump]  # Kamoer KLP02 24 V pump through the DMC-101 controller. On/off from header pin 11 through an opto-isolator
-        # (proposed wiring: docs/hardware/electrical.md). The software only switches one GPIO line.
+[pump]  # Kamoer KLP02 24 V pump and DMC-101 controller on the water trolley. Header pin 11 lights the LED of the
+        # opto-isolator on the trolley, through the e-stop contact NC4 and a 2-wire cable (docs/hardware/trolley.md).
+        # The software only switches one GPIO line.
 chip = "/dev/gpiochip3"   # header pin 11 = GPIO3_A1. CHECK the chip number with gpiodetect (robot/README.md, header pins).
 line = 1                  # line offset in the chip: GPIO3_A1 = (A=0) * 8 + 1
-active_low = false        # true when the pump runs while the pin is low. CHECK with a meter before you connect the pump.
-max_spray_s = 12.0        # pump off after this long on, until the next "off" command. Backstop above the aim max_spray (F2: 11 s).
+active_low = false        # keep false: with true, a dark LED (pulled plug, pressed e-stop) would mean "pump on".
+max_spray_s = 12.0        # pump off after this long on, until the next "off" command. Backstop above the aim max_spray (F3: 11 s).
 keepalive_s = 0.3         # pump off when the actuator node stops updating the pump for this long (a hung loop)
 estop_chip = ""           # optional e-stop input: one NC contact to GND, internal pull-up. "" = not wired.
 estop_line = 2            # with estop_chip = "/dev/gpiochip3": header pin 13 = GPIO3_A2
@@ -73,7 +74,7 @@ start_kick_s = 0.5    # s. 0 = no kick. Fake legs: 0.25 m/s from a stand moved 0
 
 [legs]
 policy = "baseline"  # NAME of a folder in policies/ (policies/<name>/policy.onnx); empty = baseline. 45 observations, 12 joint actions
-knee_max = 1.4    # rad, knee target limit. F2: at full knee range the foot touches a tank.
+knee_max = 1.4    # rad, knee target limit. F3: at full knee range the foot touches the battery ends and the pod.
 max_run_s = 600   # the policy stops after this time, as a last limit for one mission
 
 [can]  # two CANable 2.0 Pro (candleLight firmware, gs_usb driver)

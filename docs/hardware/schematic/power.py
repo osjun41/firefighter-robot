@@ -4,13 +4,15 @@ import math
 from sheetlib import GREY, LW, LW_BUS, LW_PWR, LW_THIN, PROPOSED, Sheet
 
 REVS = [("A", "2026-10-15", "First wiring plan (final design F1, 12 V pump)"),
-        ("B", "2026-10-22", "Final design F2: 24 V pump on the motor bus, new drawing set")]
+        ("B", "2026-10-22", "Final design F2: 24 V pump on the motor bus, new drawing set"),
+        ("C", "2026-10-30", "F3: pump on the water trolley with its own pack, e-stop NC4, J10")]
 
 # positions that other sheets refer to
 K1_CONTACT = (132, 258)
 K1_COIL = (240, 130)
 PLUS5V_FLAG = (182, 156)
-PUMP_FLAG = (300, 152)
+PUMP_FLAG = (190, 66)          # PUMP_EN from R7 (sheet 2) into S1 NC4
+PUMP_GND = (236, 72)           # J10 pin 2 back to pin 9 (sheet 2)
 ACT_FLAG = (150, 92)
 ESTOP_FLAGS = (190, 80)
 
@@ -62,8 +64,7 @@ def draw(out, sheet3_zones):
     s.ref(126, 268.0, "K1", "1–2 · AEP18024, 80 A\ncoil: 1/" + s.zone(*K1_COIL))
     # +24V_BUS
     BUSY = 258
-    XF14 = 390
-    s.wire((140, BUSY), (XF14, BUSY), lw=LW_BUS)
+    s.wire((140, BUSY), (282, BUSY), lw=LW_BUS)
     s.text(146, 260.0, "+24V_BUS   switched by K1, cut by the e-stop", size=5.4, weight="bold")
     for x0, fref, jref, leg, aref, rb, wv, wr in ((166, "F3", "J1", "LEFT LEG", "A1–A6", "RB1", "W06 / W08", "W10"),
                                                   (268, "F4", "J2", "RIGHT LEG", "A7–A12", "RB2", "W07 / W09", "W11")):
@@ -116,12 +117,6 @@ def draw(out, sheet3_zones):
     s.dot(99.5, RET)
     s.dot(114.5, RET)
     s.text(131, 198.8, "W12 · 22 AWG", size=5.0, color=GREY)
-    # pump feed
-    s.dot(XF14, BUSY)
-    s.fuse((XF14, BUSY), (XF14, 242), lw=LW_PWR)
-    s.ref(XF14 + 3.0, 252.5, "F14", "3 A")
-    s.wire((XF14, 242), (XF14, 150), lw=LW_PWR)
-    s.text(XF14 + 2.0, 236, "W32 · 18 AWG", size=5.0, color=GREY)
 
     # ================= CONTROL POWER =================
     s.zone_title(24, 172, "CONTROL POWER  ·  3S LiPo, 11.1 V nominal, 12.6 V full")
@@ -226,10 +221,14 @@ def draw(out, sheet3_zones):
     s.flag(190, Y3, "ESTOP_SENSE", "2/" + z3["estop"] + "  pin 13", direction="left")
     s.wire((204, Y3), (208, Y3))
     s.flag(208, Y3, "GND_3S", "2/" + z3["estop"] + "  pin 25")
-    estop_head(s, 197.2, 145.0, 78.6)
+    # NC4: the pump enable loop (opto LED current) to the trolley through plug J10
+    Y4 = PUMP_FLAG[1]
+    s.contact((190, Y4), (204, Y4), nc=True)
+    s.flag(190, Y4, "PUMP_EN", "2/" + z3["pump"] + "  R7, pin 11", direction="left")
+    estop_head(s, 197.2, 145.0, Y4 - 1.4)
     s.ref(199.8, 149.2, "S1", None)
-    s.text(205.6, 149.2, "E-STOP · A20-E01P · 3 × NC", size=5.0, color=GREY)
-    for yy, t in ((Y1, "11–12"), (Y2, "21–22"), (Y3, "31–32")):
+    s.text(205.6, 149.2, "E-STOP · 4 × A20-E01P (1 NC)", size=5.0, color=GREY)
+    for yy, t in ((Y1, "11–12"), (Y2, "21–22"), (Y3, "31–32"), (Y4, "41–42")):
         s.text(193.0, yy - 4.4, t, size=4.6, ha="center", color=GREY)
     # K2 contact: +12V_ACT for the pan-tilt servos
     YA = 92
@@ -247,33 +246,61 @@ def draw(out, sheet3_zones):
     s.flag(ACT_FLAG[0], YA, "+12V_ACT", "2/" + z3["servo"] + "  servo adapter U6")
     s.text(92, 83.6, "W30 / W31 / W29 · 18 AWG", size=5.0, color=GREY)
 
-    # ================= WATER PUMP =================
-    s.zone_title(272, 172, "WATER PUMP  ·  24 V")
-    s.proposed(270, 74, 138, 92, tag="PROPOSED – CONFIRM WITH THE DMC-101 DATASHEET")
-    s.text(XF14 + 2.0, 152.0, "+24V_BUS", size=5.4, weight="bold")
-    u7 = s.block(342, 100, 34, 46, "U7", "DMC-101", sub="pump controller",
-                 pins=[("right", 40, "V+"), ("right", 30, "V−"), ("right", 16, "M+"), ("right", 6, "M−"),
-                       ("left", 24, "CTRL"), ("left", 14, "COM")], title_y=128)
-    s.wire((XF14, 150), (XF14, 140), u7["V+"], lw=LW_PWR)
-    s.wire(u7["V−"], (381, 130), (381, 124))
-    s.ground(381, 124, "GND_M")
-    s.wire(u7["M+"], (398, 116), (398, 113), lw=LW_PWR)
-    s.round_symbol((398, 113), (398, 99), "M", r=3.0, lw=LW_PWR, sub="=")
-    s.wire((398, 99), (398, 94), (392, 94), (392, 106), u7["M−"], lw=LW_PWR)
-    s.ref(352, 88.0, "M1", "Kamoer KLP02, 24 V, ≤ 12 W, self-priming diaphragm pump")
-    s.text(379, 112.8, "W37", size=5.0, color=GREY)
-    u8 = s.block(310, 106, 22, 22, "U8", "OPTO", sub="isolator",
-                 pins=[("left", 16, "A"), ("left", 6, "K"), ("right", 16, "C"), ("right", 6, "E")], title_y=119)
-    s.wire(u8["C"], (336, 122), (336, 124), u7["CTRL"])
-    s.wire(u8["E"], (338, 112), (338, 114), u7["COM"])
-    s.text(310, 101.0, "PC817 type. The DMC-101 input", size=4.8, color=GREY)
-    s.text(310, 98.2, "type is not known yet (TBC).", size=4.8, color=GREY)
-    s.wire(u8["A"], (306, 122), (306, PUMP_FLAG[1]), PUMP_FLAG)
-    s.wire(u8["K"], (304, 112), (304, 142), (PUMP_FLAG[0], 142))
-    s.flag(PUMP_FLAG[0], PUMP_FLAG[1], "PUMP_ON", "2/" + z3["pump"] + " · pin 11", direction="left")
-    s.flag(PUMP_FLAG[0], 142, "GND_3S", "2/" + z3["pump"] + " · pin 9", direction="left")
-    s.text(274, 78.0, "U8 keeps GND_M and GND_3S apart. K1 (e-stop) also cuts the pump.", size=5.0,
-           color=PROPOSED)
+    # ================= WATER TROLLEY =================
+    s.zone_title(268, 172, "WATER TROLLEY  ·  separate unit, own 6S pack")
+    s.proposed(262, 60, 146, 106, tag="PROPOSED – CONFIRM WITH THE DMC-101 DATASHEET")
+    YP = 148
+    s.battery((276, 142), (276, 126), lw=LW_PWR)
+    s.text(273.0, 140.2, "+", size=6, ha="right")
+    s.ref(280.5, 136.5, "BT4", "6S LiPo 1300 mAh\nXT60")
+    s.ground(276, 126, "GND_T")
+    s.wire((276, 142), (276, YP), (287, YP), lw=LW_PWR)
+    s.conn(282, YP, "XT60")
+    s.fuse((287, YP), (299, YP), lw=LW_PWR)
+    s.ref(288.0, YP + 3.6, "F20", None)
+    s.text(295.0, YP + 3.6, "3 A", size=5.2, color=GREY)
+    s.contact((303, YP), (317, YP), actuator="pushlock", alen=4.0)
+    s.wire((299, YP), (303, YP))
+    s.ref(306, YP - 6.4, "S10", "MAIN")
+    s.wire((317, YP), (321, YP))
+    s.contact((321, YP), (335, YP), nc=True, actuator="estop", alen=5.0, aside=1)
+    s.ref(322, YP - 6.4, "S11", "KILL SWITCH\nat the handle")
+    s.wire((335, YP), (354, YP), lw=LW_PWR)
+    s.dot(340, YP)
+    s.lamp((340, YP), (340, 136))
+    s.ground(340, 136)
+    s.ref(342.8, 141.0, "H10", "lamp of S10")
+    s.text(279, YP + 1.4, "W70 · 18 AWG", size=5.0, color=GREY, ha="right")
+    s.text(337, YP + 1.4, "W71", size=5.0, color=GREY, ha="right")
+    u7 = s.block(346, 88, 34, 44, "U7", "DMC-101", sub="pump controller",
+                 pins=[("top", 8, "V+"), ("right", 36, "V−"), ("right", 24, "M+"), ("right", 8, "M−"),
+                       ("left", 26, "CTRL"), ("left", 14, "COM")], title_y=108)
+    s.wire((354, YP), u7["V+"], lw=LW_PWR)
+    s.wire(u7["V−"], (386, u7["V−"][1]), (386, 120))
+    s.ground(386, 120, "GND_T")
+    s.wire(u7["M+"], (398, u7["M+"][1]), (398, 108), lw=LW_PWR)
+    s.round_symbol((398, 108), (398, 94), "M", r=3.0, lw=LW_PWR, sub="=")
+    s.wire((398, 94), (398, 90), (390, 90), (390, u7["M−"][1]), u7["M−"], lw=LW_PWR)
+    s.ref(346, 81.5, "M1", "Kamoer KLP02, 24 V, ≤ 12 W,\nself-priming diaphragm pump")
+    s.text(388.5, 104.0, "W37", size=5.0, color=GREY, ha="right")
+    u8 = s.block(302, 92, 22, 22, "U8", "OPTO", sub="isolator",
+                 pins=[("left", 16, "A"), ("left", 6, "K"), ("right", 16, "C"), ("right", 6, "E")], title_y=105)
+    s.wire(u8["C"], (334, u8["C"][1]), (334, u7["CTRL"][1]), u7["CTRL"])
+    s.wire(u8["E"], (338, u8["E"][1]), (338, u7["COM"][1]), u7["COM"])
+    s.text(326.0, u8["C"][1] + 1.4, "W42", size=5.0, color=GREY)
+    # pump enable loop: S1 NC4 -> J10 at the robot rear -> W60 on the hose -> U8 LED -> back to pin 9
+    YK = PUMP_GND[1]
+    s.wire((204, PUMP_FLAG[1]), (292, PUMP_FLAG[1]), (292, u8["A"][1]), u8["A"])
+    s.wire(u8["K"], (296, u8["K"][1]), (296, YK), (PUMP_GND[0], YK))
+    s.flag(PUMP_GND[0], YK, "GND_3S", "2/" + z3["pump"] + "  pin 9", direction="left")
+    for yy, pin in ((PUMP_FLAG[1], "J10:1"), (YK, "J10:2")):
+        s.conn(252, yy, pin, label_side=1 if yy == YK else -1)
+    s.text(266, 62.6, "J10: JST SM 2-pin at the hose anchor (robot side). W60: 2 × 22 AWG twisted, 2.2 m on the hose. "
+           "W61: 26 AWG.", size=4.8, color=GREY)
+    s.text(302, 89.4, "PC817 type. The DMC-101 input", size=4.8, color=GREY)
+    s.text(302, 86.6, "type is not known yet (TBC).", size=4.8, color=GREY)
+    s.text(300, 79.4, "U8 keeps GND_3S and GND_T apart.", size=4.8, color=PROPOSED)
+    s.text(300, 76.6, "Pressed e-stop (NC4) or pulled plug: LED off, pump off.", size=4.8, color=PROPOSED)
 
     notes = [
         "Contacts are drawn at rest: e-stop released, push-lock switches open, relays not energised.",
@@ -283,7 +310,7 @@ def draw(out, sheet3_zones):
         "Set U1 to 24.0 V and its current limit to 0.5 A before you connect the K1 and K2 coils.",
         "RB1, RB2: set brake_resistance = 4.75 Ω on the two hip-roll drives only (electrical.md, 3.4).",
     ]
-    s.frame("Power distribution", "SOB-E-01", 1, 2, "B", "2026-10-22", REVS, notes)
+    s.frame("Power distribution", "SOB-E-01", 1, 2, "C", "2026-10-30", REVS, notes)
     s.save(out)
     return s
 

@@ -1,10 +1,10 @@
 # Sobang-I · firefighting humanoid
 
 <p align="center">
-  <img src="cad/final/renders/f2_front.jpg" alt="Final design F2" width="300">
+  <img src="cad/final/renders/f3_front.jpg" alt="Design F3" width="300">
 </p>
 
-Sobang-I finds a small fire with its camera, walks to it and puts it out with a water jet. It is built on the legs of the open-source [Berkeley Humanoid Lite](https://github.com/HybridRobotics/Berkeley-Humanoid-Lite).
+Sobang-I finds a small fire with its camera, walks to it and puts it out with a water jet. It is built on the legs of the open-source [Berkeley Humanoid Lite](https://github.com/HybridRobotics/Berkeley-Humanoid-Lite). A teammate pushes its water trolley behind it.
 
 Team SOBANG · Seoul National University · ASMR 2026.
 
@@ -13,11 +13,13 @@ Team SOBANG · Seoul National University · ASMR 2026.
 | Topic | Where |
 |---|---|
 | Plan, milestones, who does what next | [docs/plan](docs/plan/README.md) |
+| Walking on the real robot | [docs/plan/walking.md](docs/plan/walking.md) |
 | Vision tests with the camera and the board | [docs/plan/vision.md](docs/plan/vision.md) |
-| Final design and print kit | [docs/design.md](docs/design.md), [cad/final/kit](cad/final/kit/README.md) |
+| Design and print kit | [docs/design.md](docs/design.md), [cad/final/kit](cad/final/kit/README.md) |
 | Electrical drawings and power-on tests | [docs/hardware/electrical.md](docs/hardware/electrical.md) |
-| Water system | [docs/hardware/water.md](docs/hardware/water.md) |
+| Water trolley and jet | [docs/hardware/trolley.md](docs/hardware/trolley.md), [docs/hardware/water.md](docs/hardware/water.md) |
 | Robot software on the ROCK 3C | [robot](robot/README.md), [legs](legs/README.md), [aim](aim/README.md) |
+| Leg actuator bench tests, drive setup records, sim-vs-real GUI (laptop) | [ASMR_Actuator_Test](ASMR_Actuator_Test/README.md) |
 | Fire detector | [vision](vision/README.md) |
 | Simulations | [sim](sim/README.md) |
 | Locomotion policy training and evaluation | [sim/locomotion](sim/locomotion/README.md), [policies](policies/README.md) |

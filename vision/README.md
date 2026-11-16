@@ -6,7 +6,7 @@ It finds flames in the 640 x 480 image of the Arducam B0201 camera and gives a b
 
 **Licence:** this folder (code and model files) is AGPL-3.0 ([LICENSE](LICENSE)), because it uses Ultralytics YOLO. The code in the rest of the repository is MIT ([../LICENSE](../LICENSE)).
 
-**Not verified:** From the B0201 camera, the modes, the frame rates, the lens calibration and the screen bench (fire images on a screen, 5 and 6 Nov) are measured. No real flame is measured yet (test V4). No number comes from the ROCK 3C board. All test images are public photos and video frames. The RKNN models ran only in the Rockchip simulator.
+**Not verified:** From the B0201 camera, the modes, the frame rates, the lens calibration and the screen bench (fire images on a screen, 5 and 6 Nov) are measured. No real flame is measured yet (test V4). All test images are public photos and video frames. On the ROCK 3C board, only the speed and one screen bench video are measured (11 Nov, [below](#on-the-robot-board-rk3566)).
 **Measured on laptop (5 Nov):** at 640 x 480, the B0201 has f = 476 px at the image centre and a real field of view of 80° x 59° (`camera_b0201.json`). The old model value was f = 283 px.
 
 ## Status
@@ -68,8 +68,8 @@ A control run without our 203 synthetic images (`real416`) gives the same mAP50 
 
 | File | Runs on | How |
 |---|---|---|
-| `models/fire_yolo11n_416x320.onnx` (FP32, 10.5 MB) | laptop CPU or board CPU, with onnxruntime | the default of `detector.py` |
-| `models/fire_yolo11n_416x320_int8.rknn` (INT8, 3.9 MB) | RK3566 NPU, with rknn-toolkit-lite2 | `FIRE_MODEL=vision/models/fire_yolo11n_416x320_int8.rknn` |
+| `models/fire_yolo11n_416x320.onnx` (FP32, 10.5 MB) | laptop CPU or board CPU, with onnxruntime | the default of `detector.py` without rknn-toolkit-lite2 |
+| `models/fire_yolo11n_416x320_int8.rknn` (INT8, 3.9 MB) | RK3566 NPU, with rknn-toolkit-lite2 | the default of `detector.py` when rknn-toolkit-lite2 is installed (the board) |
 
 Both files take a 416 x 320 input: a 640 x 480 camera image becomes 416 x 312 with a 4 px grey border. `aim/` then uses only the boxes from its `min_conf` (0.3 for F2 and F3, `aim/geometry.py`).
 

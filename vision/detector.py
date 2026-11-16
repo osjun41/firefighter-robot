@@ -6,11 +6,13 @@ u, v of each detection is the bottom centre of the box, because the fire base is
 When camera_b0201.json (from calibrate.py) exists and matches the image size, u, v and the box are corrected for the
 lens distortion: they are pixels of an ideal pinhole camera with the calibrated fx, fy, cx, cy (as aim/geometry.py assumes).
 
+Model: the INT8 .rknn on the NPU when rknn-toolkit-lite2 is installed (the robot board), else the ONNX model on the CPU.
 The environment variable FIRE_MODEL selects another model file (.onnx, or .rknn on the robot board).
 
 Use with the camera node (from the repo root):
   uv run python robot/camera_node.py --source video:FILE --detector vision/detector.py
 """
+import importlib.util
 import json
 import os
 import re
@@ -24,9 +26,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "aim"))
 from detection import FireDetection  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
-# Input 416 x 320 (W x H): a 640 x 480 image becomes 416 x 312 (4 px border). On the robot board, set
-# FIRE_MODEL=vision/models/fire_yolo11n_416x320_int8.rknn to use the NPU.
-MODEL = Path(os.environ.get("FIRE_MODEL", HERE / "models/fire_yolo11n_416x320.onnx"))
+# Input 416 x 320 (W x H): a 640 x 480 image becomes 416 x 312 (4 px border).
+# The robot board has rknn-toolkit-lite2 (robot/setup/install.sh), so it uses the NPU model without FIRE_MODEL.
+NPU = importlib.util.find_spec("rknnlite") is not None
+MODEL = Path(os.environ.get("FIRE_MODEL", HERE / ("models/fire_yolo11n_416x320_int8.rknn" if NPU else "models/fire_yolo11n_416x320.onnx")))
 CALIB = HERE / "camera_b0201.json"
 CONF = 0.28  # best F1 score on the real validation images. aim/ then keeps only boxes from its min_conf (0.3 for F2)
 NMS_IOU = 0.5  # boxes that overlap more than this with a better box are removed
@@ -99,7 +102,7 @@ class FireDetector:
     def __init__(self, model=MODEL, conf=CONF, threads=4, camera="rgb", calib=CALIB):
         self.conf, self.camera = conf, camera
         self.calib = json.loads(Path(calib).read_text()) if calib and Path(calib).exists() else None
-        if str(model).endswith(".rknn"):  # robot board: the NPU, through rknn-toolkit-lite2. Built, not tested on the board
+        if str(model).endswith(".rknn"):  # robot board: the NPU, through rknn-toolkit-lite2
             from rknnlite.api import RKNNLite
             self.rknn = RKNNLite()
             if self.rknn.load_rknn(str(model)) != 0 or self.rknn.init_runtime() != 0:

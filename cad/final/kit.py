@@ -1,18 +1,20 @@
-"""Print kit of the final design F2: every printed part, the two cut drawings, the print sheet, the hardware list and
-the checks. DESIGN=F1 builds the old design F1 (kit_f1/, out/).
+"""Print kit of the final design F3 (default): every printed part, the two cut drawings, the print sheet, the hardware
+list and the checks. DESIGN=F2 builds the design F2 with the R2 tanks (kit_f2/, out_f2/). DESIGN=F1 builds the old
+design F1 (kit_f1/, out/).
 
-    uv run --project cad python cad/final/tank.py                              # first: tanks and the deck
-    uv run --project cad --with matplotlib python cad/final/kit.py             # about 30 s
+    uv run --project cad python cad/final/tank.py                              # first: the deck (F1, F2: and tanks)
+    uv run --project cad --with matplotlib python cad/final/kit.py             # about 1 min
 
 Writes <kit>/stl/*.stl and <kit>/step/*.step (robot frame, mm), <kit>/drawings/ (DXF, PDF, PNG of the acrylic shelf
 and the aluminium pod plate), <kit>/print_sheet.md, <kit>/hardware.md and <out>/kit.json (envelopes, masses and
-centres for layout.py, render.py and the simulation). <kit>, <out> = kit, out_f2 for F2 and kit_f1, out for F1.
-Stops with an AssertionError when a check fails.
+centres for layout.py, render.py and the simulation). <kit>, <out> = kit, out_f3 for F3, kit_f2, out_f2 for F2 and
+kit_f1, out for F1. Removes the STL and STEP files of parts that the design does not have. Stops with an
+AssertionError when a check fails.
 
 Printed parts (parameters below): double battery holder (Zeee or VEGA packs), rear pod (spacers, 3S basket, splash
-cover), IMU mount, camera and nozzle head on the tilt U, pump holder, brake resistor mounts, hose clips, frame cable
-clips. The tank pieces and the deck come from tank.py. The pan-tilt parts come from cad/parts/top_module_sts3215.py.
-The pump holder fits the DWP-385. The team uses the Kamoer KLP02 24 V pump: its holder follows when the pump is measured.
+cover), IMU mount, camera and nozzle head on the tilt U, brake resistor mounts, hose clips, frame cable clips. F3: hose
+anchor. F2: pump holder for the DWP-385. The deck (and the F1 and F2 tank pieces) come from tank.py. The pan-tilt parts
+come from cad/parts/top_module_sts3215.py.
 Robot frame: x forward, y left, z up, feet on the floor, torso frame top z = 791.
 """
 import json
@@ -28,8 +30,8 @@ from scipy.spatial import cKDTree
 HERE = Path(__file__).parent
 sys.path[:0] = [str(HERE)]
 import tank  # noqa: E402  sets up cad/torso_tank/body.py (tank.tt) and cad/parts/top_module.py (tank.tm)
-F2 = tank.F2
-OUT, KIT = tank.OUT, HERE / ("kit" if F2 else "kit_f1")
+F1, F2, F3 = tank.F1, tank.F2, tank.F3
+OUT, KIT = tank.OUT, HERE / {"F1": "kit_f1", "F2": "kit_f2", "F3": "kit"}[tank.DESIGN]
 import layout  # noqa: E402  torso_points(), the F1 places of the bought parts
 import top_module_sts3215 as st  # noqa: E402
 
@@ -160,7 +162,7 @@ GROMMET = (0.0, 683.0, 20.0)
 # boards stuck on the lip of the basket with foam tape (hole patterns not known): (name, y0, y1, z0, z1, height)
 LIP_BOARDS = [("canable_1", -69.0, -17.0, 596.0, 612.0, 12.0), ("canable_2", -69.0, -17.0, 616.0, 632.0, 12.0),
               ("buck_5v", -12.0, 13.4, 600.0, 625.4, 10.0),          # Pololu D36V50F5
-              ("mosfet_dfr0457", 18.0, 62.0, 598.0, 630.0, 15.0)]    # switch of the DWP-385 pump, 44 x 32 mm
+              ("mosfet_dfr0457", 18.0, 62.0, 598.0, 630.0, 15.0)]    # switch of the DWP-385 pump, 44 x 32 mm. F3: empty
 # splash cover: outer box, open at the front and the bottom; hooks over the plate top edge, 2 screws at the bottom
 COVER = (-136.0, -75.5, 77.5, 583.0, 788.5)    # x0, x1, |y|, z0, z1
 CW = 2.0
@@ -170,9 +172,9 @@ SWITCHES = [("switch_pushlock_24v", 0.0, 703.0, 22.3), ("switch_pushlock_12v", 0
 EXT_OD, EXT_ORING = 24.0, (15.0, 2.0)          # fill extension OD; O-ring ID x cross section in the neck bore
 
 # ---------------- 2b. pump, brake resistors, relay K2 ----------------
-PUMP = "dwp385"         # "dwp385": DWP-385 gear pump in its printed holder (F2: on the shelf. F1: on the right side
-                        # face, and the R1F pocket holds the inline filter). "m400k": F1 only, TCS M400K-V in the R1F
-                        # pocket. The team uses the Kamoer KLP02 24 V pump (size not published): its holder follows.
+PUMP = None if F3 else "dwp385"   # F3: the pump hangs on the trolley. "dwp385": DWP-385 gear pump in its printed
+                        # holder (F2: on the shelf. F1: on the right side face, and the R1F pocket holds the inline
+                        # filter). "m400k": F1 only, TCS M400K-V in the R1F pocket.
 # DWP-385 (water.md: about 87 mm long, 32 mm motor, 2 ears on the pump head). Other sizes ASSUMED.
 DWP_MOTOR = (57.0, 32.0)                       # motor length, diameter
 DWP_HEAD = (30.0, 34.0, 48.0)                  # head length, diameter, ear span (ears in the vertical plane)
@@ -217,7 +219,7 @@ IMU_X = 53.0                      # back face of the case
 def plate_outline():
     """Pod plate outline in (y, z), robot frame, counter-clockwise, with the neck notch."""
     yy, z0, z1 = PLATE
-    if F2:                                     # no fill neck behind the pod in F2
+    if not F1:                                 # no fill neck behind the pod in F2 and F3
         return [(-yy, z0), (yy, z0), (yy, z1), (-yy, z1)]
     ny, nz = NOTCH
     return [(-yy, z0), (yy, z0), (yy, z1), (ny, z1), (ny, nz), (-ny, nz), (-ny, z1), (-yy, z1)]
@@ -328,8 +330,10 @@ def pod_cover():
         c -= box(x0 - 1, x0 + CW + 1, y - w / 2, y + w / 2, z - h / 2, z + h / 2)
     for _, y, z, d in SWITCHES:
         c -= xcyl(y, z, d, x0 - 1, x0 + CW + 1)
-    if not F2:
+    if F1:
         c -= xcyl(0, tt.R1_NECK[0], EXT_OD + 0.6, x0 - 1, x0 + CW + 1)   # F1 fill extension
+    if F3:                                         # pump signal cable from the hose anchor, 2 mm wider than its hole
+        c -= zcyl(tank.PLUG_HOLE[0], tank.PLUG_HOLE[1], tank.PLUG_HOLE[2] + 2, z1 - CW - 1, z1 + 1)
     for s in (-1, 1):
         for i in range(5):                         # vents high on the side walls
             x = -128.0 + i * 10
@@ -563,12 +567,57 @@ def frame_clip():
     return c
 
 
+# ---------------- 7. hose anchor (F3) ----------------
+# The delivery hose comes from the trolley boom, above and behind the robot. It goes down into the boom-side leg (+y),
+# around a U-turn and up out of the head-side leg (-y), then in a loose loop to the rear hose clip of the head. A zip
+# tie around the hose just above each leg stops it: a pull from the boom goes into the anchor and the deck, not into
+# the pan-tilt. The anchor stands on the deck tongue (tank.py) with 2 M4 x 12 screws. The robot plug of the pump signal
+# cable sits in a pocket between the legs. Its cable goes down through the anchor, the tongue and the pod cover.
+ANCHOR_X = -97.0         # plane of the U-turn. The head comes back to x -87 at z 845..875 (tilt 45 deg up)
+ANCHOR_TOP = 835.0       # the head comes down to z 845 behind the pan axis (tilt 45 deg up)
+ANCHOR_R = 3 * HOSE_OD   # bend radius of the U-turn (centre line) and half the leg spacing
+BELL = 1.5               # 45 deg chamfer at the top of each leg
+PLUG = (12.3, 20.3, 10.5)   # pocket x, y, depth for the robot plug of the pump signal cable (about 12 x 20 x 10 mm)
+PAN_LIMITS, TILT_LIMITS = (-90.0, 90.0), (-40.0, 45.0)   # deg, robot/config.toml [actuator.pan] and [actuator.tilt]
+
+
+def anchor_geo():
+    """U-turn centre z, bore, half width, rear face x, and the top centre of the boom-side and head-side legs."""
+    b = HOSE_OD + 1.0                              # 7 mm bore: the 6 mm hose slides through the U-turn
+    r_top = b / 2 + BELL
+    legs = {"boom": (ANCHOR_X, ANCHOR_R, ANCHOR_TOP), "head": (ANCHOR_X, -ANCHOR_R, ANCHOR_TOP)}
+    return ANCHOR_TOP - 6.0, b, ANCHOR_R + r_top + 2.5, ANCHOR_X - r_top - 2.5, legs
+
+
+def hose_anchor():
+    """Block on the deck tongue with the U-turn of the hose, the plug pocket and its cable hole, and 2 screw flanges."""
+    from build123d import Align, Cone, Torus
+    zc, b, w, xr, _ = anchor_geo()
+    x, zt, r = ANCHOR_X, ANCHOR_TOP, ANCHOR_R
+    z0, xf = T + tm.DECK_T, tank.TONGUE[1]         # deck top (z 797), front face on the rear edge of the deck
+    a = box(xr, xf, -w, w, z0, zt)
+    for sx, sy in tank.ANCHOR_SCREWS:
+        s = 1 if sy > 0 else -1
+        a += box(sx - 5, sx + 5, *sorted((s * (w - 1), s * tank.TONGUE[2])), z0, z0 + 6)
+        a -= zcyl(sx, sy, M4_CLR, z0 - 1, z0 + 7)
+    u = (Pos(x, 0, zc) * (Rot(0, 90, 0) * Torus(r, b / 2))) & box(x - b, x + b, -r - b, r + b, zc - r - b, zc)
+    for s in (-1, 1):
+        u += zcyl(x, s * r, b, zc - 0.01, zt + 1)
+        u += Pos(x, s * r, zt - BELL) * Cone(b / 2, b / 2 + BELL + 0.01, BELL + 0.01,
+                                              align=(Align.CENTER, Align.CENTER, Align.MIN))
+    a -= u
+    px, py, pd = PLUG
+    a -= box(xf - 2 - px, xf - 2, -py / 2, py / 2, zt - pd, zt + 1)
+    a -= zcyl(tank.PLUG_HOLE[0], tank.PLUG_HOLE[1], tank.PLUG_HOLE[2], z0 - 1, zt - pd + 0.5)
+    return a
+
+
 # ---------------- print settings ----------------
 # name: (qty, infill, orientation, supports). Walls: 4 perimeters (1.6 mm), 5 top and bottom layers.
 PRINTS = {
     "r1f_half_left": (1, 1.0, "on the cut face (y = 0)", "only under the 27 mm bridge of the pan notch if it sags"),
     "r1f_half_right": (1, 1.0, "on the cut face (y = 0)", "only under the 27 mm bridge of the pan notch if it sags"),
-    "deck_f1": (1, 0.4, "flat, nut pockets up", "none"),
+    "deck_f1": (1, 0.4, "flat, top face up" if F3 else "flat, nut pockets up", "none"),
     "pan_base": (1, 0.4, "shelf down", "tree supports under the servo foot"),
     "pan_yoke": (1, 0.4, "disc down", "none"),
     "tilt_u": (1, 0.4, "U base down", "none"),
@@ -583,6 +632,7 @@ PRINTS = {
     "imu_mount": (1, 0.4, "foot down", "none"),
     "hose_clip": (4, 1.0, "foot down", "none"),
     "frame_clip": (8, 1.0, "foot down (flat face on the bed)", "none"),
+    "hose_anchor": (1, 0.4, "base down (flanges on the bed)", "none"),
     "pump_holder": (1, 0.4, "base down" if F2 else "plate down (outer face on the bed)",
                     "none. It fits the DWP-385 only: wait for the KLP02 holder" if F2 else "none"),
     "tank_left_tub": (1, 1.0, "outer face (y = 124) on the bed", "none"),
@@ -615,6 +665,8 @@ def bought_boxes():
     b["rock3c_plugs"] = ((PX - ROCK_SO - 20.0, PX - ROCK_SO - 1.6, ya + 2, yb - 2, za - 28.0, za - 2.3), 0)   # keep free
     b["shunt_100a"] = ((PX - 25.0, PX, *SHUNT_Y, *SHUNT_Z), P["shunt_100a"]["mass_g"])
     for n, bx in lip_board_boxes().items():
+        if n == "mosfet_dfr0457" and F3:
+            continue                               # F3: the fourth pocket stays empty (no pump switch on the robot)
         b[n] = (bx, P[{"canable_1": "canable_v2_pro", "canable_2": "canable_v2_pro", "buck_5v": "buck_12v_to_5v",
                        "mosfet_dfr0457": "mosfet_dfr0457"}[n]]["mass_g"])
     xin = COVER[0] + CW
@@ -635,7 +687,7 @@ def bought_boxes():
         b["pump_dwp385"] = (tuple(round(v, 2) for v in (pb.min.X, pb.max.X, pb.min.Y, pb.max.Y, pb.min.Z, pb.max.Z)),
                             P["pump_dwp385"]["mass_g"])
         b["filter_inline"] = (FILTER2 if F2 else tuple(tt.R1_PUMP), 6)   # F1: in the R1F pocket
-    else:
+    elif PUMP == "m400k":
         b["pump_m400k"] = (tuple(tt.R1_PUMP), tt.PUMP_G)
     return b
 
@@ -651,13 +703,72 @@ def wall_scan(path, n=8000, q=0.005):
     return float(np.quantile(np.linalg.norm(loc - o[ray], axis=1), q))
 
 
+def _cloud(m, n=6000):
+    """Vertices and n seeded surface points of a mesh (a build123d shape is tessellated first)."""
+    if not isinstance(m, trimesh.Trimesh):
+        v, f = m.tessellate(0.05)
+        m = trimesh.Trimesh([(p.X, p.Y, p.Z) for p in v], f)
+    return np.vstack([m.vertices, trimesh.sample.sample_surface(m, n, seed=1)[0]])
+
+
+def anchor_checks(meshes, st_refs, head):
+    """F3 hose anchor. Gaps to the moving pan-tilt parts over a full pan turn and the tilt limits, to the handles and to
+    the screw heads on the deck and the pan base. The hose 25 mm straight up from each leg against the moving parts
+    within the pan and tilt limits. The longest straight distance from the head-side leg to the rear hose clip."""
+    ax, az = head["tilt_axis_mm"][0], head["tilt_axis_mm"][2]
+
+    def pose(p, pan, el):                          # tilt el (deg, up > 0) about the tilt axis, then pan about z
+        a, b = math.radians(el), math.radians(pan)
+        x, z = p[:, 0] - ax, p[:, 2] - az
+        x, z = x * math.cos(a) - z * math.sin(a), x * math.sin(a) + z * math.cos(a)
+        return np.c_[ax + x * math.cos(b) - p[:, 1] * math.sin(b), x * math.sin(b) + p[:, 1] * math.cos(b), az + z]
+
+    pan_only = np.vstack([_cloud(meshes["pan_yoke"]), _cloud(st_refs["ref_tilt_servo"])])
+    tilting = np.vstack([_cloud(meshes["tilt_u"]), _cloud(meshes["head_f1"])] +
+                        [_cloud(trimesh.load(OUT / f"ref_{n}.stl")) for n in ("camera_b0201", "nozzle_brass")])
+    anchor = _cloud(meshes["hose_anchor"], 20000)
+    # full pan turn: each point sweeps a circle, so the gap is a 2D distance in (radius about the pan axis, z)
+    els = np.arange(TILT_LIMITS[0], TILT_LIMITS[1] + 0.1, 2.5)
+    rz = [np.c_[np.hypot(q[:, 0] - ax, q[:, 1]), q[:, 2]] for q in [pan_only, *(pose(tilting, 0.0, e) for e in els)]]
+    turn = float(cKDTree(np.vstack(rz)).query(np.c_[np.hypot(anchor[:, 0] - ax, anchor[:, 1]), anchor[:, 2]])[0].min())
+    h = layout.HANDLE
+    handles = np.vstack([_cloud(layout.box_mesh(b), 20000) for b in (h, (h[0], h[1], -h[3], -h[2], h[4], h[5]))])
+    gap_handles = float(cKDTree(handles).query(anchor)[0].min())
+    zd = T + tm.DECK_T                             # M5 socket heads of the deck, M4 socket heads of the pan base
+    heads = [trimesh.creation.cylinder(4.25, 5.0, transform=trimesh.transformations.translation_matrix((x, y, zd + 2.5)))
+             for x in (-tm.RAIL_X, tm.RAIL_X) for y in (-tank.DECK_SCREW_Y, tank.DECK_SCREW_Y)]
+    heads += [trimesh.creation.cylinder(3.5, 4.0, transform=trimesh.transformations.translation_matrix(
+        (tm.PAN_X + x, y, zd + st.SHELF_T + 2.0))) for x, y in tm.square(tm.PAN_PATTERN)]
+    gap_screws = float(cKDTree(np.vstack([_cloud(m, 3000) for m in heads])).query(anchor)[0].min())
+    # within the pan and tilt limits: the hose 25 mm straight up from each leg, and the head-side loop
+    zc, b, w, xr, legs = anchor_geo()
+    stub = {k: cKDTree([(x, y, z + t) for t in np.arange(0.0, 25.1, 1.0)]) for k, (x, y, z) in legs.items()}
+    hose = dict.fromkeys(stub, np.inf)
+    clip = np.array([[tm.PAN_X - 24.0, 0.0, head_geo()[2]]])     # rear end of the hose clip of the head
+    far = 0.0
+    for p in np.arange(PAN_LIMITS[0], PAN_LIMITS[1] + 0.1, 5.0):
+        for e in np.arange(TILT_LIMITS[0], TILT_LIMITS[1] + 0.1, 5.0):
+            q = pose(tilting, p, e)
+            for k, t in stub.items():
+                hose[k] = min(hose[k], float(t.query(q)[0].min()) - HOSE_OD / 2)
+            far = max(far, float(np.linalg.norm(pose(clip, p, e)[0] - legs["head"])))
+    out = {"to_moving_pan_tilt_full_turn_mm": round(turn, 1), "to_handles_mm": round(gap_handles, 1),
+           "to_screw_heads_mm": round(gap_screws, 1),
+           "hose_25mm_above_legs_to_moving_parts_mm": {k: round(v, 1) for k, v in hose.items()}}
+    print("hose anchor gaps (mm):", out)
+    assert turn >= 2.0 and gap_handles >= 5.0 and gap_screws >= 1.0 and min(hose.values()) >= 1.0, out
+    return {"checks": out, "legs_mm": legs, "u_turn_centre_z_mm": zc, "bore_mm": b, "bend_radius_mm": ANCHOR_R,
+            "plug_pocket_mm": PLUG, "loop_longest_straight_mm": round(far), "loop_mm": int(10 * math.ceil(1.5 * far / 10)),
+            "pan_limits_deg": PAN_LIMITS, "tilt_limits_deg": TILT_LIMITS}
+
+
 def main():
     for d in ("stl", "step", "drawings"):
         (KIT / d).mkdir(parents=True, exist_ok=True)
     OUT.mkdir(exist_ok=True)
-    tanks = ("tank_left_tub", "tank_left_plate", "tank_right_tub", "tank_right_plate") if F2 else \
-        ("r1f_half_left", "r1f_half_right")
-    assert (OUT / f"{tanks[0]}.stl").exists(), f"run DESIGN={tank.DESIGN} tank.py first"
+    tanks = {"F1": ("r1f_half_left", "r1f_half_right"), "F3": (),
+             "F2": ("tank_left_tub", "tank_left_plate", "tank_right_tub", "tank_right_plate")}[tank.DESIGN]
+    assert all((OUT / f"{n}.step").exists() for n in (*tanks, "deck_f1")), f"run DESIGN={tank.DESIGN} tank.py first"
     lift = Pos(0, 0, T)
     shapes = {
         "pan_base": lift * st.PARTS["pan_base"](), "pan_yoke": lift * st.PARTS["pan_yoke"](),
@@ -670,8 +781,10 @@ def main():
     }
     if PUMP != "dwp385":
         shapes.pop("pump_holder")
-    if F2:
+    if not F1:
         shapes.pop("fill_extension")
+    if F3:
+        shapes["hose_anchor"] = hose_anchor()
     from build123d import import_step
     for n in (*tanks, "deck_f1"):
         shapes[n] = import_step(str(OUT / f"{n}.step"))
@@ -683,6 +796,9 @@ def main():
         export_step(s, str(KIT / "step" / f"{n}.step"))
         meshes[n] = trimesh.load(KIT / "stl" / f"{n}.stl")
     export_step(plate, str(KIT / "step" / "pod_plate_al2.step"))
+    for f in [*(KIT / "stl").glob("*.stl"), *(KIT / "step").glob("*.step")]:
+        if f.stem not in shapes and f.stem != "pod_plate_al2":
+            f.unlink()                             # a part of another design (F2 tank pieces, pump holder)
     export_stl(plate, str(OUT / "pod_plate_al2.stl"), tolerance=0.05, angular_tolerance=0.2)   # render only
     refs, lens, tip = head_refs()
     if PUMP == "dwp385":
@@ -784,7 +900,8 @@ def main():
             "resistor_mount_left": lambda p: np.abs(p[:, 0]) > 71.5, "resistor_mount_right": lambda p: np.abs(p[:, 0]) > 71.5}
     torso = {}
     for n in ("holder_6s_zeee", "holder_6s_vega", "pod_spacer_left", "pod_spacer_right", "pod_basket", "pod_cover",
-              "fill_extension", "imu_mount", "head_f1", "pump_holder", "resistor_mount_left", "resistor_mount_right"):
+              "fill_extension", "imu_mount", "head_f1", "pump_holder", "resistor_mount_left", "resistor_mount_right",
+              "hose_anchor"):
         if n not in meshes:
             continue
         p = np.vstack([meshes[n].vertices, meshes[n].sample(30000)])
@@ -804,6 +921,11 @@ def main():
         # (trimesh.proximity); F1 reported 0.5 to 1.0 mm from unseeded samples.
         assert d >= (0.3 if n.startswith("straps") else 1.0), f"{n} is {d} mm from the torso mesh"
     info["checks"]["torso_clearance_mm"] = torso
+    if F3:
+        d, a = info["parts"]["deck_f1"]["box_mm"], info["parts"]["hose_anchor"]["box_mm"]
+        assert d[0] <= a[0] and d[2] <= a[2] and a[3] <= d[3], "the anchor overhangs the deck tongue: run tank.py again"
+        info["anchor"] = anchor_checks(meshes, st_refs, info["head"])
+        info["checks"]["hose_anchor"] = info["anchor"]["checks"]
 
     # ---------- write ----------
     info["bought"] = {n: {"box_mm": [round(v, 2) for v in bx], "mass_g": g} for n, (bx, g) in bought.items()}
@@ -815,14 +937,21 @@ def main():
         c, b = s.center(CenterOf.MASS), s.bounding_box()
         top.append({"name": name, "mass_g": round(g, 1), "com_mm": [round(v, 1) for v in (c.X, c.Y, c.Z)],
                     "size_mm": [round(v, 1) for v in (b.size.X, b.size.Y, b.size.Z)]})
-    for n in ("deck_f1", "pan_base", "pan_yoke", "tilt_u", "head_f1"):
+    for n in ("deck_f1", "pan_base", "pan_yoke", "tilt_u", "head_f1", *(("hose_anchor",) if F3 else ())):
         add(n, info["parts"][n]["mass_g"], shapes[n])
     for n, g in (("ref_pan_servo", 89), ("ref_tilt_servo", 89), ("ref_pan_bearing", 26)):   # ST3215 89 g (Waveshare)
         add(n, g, st_refs[n])
     add("camera_b0201", P["camera_b0201"]["mass_g"], refs["camera_b0201"])
     add("nozzle_brass", 30, refs["nozzle_brass"])                                          # GUESS
     add("hose_clips", 4 * info["parts"]["hose_clip"]["mass_g"], box(tm.PAN_X - 20, tm.PAN_X + 20, -20, 20, T + 20, T + 60))
-    add("hose_and_water", 25, box(-40, 40, -45, -25, T - 60, T + 40))                       # GUESS: 0.6 m of tube
+    if F3:     # ASSUMED: 0.24 m of 3 x 6 mm hose with water (32 g/m) from the anchor to the nozzle, and the share of the
+               # free hose to the boom (about 0.1 N, docs/hardware/trolley.md)
+        add("hose_and_water", 20, box(ANCHOR_X - 5, tm.PAN_X - 20, -25, 25, ANCHOR_TOP - 30, head_geo()[2]))
+        px, py, pd = PLUG                          # ASSUMED: both halves of the plug J10 and the cable ends
+        add("signal_plug", 10, box(tank.TONGUE[1] - 2 - px, tank.TONGUE[1] - 2, -py / 2, py / 2, ANCHOR_TOP - pd,
+                                   ANCHOR_TOP + 10))
+    else:
+        add("hose_and_water", 25, box(-40, 40, -45, -25, T - 60, T + 40))                   # GUESS: 0.6 m of tube
     info["top"] = top
     info["pack"] = PACK
     info["pump"] = PUMP
@@ -905,7 +1034,7 @@ def shelf_layout():
     holes = [(x, y, M3_CLR, "M3 to bracket bar") for x, y in BRACKET_HOLES]
     xc = sum(layout.RELAY[:2]) / 2
     holes += [(xc + 13.0, -31.75, 5.5, "M5 relay"), (xc - 13.0, 31.75, 5.5, "M5 relay")]
-    if not F2:
+    if F1:
         holes += [(x, y, M4_CLR, "M4 R1F leg") for x, y, _ in tt.R1_LEGS]
     bx = layout.BOOST
     cx, cy = (bx[0] + bx[1]) / 2, (bx[2] + bx[3]) / 2
@@ -939,7 +1068,7 @@ def drawings(info):
             "u = across, v = up from the bottom edge, mm.", "Deburr all edges. No bends.",
             "* Shunt holes: ASSUMED near the ends of a", "  105 mm base. Drill them from the part.",
             "Grommet: 20 mm hole for a rubber grommet.", "M6 diode: thermal paste under the diode.",
-            *([] if F2 else ["Notch: R1F fill neck (z 735) and extension."])],
+            *(["Notch: R1F fill neck (z 735) and extension."] if F1 else [])],
            (-yy, z0), "u", "v")
 
 
@@ -1017,8 +1146,42 @@ HARDWARE_F2 = [  # F1 list with the R2 tanks: no pump holder on the side face, n
     ("Aluminium sheet 2 mm, 150 x 198 mm", 1, "pod plate (drawing pod_plate_al2)"),
     ("Clear acrylic 5 mm, 140 x 109 mm", 1, "middle shelf (drawing shelf_acrylic_5mm), from the B4 sheet"),
 ]
+HARDWARE_F3 = [  # F2 list without the tanks, the pump holder and the tubes, plus the hose anchor and the deck tongue
+    ("M5 drop-in T-nut, 2020 6 mm slot", 24, "deck 4, holder 4, pod spacers 4, resistor mounts 4, frame clips 8"),
+    ("M5 x 12 socket head screw", 8, "deck 4, holder 4"),
+    ("M5 x 12 button head screw", 8, "pod spacers 4, resistor mounts 4"),
+    ("M5 x 8 button head screw", 8, "frame clips"),
+    ("M5 x 12 button head screw + M5 nut + washer", 2, "relay K1 to the shelf, heads below (check the relay foot thickness)"),
+    ("M5 x 10 screw + M5 nut + washer", 2, "shunt to the pod plate (ASSUMED size, check the shunt)"),
+    ("M6 x 12 screw + M6 nut + 2 washers", 2, "diode to the pod plate, with thermal paste"),
+    ("M4 x 12 button head screw + M4 nut", 4, "head to the tilt U (nuts in the U pockets)"),
+    ("M4 x 10 socket head screw + M4 nut", 4, "pan base to the deck (nuts in the deck pockets). Longer screws hit the "
+                                              "rear top rail."),
+    ("M4 x 12 socket head screw + M4 nut", 2, "hose anchor to the deck tongue (nuts in the pockets under the tongue)"),
+    ("M3 heat-set insert, 4.0 mm hole, 5 mm long", 8, "resistor mounts"),
+    ("M3 x 8 screw + washer", 8, "brake resistors to their mounts (ASSUMED 39.7 x 21.4 mm pattern)"),
+    ("M3 x 20 screw + M3 nut", 2, "IMU mount and shelf to the front bracket bar"),
+    ("M3 x 16 screw + M3 nut", 2, "shelf to the rear bracket bar"),
+    ("M3 x 10 screw + M3 nut + nylon spacer 5 mm", 4, "boost converter on the shelf"),
+    ("M3 x 12 button head screw + M3 nut", 4, "3S basket to the pod plate (nuts in the band pockets)"),
+    ("M3 x 10 screw + M3 nut", 2, "pod cover to the basket ledge, from below"),
+    ("M3 x 10 set screw (or thread-forming M3 x 10)", 1, "nozzle adapter in the head"),
+    ("M2.5 x 10 male-female brass standoff + M2.5 nut", 4, "ROCK 3C on the pod plate"),
+    ("M2.5 x 5 screw", 4, "ROCK 3C to the standoffs"),
+    ("M2 x 8 screw + M2 nut", 4, "camera board in the head (34 or 28 mm pattern)"),
+    ("Hook-and-loop strap 20 mm x 400 mm", 2, "6S packs in the holder"),
+    ("Hook-and-loop strap 20 mm x 250 mm", 2, "3S pack in the basket"),
+    ("Rubber grommet for a 20 mm hole", 1, "pod plate cable pass"),
+    ("Zip tie 2.5 mm", 18, "IMU 1, hose clips 8, relay K2 1, hose stops on the anchor 2, spare 6"),
+    ("Double-sided foam tape 1 mm", "0.4 m", "CANable x 2 and buck on the basket lip, relay K2, IMU back"),
+    ("Thermal paste", "1 g", "diode"),
+    ("Aluminium sheet 2 mm, 150 x 198 mm", 1, "pod plate (drawing pod_plate_al2)"),
+    ("Clear acrylic 5 mm, 140 x 109 mm", 1, "middle shelf (drawing shelf_acrylic_5mm), from the B4 sheet"),
+]
 if F2:
     HARDWARE = HARDWARE_F2  # noqa: F811
+if F3:
+    HARDWARE = HARDWARE_F3  # noqa: F811
 HARDWARE = HARDWARE + [  # ST3215 pan-tilt (cad/parts/top_module_sts3215.py)
     ("6808-2RS ball bearing, 40 x 52 x 7 mm", 1, "pan axis, in the pan base"),
     ("M3 screw, length to fit (ASSUMED thread)", 12, "pan yoke to the pan servo horn 4, tilt U arms to the 2 tilt servo horns 8"),
@@ -1046,12 +1209,13 @@ def sheets(info):
             "The STL files are in the robot frame. Turn each part to the orientation in the table in the slicer.", "",
             *rows, "",
             f"Total for one robot: {tot_g / 1000:.2f} kg of PETG and about {tot_t / 60:.0f} h of printing "
-            "(the VEGA holder is not counted).", "",
-            ("Print the 4 tank pieces solid (100 %), so that the walls hold water. Glue each plate on its tub with "
-             "two-part epoxy. Leak-test each glued tank for 1 hour." if F2 else
-             "Print the R1F halves solid (100 %), so that the walls hold water. Leak-test the glued tank for 1 hour.")]
-    if F2:
-        text[0] = "# Print sheet, final design F2 (generated by kit.py)"
+            "(the VEGA holder is not counted).",
+            *(["", "Print the 4 tank pieces solid (100 %), so that the walls hold water. Glue each plate on its tub "
+               "with two-part epoxy. Leak-test each glued tank for 1 hour."] if F2 else
+              ["", "Print the R1F halves solid (100 %), so that the walls hold water. Leak-test the glued tank for 1 "
+               "hour."] if F1 else [])]
+    if not F1:
+        text[0] = f"# Print sheet, final design {tank.DESIGN} (generated by kit.py)"
     (KIT / "print_sheet.md").write_text("\n".join(text) + "\n")
     hw = [f"# Hardware list, final design {tank.DESIGN} (generated by kit.py)", "", "Counts are for one robot. Buy 10 % spare of the small screws.", "",
           "| Item | Count | Where |", "|---|---|---|"] + [f"| {a} | {b} | {c} |" for a, b, c in HARDWARE]
@@ -1060,6 +1224,10 @@ def sheets(info):
     if F2:
         hw += ["", "**Pump:** The pump holder and its 250 mm strap fit the DWP-385 pump. The team uses the Kamoer KLP02 24 V "
                "pump with a DMC-101 controller. We will redraw the holder when the KLP02 arrives and is measured."]
+    if F3:
+        hw += ["", "**Open:** The trolley design chooses the pump, the delivery hose, the check valve and the 2-pin plug "
+               "of the pump signal cable. The hose anchor fits a hose of 6 mm outer diameter (`HOSE_OD` in `kit.py`). "
+               "It fits a plug body of about 20 x 12 x 10 mm (`PLUG`)."]
     (KIT / "hardware.md").write_text("\n".join(hw) + "\n")
 
 
