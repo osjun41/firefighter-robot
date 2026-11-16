@@ -20,6 +20,7 @@ Team SOBANG · Seoul National University · ASMR 2026.
 | Robot software on the ROCK 3C | [robot](robot/README.md), [legs](legs/README.md), [aim](aim/README.md) |
 | Fire detector | [vision](vision/README.md) |
 | Simulations | [sim](sim/README.md) |
+| Locomotion policy training and evaluation | [scripts/isaaclab](scripts/isaaclab/README.md), [policies](policies/README.md) |
 
 ## Quick start on laptop simulation
 

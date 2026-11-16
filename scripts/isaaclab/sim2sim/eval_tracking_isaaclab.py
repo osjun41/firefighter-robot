@@ -7,7 +7,7 @@ noise is the training one unless --no_obs_noise. The policy is the exported ONNX
 same network the MuJoCo evaluation runs. Results go to <out_dir>/<name>_isaaclab_<noise|clean>.csv.
 
 Usage (from the repository root):
-    uv run scripts/sim2sim/eval_tracking_isaaclab.py --headless --task Velocity-ASMR-Biped-v0 \
+    uv run --project scripts/isaaclab scripts/isaaclab/sim2sim/eval_tracking_isaaclab.py --headless --task Velocity-ASMR-Biped-v0 \
         --config configs/policy_asmr_biped.yaml --name baseline
 """
 

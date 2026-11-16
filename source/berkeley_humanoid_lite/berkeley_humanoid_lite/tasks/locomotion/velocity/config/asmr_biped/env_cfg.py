@@ -3,7 +3,7 @@
 The MDP is the Berkeley Humanoid Lite biped task's (config/biped): the same observations, actions (around the
 default joint pose), rewards, terminations and randomization. The joint and body names are the same, so the terms
 apply unchanged. What changes is the robot (geometry, masses, actuators and the standing pose as the default pose;
-see berkeley_humanoid_lite_assets.robots.asmr2026_humanoid) and the payload.
+see source.robot_models.robots.asmr2026_humanoid) and the payload.
 
 The payload is our upper body (hose aiming servos, hose, nozzle, camera): 1 kg as a solid 10 cm box resting at the
 center of the torso top plate. The course torso (5.57 kg) already includes the frame, electronics and batteries.

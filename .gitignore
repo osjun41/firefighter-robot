@@ -41,3 +41,7 @@ sim/sim2sim/results/scene_*.xml
 docs/hardware/bom_full.md
 pictures-robot/
 docs/share/
+
+# Isaac Lab training (scripts/isaaclab): logs, recordings, and the config play.py writes
+logs/
+configs/policy_latest.yaml

@@ -48,7 +48,7 @@ from isaaclab_tasks.utils import get_checkpoint_path, parse_env_cfg
 
 # Import extensions to set up environment tasks
 import berkeley_humanoid_lite.tasks  # noqa: F401
-from berkeley_humanoid_lite_assets.robots.asmr2026_humanoid import ASMR2026_HUMANOID_CFG, MJCF_SCENE_PATH
+from source.robot_models.robots.asmr2026_humanoid import ASMR2026_HUMANOID_CFG, MJCF_SCENE_PATH
 
 
 def main():
@@ -114,7 +114,7 @@ def main():
     joint_kp = torch.zeros(num_joints, device=env.unwrapped.device)
     joint_kd = torch.zeros(num_joints, device=env.unwrapped.device)
     effort_limits = torch.zeros(num_joints, device=env.unwrapped.device)
-
+    
     # extract the configurations from the actuator groups
     for group in env_cfg.scene.robot.actuators.values():
         # string util method expects a dict
