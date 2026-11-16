@@ -33,6 +33,6 @@ jobs:
         working-directory: vision
         run: uv run --no-project --with numpy --with onnx --with onnxruntime --with opencv-python-headless --with pillow --with pytest pytest test_vision.py -q
       - name: Locomotion layout (no Isaac Sim needed)
-        run: uv run --extra sim --extra dev pytest scripts/isaaclab/test_layout.py -q
+        run: uv run --extra sim --extra dev pytest sim/locomotion/tests/test_layout.py -q
       - name: Wiring check
         run: uv run --extra sim --extra dev python docs/hardware/power_calc.py check

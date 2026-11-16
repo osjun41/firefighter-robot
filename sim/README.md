@@ -27,7 +27,7 @@ Run these commands from the repository root.
 | [payload/](payload/README.md) | The robot models with the F2 payload, and the payload check: statics, walking, pushes, drive model | `uv run python sim/payload/final_check.py` |
 | [sim2sim/](sim2sim/README.md) | The shipped BHL walking policy loop (shared by `legs/`, `robot/` and the other folders), and the motor drive risks | `uv run python sim/sim2sim/hw_risks.py --check` |
 | [mission/](mission/README.md) | Complete missions: walking, robot camera, fire detector, aiming, water droplets and fire model | `MUJOCO_GL=egl uv run python sim/mission/mission.py --seed 1055` |
-| [rl/](rl/README.md) | Training and evaluation of walking policies. Its own uv project (JAX, GPU) | `uv run python sim/rl/f1_eval.py sim/rl/policies/f1_v1.onnx --quick` |
+| [locomotion/](locomotion/README.md) | Isaac Lab training of the walking policy in `policies/`, with its sim2sim, push and sim-to-real evaluations. Own uv project (Isaac Sim, NVIDIA GPU). | `uv sync --project sim/locomotion` |
 | [water/](water/README.md) | Pump, nozzle and jet range of the KLP02 water system | `uv run python sim/water/water.py` |
 | [firescenes/](firescenes/README.md) | Synthetic fire images in Blender, for the detector training set | `blender -b --factory-startup -P sim/firescenes/firescenes.py -- samples 0 200` |
 
@@ -41,7 +41,6 @@ Run these commands from the repository root.
 | Drive model | `uv run python sim/sim2sim/hw_risks.py --check` | 20 s |
 | Mission tests | `MUJOCO_GL=egl uv run pytest sim/mission/test_mission.py -q` | 10 s |
 | Water model | `uv run python sim/water/water.py check` | 5 s |
-| Policy evaluation | `uv run python sim/rl/f1_eval.py sim/rl/policies/f1_v1.onnx --quick` | 15 s |
 
 ## Key numbers
 

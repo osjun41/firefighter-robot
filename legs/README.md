@@ -206,9 +206,8 @@ odrv0.reboot()
 30. When the robot stands well, walk slowly with `--vx 0.2`. The training range is -0.5 to 0.5 m/s.
 
 - F2 needs `--knee-max 1.4`: at full knee range the foot touches a tank. `robot/launch.py` passes `[legs] knee_max` of `robot/config.toml`.
-- The policy file is `[legs] policy` of `robot/config.toml`: `policies/baseline/policy.onnx`, trained for the ASMR robot configuration.
-- Our policy `sim/rl/policies/f1_v1.onnx` was trained on the F1 model and evaluated on F2. It has the same inputs and outputs, so `[legs] policy` can point to it.
-- f1_v1 has not run on the robot yet ([sim/rl/README.md](../sim/rl/README.md)).
+- The policy is chosen by name: `[legs] policy` of `robot/config.toml` is a folder name in `policies/` (`baseline`, trained for the ASMR robot configuration; empty means `baseline`). `run_policy.py --policy <name>` overrides it for one run. `policies/policy_select.py` resolves the name to `policies/<name>/policy.onnx`.
+- The earlier policy `f1_v1` (trained on the F1 design with water tanks, never run on the robot) is in [archive/rl_f1](../archive/rl_f1/README.md). Do not use it: the tanks are removed.
 - At the stop, `run_policy.py` prints the time of each policy tick. Each tick must stay below 40 ms.
 - `run_policy.py` stops by itself on a drive error, a drive out of closed loop, no heartbeat for 0.5 s, no encoder reply 3 times,
   a joint more than 0.2 rad beyond its limits, or a torso tilt above 0.78 rad (the training limit).

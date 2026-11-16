@@ -1,5 +1,5 @@
 """Legacy shared helpers for the shipped BHL walking policy in MuJoCo, on the CPU: policy file, joint order, default pose,
-gains, observation and one simulation run. legs/, robot/, sim/mission, sim/rl, sim/payload and docs/hardware/power_calc.py
+gains, observation and one simulation run. legs/, robot/, sim/mission, sim/payload and docs/hardware/power_calc.py
 import them.
 
     uv run python sim/sim2sim/run.py --check      self-check: the bare biped stands 5 s with a zero command

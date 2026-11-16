@@ -153,7 +153,7 @@ def gap(a, b):
 
 def lump(parts):
     """One box with the mass, centre and the Ixx, Iyy, Izz about that centre of several boxes (dicts in m), for the
-    simulation: sim/payload and sim/rl expect one "water" body. Sizes give the same inertia as the parts."""
+    simulation: sim/payload expects one "water" body. Sizes give the same inertia as the parts."""
     m = sum(p["mass_kg"] for p in parts)
     c = sum(p["mass_kg"] * np.array(p["com_m"]) for p in parts) / m
     second = np.zeros(3)                       # sum m (s^2 / 12 + d^2) along each axis

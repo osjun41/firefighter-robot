@@ -1,0 +1,117 @@
+# Deployment config of the course robot's biped policy (task Velocity-ASMR-Biped-v0). play.py writes the same
+# values to sim/locomotion/configs/policy_latest.yaml; sim/locomotion/scripts/rsl_rl/export_onnx.py uses this file as its template.
+policy_checkpoint_path: logs/rsl_rl/asmr_biped/2026-10-31_15-39-22_baseline/exported/policy.onnx
+ip_robot_addr: 127.0.0.1
+ip_policy_obs_port: 10000
+ip_host_addr: 127.0.0.1
+ip_policy_acs_port: 10001
+control_dt: 0.004
+policy_dt: 0.04
+physics_dt: 0.0005
+cutoff_freq: 1000
+num_joints: 12
+joints:
+- leg_left_hip_roll_joint
+- leg_left_hip_yaw_joint
+- leg_left_hip_pitch_joint
+- leg_left_knee_pitch_joint
+- leg_left_ankle_pitch_joint
+- leg_left_ankle_roll_joint
+- leg_right_hip_roll_joint
+- leg_right_hip_yaw_joint
+- leg_right_hip_pitch_joint
+- leg_right_knee_pitch_joint
+- leg_right_ankle_pitch_joint
+- leg_right_ankle_roll_joint
+# course actuators (robots/asmr2026_humanoid.py): 6512 for the hips and knees, 5010 for the ankles
+joint_kp:
+- 90.01079213793496
+- 90.01079213793496
+- 90.01079213793496
+- 90.01079213793496
+- 21.95000018802273
+- 21.95000018802273
+- 90.01079213793496
+- 90.01079213793496
+- 90.01079213793496
+- 90.01079213793496
+- 21.95000018802273
+- 21.95000018802273
+joint_kd:
+- 5.730265000147783
+- 5.730265000147783
+- 5.730265000147783
+- 5.730265000147783
+- 0.4890831443108589
+- 0.4890831443108589
+- 5.730265000147783
+- 5.730265000147783
+- 5.730265000147783
+- 5.730265000147783
+- 0.4890831443108589
+- 0.4890831443108589
+effort_limits:
+- 18.09
+- 18.09
+- 18.09
+- 18.09
+- 22.572
+- 22.572
+- 18.09
+- 18.09
+- 18.09
+- 18.09
+- 22.572
+- 22.572
+default_base_position:
+- 0.0
+- 0.0
+- -0.03977653
+default_joint_positions:
+- 0.0
+- 0.0
+- 0.58519126
+- -0.95241361
+- 0.36722235
+- 0.0
+- 0.0
+- 0.0
+- -0.58519126
+- 0.95241361
+- -0.36722235
+- 0.0
+num_observations: 45
+history_length: 0
+command_velocity:
+- 0.0
+- 0.0
+- 0.0
+num_actions: 12
+action_scale: 0.25
+action_indices:
+- 0
+- 1
+- 2
+- 3
+- 4
+- 5
+- 6
+- 7
+- 8
+- 9
+- 10
+- 11
+action_limit_lower: -10000
+action_limit_upper: 10000
+# MuJoCo sim2sim scene and our upper body (config/asmr_biped/env_cfg.py: 1 kg, 10 cm box on the torso top)
+mjcf_path: source/robot_models/data/robots/asmr2026/asmr2026_humanoid_v1/mjcf/scene.xml
+sim_payload:
+  mass: 1.0
+  position:
+  - 0.0
+  - 0.0
+  - 0.8838
+  size:
+  - 0.1
+  - 0.1
+  - 0.1

@@ -1,4 +1,4 @@
-"""Walking, push and statics helpers of the payload checks. final_check.py and sim/rl/f1_eval.py use them.
+"""Walking, push and statics helpers of the payload checks. final_check.py uses them (archive/rl_f1/f1_eval.py did too).
 
 policy_run() copies the loop of sim/sim2sim/run.py (shipped BHL policy, 25 Hz policy, 2000 Hz physics, kp 20 / kd 2,
 torque clipped, training observation noise) and adds a horizontal push on the torso. max_push() finds the largest

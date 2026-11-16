@@ -2,7 +2,7 @@
 
 This folder builds the MuJoCo models of the Berkeley Humanoid Lite (BHL) biped with the payload of the final design F2.
 It also checks that the robot can carry this payload: statics, walking, pushes and the motor drive model, with the shipped BHL policy.
-`sim/sim2sim`, `sim/mission`, `sim/rl` and `docs/hardware/power_calc.py` load these models.
+`sim/sim2sim`, `sim/mission` and `docs/hardware/power_calc.py` load these models.
 
 **Status:** tested in simulation (MuJoCo 3.15.0, CPU only). Nothing here is measured on board.
 
@@ -97,7 +97,7 @@ Findings:
 | `models.py` | Builds `models/bhl_biped.xml` and `models/bhl_F2*.xml`, then runs its self-check |
 | `poses.py` | Leg poses and flat-foot placement on the floor |
 | `analyze.py` | Static joint torques and centre of mass (stand, crouch, one leg) |
-| `torso_tank.py` | Walking and push test helpers. `final_check.py` and `sim/rl/f1_eval.py` use them. |
+| `torso_tank.py` | Walking and push test helpers. `final_check.py` uses them (`archive/rl_f1/f1_eval.py` did too). |
 | `report.py` | Plot palette and style of the simulation figures |
 | `final_check.py` | The F2 check: statics, walking, push test and drive cases |
 | `results/final_f2.md`, `results/final_f2.json` | Results of `final_check.py` |

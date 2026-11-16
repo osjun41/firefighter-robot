@@ -45,7 +45,7 @@ Status words: built, tested in simulation, measured on laptop, measured on board
 | R1 | Detect a 10 cm flame at 3 m or more, recall 90 % or more | Recall by fire size on the test images, then a range test with our camera | measured on laptop: **not met yet**, recall 50 % at 1.8 m ([vision](../../vision/README.md)) |
 | R2 | Fewer than 1 false fire per 100 images of fire-like objects | Hard-negative test set, then our room | measured on laptop |
 | R3 | Walk at 0.2 m/s or more with full tanks, no fall in 10 runs | Simulation, then gantry tests | tested in simulation |
-| R4 | Turn on the spot toward the fire | Simulation of our policy, then the robot | tested in simulation ([sim/rl](../../sim/rl/README.md)) |
+| R4 | Turn on the spot toward the fire | Simulation of our policy, then the robot | tested in simulation (archived: [archive/rl_f1](../../archive/rl_f1/README.md)) |
 | R5 | The jet hits a 20 cm target at 1.5 m, nozzle 0.9 m high | Ballistics, then the bench jet test | tested in simulation ([water.md](../hardware/water.md)) |
 | R6 | Spray for 60 s or more per fill of both tanks | Pump and nozzle curves, then a timed bench test | tested in simulation |
 | R7 | Put out the demo fire within 60 s of spraying | Mission simulation, then a static spray test | tested in simulation ([sim/mission](../../sim/mission/README.md)) |
@@ -59,7 +59,7 @@ Status words: built, tested in simulation, measured on laptop, measured on board
 
 | Risk | Likelihood | Effect | What we do |
 |---|---|---|---|
-| The shipped policy cannot carry about 16 kg on the real legs | medium | no walking with water | Our policy f1_v1 (no falls in simulation), 9 N·m after a gearbox check, empty tanks first |
+| The shipped policy cannot carry about 16 kg on the real legs | medium | no walking with water | Archived policy f1_v1 ([archive/rl_f1](../../archive/rl_f1/README.md)); the water tanks are removed, so this risk applies to the new payload |
 | Drives trip on regen over-voltage | high without a fix | the robot collapses while walking | Brake resistors before the first walk ([electrical.md](../hardware/electrical.md)) |
 | The DMC-101 input does not fit the proposed opto-isolator | medium | pump control redesign | Get the datasheet before the order is final |
 | A wrong 5 V supply destroys the ROCK 3C | medium | lost computer | 5 V buck, check with a meter before the board goes on |

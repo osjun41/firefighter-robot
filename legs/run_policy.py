@@ -30,9 +30,13 @@ from scipy.spatial.transform import Rotation
 
 import robot as rb
 from source.robot_models.robots import asmr2026_policy as policy_model
-from robot_config import CONF, HOST, path  # noqa: E402  robot/ is on sys.path after `import robot`
+from robot_config import CONF, HOST, ROOT  # noqa: E402  robot/ is on sys.path after `import robot`
 
-POLICY = path(CONF["legs"]["policy"])
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from policies import policy_select  # noqa: E402
+
+POLICY = policy_select.onnx(CONF["legs"].get("policy"))  # NAME in policies/, empty = baseline
 PORTS = CONF["ports"]
 
 
@@ -161,10 +165,14 @@ def main():
     ap.add_argument("--vx", type=float, default=0.0, help="m/s, training range -0.5 to 0.5")
     ap.add_argument("--vy", type=float, default=0.0, help="m/s, training range -0.25 to 0.25")
     ap.add_argument("--yaw", type=float, default=0.0, help="rad/s, training range -1 to 1")
+    ap.add_argument("--policy", metavar="NAME", help="policy folder name in policies/ (default: [legs] policy in robot/config.toml, empty = baseline)")
     ap.add_argument("--knee-max", type=float, help="knee target limit (rad). F2 needs 1.4 (robot/config.toml [legs] knee_max).")
     ap.add_argument("--udp", action="store_true", help="velocity from aim/run.py on the walk port, not from --vx, --vy, --yaw")
     a = ap.parse_args()
     signal.signal(signal.SIGTERM, _stop)
+    if a.policy:
+        global POLICY
+        POLICY = policy_select.onnx(a.policy)
 
     if a.check:
         check_policy()

@@ -1,4 +1,4 @@
-"""Plot palette and style of the simulation figures (sim/payload, sim/sim2sim, sim/rl, sim/mission)."""
+"""Plot palette and style of the simulation figures (sim/payload, sim/sim2sim, sim/mission)."""
 import matplotlib
 
 matplotlib.use("Agg")

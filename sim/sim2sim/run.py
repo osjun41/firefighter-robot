@@ -1,6 +1,7 @@
-"""Run the ASMR 2026 baseline walking policy in MuJoCo.
+"""Run an ASMR 2026 walking policy from policies/ in MuJoCo (default: baseline).
 
     uv run python sim/sim2sim/run.py                 one ASMR model x commands -> results/results.md
+    uv run python sim/sim2sim/run.py --policy brace_m4   another policy, by folder name in policies/
     uv run python sim/sim2sim/run.py --noise          the same commands with training observation noise
     uv run python sim/sim2sim/run.py --check          self-check: stand for 5 s
     MUJOCO_GL=egl uv run python sim/sim2sim/run.py --video 'vx 0.3' out.mp4
@@ -10,6 +11,7 @@ source/robot_models/robots/asmr2026_model.py. The MJCF defines joint limits,
 per-joint position actuator gains and effort limits.
 """
 
+import os
 import subprocess
 import sys
 from multiprocessing import Pool
@@ -22,6 +24,7 @@ import onnxruntime as ort
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
+from policies import policy_select  # noqa: E402
 from source.robot_models.robots import asmr2026_policy as policy_contract  # noqa: E402
 from source.robot_models.robots.asmr2026_model import (  # noqa: E402
     LEG_JOINTS,
@@ -36,7 +39,8 @@ OUT.mkdir(exist_ok=True)
 
 MODEL = ROBOT_ID
 MODEL_PATH = MJCF_SCENE_PATH
-POLICY = ROOT / "policies" / "baseline" / "policy.onnx"
+# --policy NAME is passed through the environment so Pool workers (spawn re-imports this module) use the same policy.
+POLICY = policy_select.onnx(os.environ.get("SIM2SIM_POLICY"))
 JOINTS = list(LEG_JOINTS)
 DEFAULT = policy_contract.DEFAULT
 DEFAULT_BASE_POSITION = np.array([0.0, 0.0, STANDING_ROOT_HEIGHT], dtype=np.float32)
@@ -163,7 +167,7 @@ def simulate(model, command, limit=None, seconds=20.0, frames=None, start="stand
     assert [m.joint(j).qposadr[0] for j in JOINTS] == list(range(7, 19)), "joint order differs from the policy"
     assert [m.actuator(i).name for i in range(m.nu)] == JOINTS, "actuator order differs from the policy"
     if not POLICY.exists():
-        raise FileNotFoundError(f"baseline network not found: {POLICY}")
+        raise FileNotFoundError(f"policy network not found: {POLICY}")
     policy = ort.InferenceSession(str(POLICY), providers=["CPUExecutionProvider"])
     base = m.body("base").id
     imu_rotation_in_base, base_quat_in_imu = _imu_frame_transform(m, d)
@@ -283,6 +287,11 @@ def check():
 
 
 if __name__ == "__main__":
+    if "--policy" in sys.argv:
+        index = sys.argv.index("--policy")
+        os.environ["SIM2SIM_POLICY"] = sys.argv[index + 1]
+        del sys.argv[index:index + 2]
+        POLICY = policy_select.onnx(os.environ["SIM2SIM_POLICY"])  # fail early with the list of names
     if "--check" in sys.argv:
         check()
     elif "--video" in sys.argv:

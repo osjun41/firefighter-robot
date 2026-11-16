@@ -6,8 +6,8 @@ The same random missions run for each configuration, so we can compare detectors
 
 **Status:** tested in simulation. The software-in-the-loop mode (the real robot programs over UDP) is tested in simulation on the laptop.
 
-- **Assumed:** the jet in the mission model is 0.39 L/min and 9.2 m/s at 11.1 V. This is the gear-pump comparison of `sim/water`, which the campaign runs use.
-- **Open:** the KLP02 estimate is 0.42 L/min and 10.0 m/s at 22.2 V ([docs/hardware/water.md](../../docs/hardware/water.md)). The campaign must run again with these values.
+- **Assumed:** the jet in the mission model is 0.39 L/min and 9.2 m/s at 11.1 V. This is the gear-pump comparison of `sim/water`.
+- **Open:** the KLP02 estimate is 0.42 L/min and 10.0 m/s at 22.2 V ([docs/hardware/water.md](../../docs/hardware/water.md)).
 - **Assumed:** the fire model and all model errors below are estimates. No fire test has checked them.
 
 ## What the simulation contains
@@ -69,54 +69,19 @@ Run all commands from the repository root. First build the robot models once: `u
    ```
    MUJOCO_GL=egl uv run python sim/mission/mission.py --seed 1055 --sil
    ```
-5. Run 50 missions of one configuration of `campaign.py` (3 processes). Each mission writes `~/runs/firefighter/mission/campaign/<configuration>/<seed>.json`, so a stopped run continues.
-   ```
-   MUJOCO_GL=egl uv run python sim/mission/campaign.py run f2_real_conf03 50
-   ```
-6. Make the tables and figures from all finished missions (`results/campaign.md`, `results/campaign.json`, `results/fig_*.png`):
-   ```
-   uv run python sim/mission/campaign.py report
-   ```
-7. Rebuild the real-fire sprites in `sprites/`. The script downloads the videos once (`sprites/SOURCES.md`).
+5. (Archived) The Monte Carlo campaign of 50 missions per configuration is in [archive/mission_campaign](../../archive/mission_campaign/campaign.py). It needs the BHL policy and the F2 model with water tanks.
+6. Rebuild the real-fire sprites in `sprites/`. The script downloads the videos once (`sprites/SOURCES.md`).
    ```
    uv run python sim/mission/make_sprites.py
    ```
-8. Check the detection rate against distance (about 5 min, `results/sprite_check.md`):
+7. Check the detection rate against distance (about 5 min, `results/sprite_check.md`):
    ```
    MUJOCO_GL=egl uv run python sim/mission/sprite_check.py
    ```
 
 ## Results
 
-Status: tested in simulation. 50 missions per configuration, real-fire flames, shipped BHL policy, 6 Nm. Full tables: [results/campaign.md](results/campaign.md).
-
-| Configuration | Detector | Success | Fires out | Falls | Missions with a false spray | Water on a fire |
-|---|---|---|---|---|---|---|
-| `f2_kit_real` | colour baseline | 5 of 50 | 32 of 102 | 20 | 22 | 48 % |
-| `f2_real_conf03` | YOLO11n (`vision/detector.py`), `min_conf` 0.3 | 8 of 50 | 37 of 102 | 12 | 0 | 77 % |
-
-Success means every fire out, with no fall or ABORT.
-
-1. Falls and an empty tank end most missions. Falls end 12 to 20 missions of 50, an empty tank 15 to 19.
-2. No tray of 17.5 cm or more goes out (0 of 20 in both configurations). The jet and the fire model limit the tray size.
-3. The YOLO detector gives no false spray in 50 missions, and 77 % of its water hits a fire. The colour baseline sprays at red objects and lamps.
-4. The YOLO detector finds a visible fire in 53 to 75 % of the images at 1 to 5 m. The median largest detection distance is 3.3 m.
-
-Camera change on 6 Nov: these results use f = 476 px, the lens calibration of the B0201.
-Before, the simulation used the old model value f = 283 px, so the flames were 1.7 times too small.
-A control run on 6 Nov used the same code and the same 50 missions with f = 283 px.
-In it, the YOLO detector put out 25 fires of 102 instead of 37, and it found a fire at 4 to 5 m in 26 % of the images instead of 75 %.
-Mission by mission, f = 476 px puts out more fires in 12 missions and fewer in 1 (sign test, p = 0.003).
-The colour baseline also sees the red objects larger: 22 missions with a false spray instead of 16.
-The simulated camera has no lens distortion, so it sees 67.8° instead of the real 80°.
-
-![Fire position error, detection rate and time to put out all fires](results/fig_campaign.png)
-
-Figure 1. Fire position error and detection rate against distance, and the share of missions with all fires out against time.
-
-![Top view of the first 16 missions](results/fig_paths.png)
-
-Figure 2. The first 16 missions of `f2_kit_real`: room, furniture, fires (green: out), red or orange objects, lamp, and the path coloured by state. An X marks a fall.
+The campaign results (50 missions per configuration, BHL policy, F2 with water tanks) moved to [archive/mission_campaign/campaign.md](../../archive/mission_campaign/campaign.md). They describe a design with water tanks, which is removed, and are kept for reference only.
 
 ### Detection rate check
 
@@ -136,15 +101,13 @@ Figure 3. Share of images with the fire detected, per tray size and distance. So
 |---|---|
 | `world.py` | Random mission spec, scene XML, textures, flame sprites with the depth test, droplets, fire model |
 | `mission.py` | One mission: policy, leg drives, servos, camera, detector, `aim/` controller, water, fire. Video and SIL mode |
-| `campaign.py` | Monte Carlo runs in parallel (`run`) and the tables and figures (`report`) |
 | `test_mission.py` | Self-checks: camera and nozzle against `aim/geometry.py`, leg drive, droplets, fire model, sprites |
 | `make_sprites.py`, `sprites/` | Real-fire flame clips from public videos. Sources and licences: [sprites/SOURCES.md](sprites/SOURCES.md) |
 | `sprite_check.py` | Detection rate against distance on rendered robot camera images |
-| `results/` | Campaign tables (`campaign.md`, `campaign.json`), figures and the sprite check |
+| `results/` | The sprite check |
 
 ## Open points and limits
 
-- **Open:** run the campaign again with the KLP02 jet. Falls are the largest problem: test 9 Nm after the gearbox check, or a policy that starts and stops safely.
 - **Open:** use test trays of 15 cm or less with this jet. Or raise the share of water on the tray (now 54 to 78 %).
 - **Not verified:** the flame sprites are flat and have no smoke. The camera has no lens distortion, motion blur or auto exposure.
 - **Not verified:** the fire model comes from literature values, not from a fire test. Water on the floor does not make it slippery.

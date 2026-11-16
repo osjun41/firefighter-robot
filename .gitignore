@@ -42,6 +42,6 @@ docs/hardware/bom_full.md
 pictures-robot/
 docs/share/
 
-# Isaac Lab training (scripts/isaaclab): logs, recordings, and the config play.py writes
+# Isaac Lab training (sim/locomotion): logs, recordings, and the config play.py writes
 logs/
-configs/policy_latest.yaml
+sim/locomotion/configs/policy_latest.yaml

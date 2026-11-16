@@ -1,6 +1,8 @@
 # Trained walking policies
 
-Each folder holds `model_<iteration>.pt` (RSL-RL checkpoint), `policy.onnx` (deployment network), `policy.yaml` (deployment config, paths relative to the repository root) and `params/` (`env.yaml`, `agent.yaml` of the training run). Train and evaluate with [scripts/isaaclab](../scripts/isaaclab/README.md). `…` stands for `Velocity-ASMR-Biped`.
+Each folder holds `model_<iteration>.pt` (RSL-RL checkpoint), `policy.onnx` (deployment network), `policy.yaml` (deployment config, paths relative to the repository root) and `params/` (`env.yaml`, `agent.yaml` of the training run). Train and evaluate with [sim/locomotion](../sim/locomotion/README.md).
+
+**Every policy is selected by its folder name.** `policy_select.py` in this folder resolves a name to its files; with no name, `baseline` is used. Robot: `[legs] policy` in `robot/config.toml` or `legs/run_policy.py --policy <name>`. Simulation scripts: `--policy <name>`. Python: `from policies import policy_select; policy_select.onnx("baseline")` (also `.config(name)`, `.checkpoint(name)`, `.names()`). A new policy must be a folder here first: `sim/locomotion/scripts/rsl_rl/export_onnx.py --checkpoint <model.pt> --name <name>` creates it. `…` stands for `Velocity-ASMR-Biped`.
 
 | Folder | Training task | Description | Obs |
 |---|---|---|---|
@@ -18,5 +20,5 @@ Each folder holds `model_<iteration>.pt` (RSL-RL checkpoint), `policy.onnx` (dep
 
 alpha 1 means torso mass +-1.5 kg, leg mass +-20 %, centre of mass +-3 cm, foot friction 0.8 +- 0.4.
 
-- Only 45-observation policies fit the robot software today. The push-signal policies (46) take the push flag (0/1) as the last observation, which `legs/run_policy.py`, `RlController` and `play_mujoco.py` do not provide. Test them in MuJoCo with `scripts/isaaclab/sim2sim/eval_sustained_push_mujoco.py`.
+- Only 45-observation policies fit the robot software today. The push-signal policies (46) take the push flag (0/1) as the last observation, which `legs/run_policy.py`, `RlController` and `play_mujoco.py` do not provide. Test them in MuJoCo with `sim/locomotion/scripts/sim2sim/eval_sustained_push_mujoco.py`.
 - M4 and M4b are meant to be switched in from `baseline` when a push signal arrives. That switch is not implemented in the deployment code.

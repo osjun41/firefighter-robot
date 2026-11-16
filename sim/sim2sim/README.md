@@ -27,7 +27,7 @@ Run these commands once, from the repository root:
 
 ## Shared helpers (`run.py`)
 
-`legs/`, `robot/`, `sim/mission`, `sim/rl`, `sim/payload` and `docs/hardware/power_calc.py` import `run.py`.
+`legs/`, `robot/`, `sim/mission`, `sim/payload` and `docs/hardware/power_calc.py` import `run.py`.
 It copies the rules of the BHL runtime. "BHL" is the main repository at commit `984741a`. "LL" is the low-level repository at commit `652777c`.
 
 | Part | Value in `run.py` | BHL source |
