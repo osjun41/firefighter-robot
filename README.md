@@ -22,6 +22,7 @@ Team SOBANG · Seoul National University · ASMR 2026.
 | Leg actuator bench tests, drive setup records, sim-vs-real GUI (laptop) | [ASMR_Actuator_Test](ASMR_Actuator_Test/README.md) |
 | Fire detector | [vision](vision/README.md) |
 | Simulations | [sim](sim/README.md) |
+| Locomotion policy training and evaluation | [scripts/isaaclab](scripts/isaaclab/README.md), [policies](policies/README.md) |
 
 ## Quick start on laptop simulation
 

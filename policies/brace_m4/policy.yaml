@@ -100,7 +100,7 @@ action_indices:
 - 11
 action_limit_lower: -10000
 action_limit_upper: 10000
-mjcf_path: source/berkeley_humanoid_lite_assets/data/robots/asmr2026/asmr2026_humanoid_v1/mjcf/scene.xml
+mjcf_path: source/robot_models/data/robots/asmr2026/asmr2026_humanoid_v1/mjcf/scene.xml
 sim_payload:
   mass: 1.0
   position:
