@@ -26,13 +26,17 @@ import numpy as np
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 sys.path[:0] = [str(HERE), str(HERE.parent / "payload")]
+sys.path.insert(0, str(ROOT))
+from policies import policy_select  # noqa: E402
 import bhl_legacy as s2s  # noqa: E402  legacy BHL simulator shared helpers (the F3 policy runs on the BHL model)
 import hw_risks as hw  # noqa: E402  sim/sim2sim/hw_risks.py: drive model
 import report  # noqa: E402  sim/payload/report.py: palette and plot style
 
 plt = report.plt
 JSON = s2s.OUT / "gap_study.json"
-POLICIES = {"shipped": s2s.POLICY, "f1_v1": HERE.parent / "rl" / "policies" / "f1_v1.onnx"}
+# FIXME(policy): shipped, f1_v1 and f3_v1 are BHL-model policies run on the BHL F3 model. When the models are unified (source/robot_models),
+# run the study with policies trained on the ASMR model and add `baseline`.
+POLICIES = {"shipped": s2s.POLICY, "f1_v1": policy_select.onnx("f1_v1")}
 WORKERS = 6  # shared machine: a GPU training job and a render run at the same time
 SEEDS = hw.SEEDS  # 10 seeds x 4 commands = 40 runs per case and policy, as hw_risks.py
 PUSH_DIRS = {"forward": 0.0, "back": math.pi, "left": math.pi / 2, "right": -math.pi / 2}
@@ -448,9 +452,9 @@ Status: planned. Measure first the differences with the largest effect. Each ste
 
 ## Recommended randomization ranges for the next training
 
-Status: planned. The column "f1_v1" gives the ranges of its last training stage (`sim/rl/policies/f1_v1.json`, `sim/rl/f1_env.py`).
+Status: planned. The column "f1_v1" gives the ranges of its last training stage (`policies/f1_v1/train_ranges.json`, `archive/rl_f1/f1_env.py`).
 The recommended ranges cover the tested values with some margin.
-f3_v1 (stage E) uses them, with a constant hose pull of 0 to 2.5 N plus a changing pull of 0 to 1.5 N ([sim/rl](../../rl/README.md)).
+f3_v1 (stage E) uses them, with a constant hose pull of 0 to 2.5 N plus a changing pull of 0 to 1.5 N ([archive/rl_f1](../../../archive/rl_f1/README.md)).
 
 | Term | f1_v1 | Recommended | Reason |
 |---|---|---|---|
@@ -489,7 +493,7 @@ At 22.2 V, the no-load speed at the joint is about 23 rad/s (150KV, hip and knee
   A bisection finds the largest push with no fall in the next 3 s (resolution 0.375 N s).
   "Smallest standing push" is the smallest of these 8 values. 0 means that the robot fell without a push.
 - Fall: a torso tilt above 0.78 rad or a large height drop, as in `run.py`.
-- Knee: F3 has no side tanks. So this study does not clip the knee target at 1.4 rad, unlike `sim/rl/f1_eval.py`.
+- Knee: F3 has no side tanks. So this study does not clip the knee target at 1.4 rad, unlike `archive/rl_f1/f1_eval.py`.
 
 ### The changes
 

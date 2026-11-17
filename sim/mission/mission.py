@@ -40,6 +40,7 @@ def load_module(path, name):
 
 
 s2s = load_module(ROOT / "sim" / "sim2sim" / "bhl_legacy.py", "s2s_bhl_legacy")
+# FIXME(policy): the missions run the shipped BHL policy on the BHL model. Select a policy from policies/ after the models are unified.
 ACTION_SCALE, DEFAULT, NOISE, POLICY, TILT_LIMIT = s2s.ACTION_SCALE, s2s.DEFAULT, s2s.NOISE, s2s.POLICY, s2s.TILT_LIMIT
 observation, quat_rotate_inverse = s2s.observation, s2s.quat_rotate_inverse
 

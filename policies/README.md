@@ -20,5 +20,7 @@ Each folder holds `model_<iteration>.pt` (RSL-RL checkpoint), `policy.onnx` (dep
 
 alpha 1 means torso mass +-1.5 kg, leg mass +-20 %, centre of mass +-3 cm, foot friction 0.8 +- 0.4.
 
+- **`info.json`** says which robot model a policy was trained for (`trained_on`: `asmr2026` or `bhl`). A folder with a `policy.yaml` and no `info.json` is an ASMR policy. `payload` (`none`, `box_1kg`, `f3`) says what was on the torso in training, when `export_onnx.py --payload` recorded it. Code for the ASMR robot (`legs/run_policy.py`, `sim/sim2sim/run.py`) warns about the others and still loads them: their joint convention, default pose and gains differ, so they may behave oddly (`policy_select.onnx(..., strict=True)` refuses instead).
+- `f1_v1` and `f3_v1` (45 observations, `trained_on: bhl`) are our JAX policies for the BHL-model F2 and F3 (card in `train_ranges.json`, training code in [archive/rl_f1](../archive/rl_f1/README.md)). `gap_study.py` uses `f1_v1` on the BHL model (FIXME(policy)); no code uses `f3_v1`. They have no `policy.yaml` and have not run on the robot.
 - Only 45-observation policies fit the robot software today. The push-signal policies (46) take the push flag (0/1) as the last observation, which `legs/run_policy.py`, `RlController` and `play_mujoco.py` do not provide. Test them in MuJoCo with `sim/locomotion/scripts/sim2sim/eval_sustained_push_mujoco.py`.
 - M4 and M4b are meant to be switched in from `baseline` when a push signal arrives. That switch is not implemented in the deployment code.

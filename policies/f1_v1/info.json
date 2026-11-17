@@ -1,0 +1,5 @@
+{
+ "trained_on": "bhl",
+ "observation_size": 45,
+ "note": "Trained for F1/F2 on the BHL biped model (sim/payload/models.py). Not for the ASMR model or the robot runtime."
+}

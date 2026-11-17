@@ -1,5 +1,5 @@
 {
- "policy": "sim/rl/policies/f3_v1.onnx",
+ "policy": "policies/f3_v1/policy.onnx",
  "status": "tested in simulation (not measured on laptop, not measured on board)",
  "interface": {
   "input": "obs float32 [1, 45]: command (3), gyro (3), projected gravity (3), joint pos - default (12), joint vel (12), last action (12)",
@@ -36,11 +36,11 @@
   "mjx_impl": "warp",
   "gpu": "RTX 3090, shared with CPU simulation jobs"
  },
- "model": "sim/payload/models/bhl_F3.xml (trolley version F3, 14.58 kg), training copy built by sim/rl/f1_env.py build_model()",
+ "model": "sim/payload/models/bhl_F3.xml (trolley version F3, 14.58 kg), training copy built by archive/rl_f1/f1_env.py build_model()",
  "stages": [
   {
    "run": "f3_a",
-   "starts_from": "weights of sim/rl/policies/f1_v1.onnx",
+   "starts_from": "weights of policies/f1_v1/policy.onnx",
    "note": "stage A: mild ranges, 6 Nm nominal, no pushes",
    "model": "bhl_F3.xml",
    "env_steps": 60555264,
@@ -708,7 +708,7 @@
   }
  ],
  "results": {
-  "file": "sim/rl/results/f3_eval_f3_v1.md (bhl_F3, 6 Nm, CPU MuJoCo 2 kHz)",
+  "file": "archive/rl_f1/results/f3_eval_f3_v1.md (bhl_F3, 6 Nm, CPU MuJoCo 2 kHz)",
   "status": "tested in simulation",
   "policies": [
    "shipped",

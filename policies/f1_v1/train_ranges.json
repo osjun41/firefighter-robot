@@ -1,5 +1,5 @@
 {
- "policy": "sim/rl/policies/f1_v1.onnx",
+ "policy": "policies/f1_v1/policy.onnx",
  "status": "tested in simulation (not measured on laptop, not measured on board)",
  "interface": {
   "input": "obs float32 [1, 45]: command (3), gyro (3), projected gravity (3), joint pos - default (12), joint vel (12), last action (12)",
@@ -36,7 +36,7 @@
   "mjx_impl": "warp",
   "gpu": "RTX 3090, shared with another training job"
  },
- "model": "sim/payload/models/bhl_F1.xml (15.24 kg), training copy built by sim/rl/f1_env.py build_model()",
+ "model": "sim/payload/models/bhl_F1.xml (15.24 kg), training copy built by archive/rl_f1/f1_env.py build_model()",
  "stages": [
   {
    "run": "f1_d",
@@ -281,5 +281,5 @@
    "warm_std": 0.3
   }
  ],
- "results": "sim/rl/results/f2_eval_f1_v1.md (evaluated on bhl_F2)"
+ "results": "archive/rl_f1/results/f2_eval_f1_v1.md (evaluated on bhl_F2)"
 }

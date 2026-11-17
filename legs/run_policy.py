@@ -36,7 +36,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 from policies import policy_select  # noqa: E402
 
-POLICY = policy_select.onnx(CONF["legs"].get("policy"))  # NAME in policies/, empty = baseline
+POLICY = policy_select.onnx(CONF["legs"].get("policy"), robot="asmr2026")  # NAME in policies/, empty = baseline
 PORTS = CONF["ports"]
 
 
@@ -120,6 +120,9 @@ def run(robot, read_imu, ready, seconds, cmd, log=print, pose_out=None):
     """Ramp to the default pose, hold it until ready() is True, then run the policy. Return why it stopped.
     cmd: (vx, vy, yaw rate), or a function that gives them at each tick (the walk bridge)."""
     policy = ort.InferenceSession(str(POLICY), providers=["CPUExecutionProvider"])
+    log(f"Walking policy: {POLICY.parent.name} ({POLICY.relative_to(ROOT)})")
+    if text := policy_select.mismatch(POLICY.parent.name, "asmr2026"):
+        log("WARNING: " + text)
     robot.enable()
     log("Ramp to the default pose in 2 s. Then lower the robot until it stands, and press Enter.")
     if f := robot.move_to(rb.DEFAULT, 2.0, until=ready):
@@ -172,7 +175,7 @@ def main():
     signal.signal(signal.SIGTERM, _stop)
     if a.policy:
         global POLICY
-        POLICY = policy_select.onnx(a.policy)
+        POLICY = policy_select.onnx(a.policy, robot="asmr2026")
 
     if a.check:
         check_policy()

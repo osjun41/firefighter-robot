@@ -209,7 +209,9 @@ def apply_dynamics(robot, plan, base_id, leg_ids, nominal_payload=None):
     if nominal_payload is not None:
         payload_kg = torch.full((n,), float(nominal_payload["mass"]))
         position, size = nominal_payload["position"], nominal_payload["size"]
+        given_inertia = nominal_payload.get("inertia")  # several rigid parts (F3): their summed inertia
     else:
+        given_inertia = None
         payload_kg = torch.tensor([dyn.get("payload_kg", 0.0) for _, dyn, _ in plan], dtype=torch.float32)
         position, size = PAYLOAD_POSITION_M, PAYLOAD_SIZE_M
     with_payload = torch.nonzero(payload_kg > 0).flatten()
@@ -219,7 +221,8 @@ def apply_dynamics(robot, plan, base_id, leg_ids, nominal_payload=None):
             masses[with_payload, base_id], coms[with_payload, base_id, :3],
             inertias[with_payload, base_id].reshape(m, 3, 3), payload_kg[with_payload],
             torch.tensor(position, dtype=torch.float32).expand(m, 3),
-            box_inertia(payload_kg[with_payload], size),
+            box_inertia(payload_kg[with_payload], size) if given_inertia is None
+            else torch.tensor(given_inertia, dtype=torch.float32).expand(m, 3, 3),
         )
         masses[with_payload, base_id] = new_mass
         coms[with_payload, base_id, :3] = new_com

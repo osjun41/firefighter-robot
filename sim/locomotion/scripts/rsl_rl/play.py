@@ -3,8 +3,13 @@
 """Launch Isaac Sim Simulator first."""
 
 import argparse
+import sys
+from pathlib import Path
 
 from isaaclab.app import AppLauncher
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[4]))  # repository root: source/robot_models
+from source.robot_models.robots import asmr2026_payload  # noqa: E402
 
 # local imports
 import cli_args  # isort: skip
@@ -18,6 +23,7 @@ parser.add_argument(
 )
 parser.add_argument("--num_envs", type=int, default=None, help="Number of environments to simulate.")
 parser.add_argument("--task", type=str, default=None, help="Name of the task.")
+asmr2026_payload.add_argument(parser)
 # append RSL-RL cli arguments
 cli_args.add_rsl_rl_args(parser)
 # append AppLauncher cli args
@@ -49,6 +55,7 @@ from isaaclab_tasks.utils import get_checkpoint_path, parse_env_cfg
 # Import extensions to set up environment tasks
 import berkeley_humanoid_lite.tasks  # noqa: F401
 from source.robot_models.robots.asmr2026_humanoid import ASMR2026_HUMANOID_CFG, MJCF_SCENE_PATH
+from berkeley_humanoid_lite.tasks.locomotion.velocity.config.asmr_biped.payload import select_payload, sim_payload
 
 
 def main():
@@ -57,6 +64,7 @@ def main():
     env_cfg = parse_env_cfg(
         args_cli.task, device=args_cli.device, num_envs=args_cli.num_envs, use_fabric=not args_cli.disable_fabric
     )
+    select_payload(env_cfg, args_cli.payload)
     agent_cfg: RslRlOnPolicyRunnerCfg = cli_args.parse_rsl_rl_cfg(args_cli.task, args_cli)
 
     # specify directory for logging experiments
@@ -175,9 +183,8 @@ def main():
     # === MuJoCo sim2sim scene: the course robot's MJCF (default: Berkeley Humanoid Lite), and the task's payload ===
     if env_cfg.scene.robot.spawn.usd_path == ASMR2026_HUMANOID_CFG.spawn.usd_path:
         deploy_config["mjcf_path"] = MJCF_SCENE_PATH
-    payload = getattr(env_cfg.events, "add_payload", None)
-    if payload is not None:
-        deploy_config["sim_payload"] = {key: payload.params[key] for key in ("mass", "position", "size")}
+    if (payload := sim_payload(env_cfg)) is not None:
+        deploy_config["sim_payload"] = payload
     if not os.path.exists("configs"):
         os.makedirs("configs")
     OmegaConf.save(deploy_config, "sim/locomotion/configs/policy_latest.yaml")

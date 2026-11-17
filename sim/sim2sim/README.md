@@ -53,6 +53,8 @@ Self-check (the bare biped stands 5 s with a zero command):
 uv run python sim/sim2sim/run.py --check
 ```
 
+The ASMR runner `run.py` is the one that follows `policies/` and the ASMR model. It takes `--policy NAME` and `--payload NAME` (`none`, `box_1kg` = default, `f3` = the 47 F3 parts, 4.14 kg more; see `source/robot_models/robots/asmr2026_payload.py`). Results of a non-default payload go to `results/results_<payload>.md`. Baseline with the F3 parts (16.35 kg in all) does not fall in 20 s in any of the four commands and walks at 0.27 m/s for a 0.3 m/s command (`results/results_f3.md`). This is MuJoCo only, with the ideal MJCF actuators and no drive effects, so it says the baseline is not thrown off by the F3 mass, not that it walks on the robot.
+
 ## Drive risks (`hw_risks.py`)
 
 The robot uses XDrive MINI drives (an ODrive v3.6 clone, firmware v0.5.1). The drive does the PD control.
@@ -115,7 +117,7 @@ Each case runs the shipped policy and f1_v1, with 4 commands × 10 seeds of 20 s
 |---|---|---|
 | Self-check | `uv run python sim/sim2sim/gap_study.py --quick` | 25 s |
 | All cases, both policies | `uv run python sim/sim2sim/gap_study.py` | 56 min with 6 processes |
-| Add another policy to the results | `uv run python sim/sim2sim/gap_study.py --policy sim/rl/policies/f3_v1.onnx` | about 28 min |
+| Add another policy to the results | `uv run python sim/sim2sim/gap_study.py --policy policies/f3_v1/policy.onnx` | about 28 min |
 | Tables and figure again | `uv run python sim/sim2sim/gap_study.py --report` | 1 s |
 
 `--cases ID,ID` runs only some cases and adds them to the results. The run times are for a shared 8-core desktop PC.

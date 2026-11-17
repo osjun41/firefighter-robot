@@ -51,8 +51,9 @@ def load_mujoco_model(cfg: Cfg) -> mujoco.MjModel:
 
     The scene is the config's mjcf_path. Every actuator
     becomes a torque motor (the course robot's MJCF has position servos), since the PD loop of MujocoSimulator
-    computes the joint torques. An optional sim_payload entry (mass in kg, box center in the base frame, edge
-    lengths in m) welds a solid box to the base, mass only, like the payload event of the training task.
+    computes the joint torques. An optional sim_payload entry welds the payload to the base, mass only, like the
+    payload event of the training task: one solid box (mass in kg, box center in the base frame, edge lengths in m),
+    or `parts`, a list of such boxes (the F3 parts), each a separate rigid body.
     """
     mjcf_path = cfg.get("mjcf_path", None)
     if mjcf_path is None:
@@ -69,15 +70,17 @@ def load_mujoco_model(cfg: Cfg) -> mujoco.MjModel:
 
     payload = cfg.get("sim_payload", None)
     if payload is not None:
-        a, b, c = payload.size
-        spec.body("base").add_body(
-            name="payload",
-            explicitinertial=True,
-            mass=payload.mass,
-            ipos=list(payload.position),
-            inertia=[payload.mass / 12.0 * (b**2 + c**2), payload.mass / 12.0 * (a**2 + c**2),
-                     payload.mass / 12.0 * (a**2 + b**2)],
-        )
+        parts = payload.parts if "parts" in payload else [payload]
+        for part in parts:
+            a, b, c = part.size
+            spec.body("base").add_body(
+                name=part.get("name", "payload") if "parts" in payload else "payload",
+                explicitinertial=True,
+                mass=part.mass,
+                ipos=list(part.position),
+                inertia=[part.mass / 12.0 * (b**2 + c**2), part.mass / 12.0 * (a**2 + c**2),
+                         part.mass / 12.0 * (a**2 + b**2)],
+            )
 
     return spec.compile()
 

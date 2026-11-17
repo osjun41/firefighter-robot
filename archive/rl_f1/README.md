@@ -12,10 +12,7 @@ The evaluation compares policies with the shipped BHL policy in CPU MuJoCo, on t
 | File | What it is |
 |---|---|
 | `sim/sim2sim/policy_biped_25hz_a.onnx` | The shipped BHL policy (MIT licence) |
-| `policies/f1_v1.onnx` | Our policy for F1 and F2, fine-tuned from the shipped weights |
-| `policies/f1_v1.json` | Card of f1_v1: interface, training stages and settings |
-| `policies/f3_v1.onnx` | Our policy for the trolley version F3, fine-tuned from f1_v1 with wide ranges for the real robot |
-| `policies/f3_v1.json` | Card of f3_v1: interface, training stages, ranges and results |
+| `../../policies/f1_v1/`, `../../policies/f3_v1/` | Our policies f1_v1 (F1 and F2, fine-tuned from the shipped weights) and f3_v1 (the trolley version F3, fine-tuned from f1_v1 with wide ranges for the real robot). Moved to `policies/`: `policy.onnx`, `train_ranges.json` (the card: interface, training stages, ranges, results) and `info.json`. The commands below still write and read `policies/<name>.onnx` in the old layout. |
 
 All three files have the same interface: 45 inputs, 12 outputs, joint target = default + 0.25 × action, 25 Hz.
 So f1_v1 and f3_v1 are drop-in files for `legs/run_policy.py` and `sim/sim2sim/run.py`.
@@ -303,7 +300,7 @@ The targets of the F3 training:
 
 ### Gap study of the trolley version (`sim/sim2sim/gap_study.py`)
 
-`uv run python sim/sim2sim/gap_study.py --policy sim/rl/policies/f3_v1.onnx` adds f3_v1 to `sim/sim2sim/results/gap_study.md`.
+`uv run python sim/sim2sim/gap_study.py --policy policies/f3_v1/policy.onnx` adds f3_v1 to `sim/sim2sim/results/gap_study.md`.
 It took 35 min with 6 processes. R is the realistic case. P is the pessimistic case. R+ is R with one value moved to its value in P.
 
 | Cases (runs per policy) | Shipped | f1_v1 | f3_v1 |

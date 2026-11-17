@@ -38,7 +38,7 @@ The ranking below counts the shipped policy and f1_v1. f3_v1 trained with these 
 4. **A hose pull that changes is easy, a constant one is not.** A pull from 0 to 3 N that changes every 4 s adds 2 falls. A constant 3 N pull adds 12.
 5. **With every error at its worst value (case P), every run falls.** With a 9 N·m torque limit, 77 of 80 runs still fall in P, but R drops from 5 to 1 fall in 40.
 6. The common thread is the knee torque. In the worst R cases, the knee is at its limit 40 to 57 % of the time.
-7. **Our new policy f3_v1 handles these errors in the simulation.** It starts from f1_v1 and trains with the ranges of the gap study ([sim/rl](../../sim/rl/README.md#f3-the-trolley-version-and-the-policy-f3_v1)).
+7. **Our new policy f3_v1 handles these errors in the simulation.** It starts from f1_v1 and trains with the ranges of the gap study ([archive/rl_f1](../../archive/rl_f1/README.md#f3-the-trolley-version-and-the-policy-f3_v1), policy in `policies/f3_v1`).
    - It does not fall in R. It falls once in the 240 runs of R with one value at its worst.
    - With four drive errors together (inertia, friction, torque, latency), it falls in 1 of 40 runs. The shipped policy falls in 29, f1_v1 in 21.
    - It walks at 0.20 m/s at a 0.3 m/s command. The shipped policy walks at 0.25 m/s.

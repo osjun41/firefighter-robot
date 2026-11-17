@@ -4,8 +4,12 @@
 
 import argparse
 import sys
+from pathlib import Path
 
 from isaaclab.app import AppLauncher
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[4]))  # repository root: source/robot_models
+from source.robot_models.robots import asmr2026_payload  # noqa: E402
 
 # local imports
 import cli_args  # isort: skip
@@ -20,6 +24,7 @@ parser.add_argument("--num_envs", type=int, default=None, help="Number of enviro
 parser.add_argument("--task", type=str, default=None, help="Name of the task.")
 parser.add_argument("--seed", type=int, default=None, help="Seed used for the environment")
 parser.add_argument("--max_iterations", type=int, default=None, help="RL Policy training iterations.")
+asmr2026_payload.add_argument(parser)
 # append RSL-RL cli arguments
 cli_args.add_rsl_rl_args(parser)
 # append AppLauncher cli args
@@ -61,6 +66,7 @@ from isaaclab_tasks.utils.hydra import hydra_task_config
 
 # Import extensions to set up environment tasks
 import berkeley_humanoid_lite.tasks  # noqa: F401
+from berkeley_humanoid_lite.tasks.locomotion.velocity.config.asmr_biped.payload import select_payload
 
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
@@ -73,6 +79,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     """Train with RSL-RL agent."""
     # override configurations with non-hydra CLI arguments
     agent_cfg = cli_args.update_rsl_rl_cfg(agent_cfg, args_cli)
+    select_payload(env_cfg, args_cli.payload)
     env_cfg.scene.num_envs = args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs
     agent_cfg.max_iterations = (
         args_cli.max_iterations if args_cli.max_iterations is not None else agent_cfg.max_iterations

@@ -144,3 +144,9 @@ def test_imu_level_fix():
     tilt, rot = imu.level_fix(g, np.eye(3))
     assert tilt == approx(np.degrees(np.arccos(-g[2])), abs=1e-9) and 2.9 < tilt < 3.1
     assert np.allclose(rot @ g, [0.0, 0.0, -1.0]) and np.allclose(rot @ rot.T, np.eye(3))
+
+
+def test_configured_policy_loads():
+    """The policy named in robot/config.toml ([legs] policy) loads, has 45 observations and 12 actions."""
+    import run_policy
+    run_policy.check_policy()

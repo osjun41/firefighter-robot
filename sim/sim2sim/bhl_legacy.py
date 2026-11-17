@@ -23,6 +23,7 @@ HERE = Path(__file__).resolve().parent
 MODELS = HERE.parent / "payload" / "models"
 OUT = HERE / "results"
 OUT.mkdir(exist_ok=True)
+# FIXME(policy): BHL policy for the BHL model. Move it to policies/ (trained_on "bhl") or replace it when the models are unified.
 POLICY = HERE / "policy_biped_25hz_a.onnx"  # BHL checkpoints/policy_biped_25hz_a.onnx, commit 984741a
 
 # BHL configs/policy_biped_25hz_a.yaml

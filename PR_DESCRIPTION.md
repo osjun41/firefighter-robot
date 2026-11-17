@@ -54,6 +54,13 @@ Compared with the SOBANG repository: every training and evaluation script is her
 - `list_envs.py` listed nothing (filter was `Template-`); it now lists `Velocity-*`.
 - JAX/MJX training (`sim/rl`) and the mission campaign (`campaign.py`) moved to `archive/` (nothing imports it; see `archive/README.md`). Walking training is Isaac Lab only. No script now evaluates the whole mission.
 
+**Payload choice and policies in `policies/`**
+
+- `--payload NAME` (`none`, `box_1kg` = default, `f3`) for `train.py`, `play.py`, `play_onnx.py`, `export_onnx.py` and `sim/sim2sim/run.py`. `f3` is the 47 CAD parts of the F3 design (4.14 kg), listed in `source/robot_models/robots/asmr2026_payload.py` from `cad/final/out_f3/layout.json`. The parts are rigid and have no collision: MuJoCo welds each as a body, Isaac Lab merges them into the base link (`mdp.add_body_payload` takes an `inertia`). Nothing is removed from the course torso, so F3 is an upper bound.
+- `f1_v1` and `f3_v1` (BHL model) moved from `archive/rl_f1/policies/` to `policies/`, with `info.json` (`trained_on`). The ASMR robot code warns about a policy trained on another model and still loads it. The robot keeps `baseline`.
+- Code that runs the BHL model with the BHL policy (`mission`, `hw_risks`, `gap_study`, `payload/torso_tank.py`, `bhl_legacy.py`) is marked `FIXME(policy)`: baseline cannot walk the BHL model.
+- Exec bits restored for `scripts/fetch_bhl_assets.sh` and `robot/setup/install.sh`; stale `sim/rl` paths in the policy cards fixed.
+
 **Docs**
 
 - `README.md`: new "Laptop or robot?" table and "Put a new policy on the robot" (5 steps; the network is named only by `[legs] policy`, a folder name).
@@ -62,7 +69,7 @@ Compared with the SOBANG repository: every training and evaluation script is her
 
 **Tests and CI**
 
-- New `sim/locomotion/tests/test_layout.py` (9 tests, no GPU): scripts compile, our own imports resolve to files, `policy.yaml` files and their `mjcf_path` exist, no old path is used, one robot definition, policy selection by name (default, error text, every folder resolves, no `--config`), no old task registered. Checked by breaking an import on purpose: the test fails.
+- New `sim/locomotion/tests/test_layout.py` (16 tests, no GPU): scripts compile, our own imports resolve to files, `policy.yaml` files and their `mjcf_path` exist, no old path is used, one robot definition, policy selection by name (default, error text, every folder resolves, no `--config`), no old task registered. Checked by breaking an import on purpose: the test fails.
 - New CI step "Locomotion layout".
 
 ## Not included
@@ -77,17 +84,19 @@ Fresh clone of this branch, mujoco 3.15.0 (the pinned version), models built fir
 
 | Check | Result |
 |---|---|
-| `pytest sim/locomotion/tests` | 9 passed |
-| `pytest` (whole repository) | 66 passed, 1 failed (`$USER`, also on `main`) |
+| `pytest sim/locomotion/tests` | 16 passed (includes the F3 merge against MuJoCo's own fusion) |
+| `pytest` (whole repository) | 69 passed, 1 failed (`$USER`, also on `main`) |
 | `legs/run_policy.py --check [--policy NAME]`, `sim/sim2sim/run.py --check [--policy NAME]` | passed; unknown name lists the policies; 46-observation policy refused on the robot path |
 | Windows, Isaac Sim 4.5 / Isaac Lab 2.1 headless | tasks register (before the task cleanup: 29, now 16); `eval_tracking_mujoco.py` on `baseline`: 0 falls, tracking close to the commands |
 | All 16 `policy.yaml`: network and `mjcf_path` exist | 16 of 16 |
 
-**Not run after the `--policy` change** (needs Isaac Lab and a GPU; the scripts were compiled and the resolver tested): training, `export_onnx.py`, and the Isaac evaluation scripts. Please run levels B and C of "Verify locally" in `sim/locomotion/README.md` once before relying on them.
+`sim/sim2sim/run.py --payload f3`: baseline does not fall in 20 s with the F3 parts (16.35 kg) in any of 4 commands (MuJoCo, ideal actuators).
+
+**Not run (needs Isaac Lab and a GPU)**: the Isaac side of `--payload` (`select_payload`, `add_body_payload(inertia=...)`; compiled and the maths checked against MuJoCo). **Not run after the `--policy` change** (needs Isaac Lab and a GPU; the scripts were compiled and the resolver tested): training, `export_onnx.py`, and the Isaac evaluation scripts. Please run levels B and C of "Verify locally" in `sim/locomotion/README.md` once before relying on them.
 
 ## Next (not in this PR)
 
-- Merge the F3 structure from the other branch, then unify the robot model in `source/robot_models`: remove `third_party/` and `bhl_legacy.py`, move `mission`, `hw_risks` and `payload` to the course model and the named policy, rerun them.
+- Unify the robot model in `source/robot_models`: remove `third_party/` and `bhl_legacy.py`, move `mission`, `hw_risks` and `payload` to the course model and the named policy, rerun them.
 - Payload: water tank removed, spray device kept (water by IV drip, so no water payload). Measured leg masses (+677 g) and torso/IMU masses are applied with F3.
 
 ## Notes for reviewers

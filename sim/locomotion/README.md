@@ -44,6 +44,16 @@ uv run --project sim/locomotion sim/locomotion/scripts/list_envs.py     # regist
 
 The default run (4096 environments, 6000 iterations) took about 2 h 20 min on an RTX 4060.
 
+**Payload is chosen by name too.** `train.py`, `play.py` and `play_onnx.py` take `--payload NAME` (`none`, `box_1kg`, `f3`; without it the task's own `box_1kg` stays). `box_1kg` is the 1 kg box of the baseline. `f3` is the 47 parts of our F3 design (about 4.1 kg: batteries, computer, IMU, pan-tilt servos, camera, nozzle, pod), listed one by one in `source/robot_models/robots/asmr2026_payload.py` from `cad/final/out_f3/layout.json`. The parts are rigid and have no collision, so Isaac Lab merges them into the base link (mass, centre of mass and inertia by the parallel-axis sum, `mdp.add_body_payload` with `inertia`), and MuJoCo keeps them as separate bodies. Both give the same torso (`tests/test_layout.py` checks it against MuJoCo's own fusion). The course torso (5.57 kg) is taken to hold its own electronics, so nothing is removed from it: F3 is an upper bound.
+
+```bash
+uv run --project sim/locomotion sim/locomotion/scripts/rsl_rl/train.py --task Velocity-ASMR-Biped-v0 --payload f3 --headless
+uv run --project sim/locomotion sim/locomotion/scripts/rsl_rl/export_onnx.py --checkpoint <model.pt> --name baseline_f3 --payload f3
+uv run python sim/sim2sim/run.py --policy baseline_f3 --payload f3     # MuJoCo, no Isaac
+```
+
+`export_onnx.py --payload NAME` writes the payload into `info.json` and into the `sim_payload` of `policy.yaml`, so MuJoCo scripts weld the same parts. The saved `params/env.yaml` of a run also records the payload event.
+
 **Policies are chosen by name.** Every evaluation, play and recording script takes `--policy NAME` (a folder in `policies/`, default `baseline`); the `s2r/` scripts use `policies/<name>/model_*.pt`. `export_onnx.py --checkpoint <model.pt> --name NAME` creates `policies/NAME/` from a training run. Copy `params/` of the run into it too.
 
 **To put a new network on the robot:** make `policies/<name>/` (`export_onnx.py` or copy `model_*.pt`, `policy.onnx`, `policy.yaml` and `params/`), then follow [Put a policy on the robot](../../README.md#put-a-new-policy-on-the-robot).
@@ -69,9 +79,9 @@ The old names `Velocity-Berkeley-Humanoid-Lite-Biped-*` are no longer registered
 
 | Script | Does | Runs in |
 |---|---|---|
-| `train.py` | PPO training with RSL-RL | Isaac |
-| `play.py` | Plays a checkpoint, exports ONNX and writes `configs/policy_latest.yaml` | Isaac |
-| `play_onnx.py` | Plays an exported ONNX network in the training environment | Isaac |
+| `train.py` | PPO training with RSL-RL (`--payload NAME`) | Isaac |
+| `play.py` | Plays a checkpoint, exports ONNX and writes `configs/policy_latest.yaml` (`--payload NAME`) | Isaac |
+| `play_onnx.py` | Plays an exported ONNX network in the training environment (`--payload NAME`) | Isaac |
 | `export_onnx.py` | Checkpoint to `policies/<name>/policy.onnx` and `policy.yaml` without Isaac Sim; leaves `policy_latest.yaml` alone | none |
 | `expand_checkpoint.py` | Warm start for a task whose observation gained terms at the end (e.g. the push signal) | none |
 

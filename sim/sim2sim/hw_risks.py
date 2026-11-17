@@ -99,6 +99,7 @@ def session(path):
 @lru_cache(maxsize=1)
 def load():
     """Model and policy, once per worker process."""
+    # FIXME(policy): the shipped BHL policy on the BHL model. Use a policy trained on the ASMR model after the models are unified.
     return load_model(MODEL), session(s2s.POLICY)
 
 
@@ -111,7 +112,7 @@ def trap_step(p, v, goal, dt):
     return p + v * dt, v
 
 
-NOZZLE = np.array([0.03, 0.0, 0.944])  # m, base frame: the nozzle, where the hose pulls (as sim/rl/f1_env.py)
+NOZZLE = np.array([0.03, 0.0, 0.944])  # m, base frame: the nozzle, where the hose pulls (as archive/rl_f1/f1_env.py)
 HOSE_PERIOD = 4.0  # s, period of the slowly varying hose pull
 
 

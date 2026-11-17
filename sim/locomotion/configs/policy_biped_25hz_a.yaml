@@ -1,4 +1,5 @@
 
+# FIXME(policy): config of the shipped BHL policy (BHL model, not ASMR). Not used by the ASMR scripts; move it with the policy or remove it.
 # === Policy configurations ===
 policy_checkpoint_path: "checkpoints/policy_biped_25hz_a.onnx"
 

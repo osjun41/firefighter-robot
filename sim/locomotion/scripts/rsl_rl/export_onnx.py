@@ -8,10 +8,15 @@ so every script and the robot select it by NAME afterwards (--policy NAME).
 
 Usage (from the repository root):
     uv run --project sim/locomotion sim/locomotion/scripts/rsl_rl/export_onnx.py \
-        --checkpoint logs/rsl_rl/asmr_biped/<run>/model_5999.pt --name my_policy [--template baseline]
+        --checkpoint logs/rsl_rl/asmr_biped/<run>/model_5999.pt --name my_policy [--template baseline] [--payload f3]
+
+--payload NAME says which payload the policy was trained with (none, box_1kg or f3, as train.py --payload). It is
+written to info.json and to the sim_payload of policy.yaml, so MuJoCo scripts weld the same parts. Without it,
+the template's sim_payload stays and info.json does not name a payload.
 """
 
 import argparse
+import json
 import shutil
 import sys
 from pathlib import Path
@@ -21,6 +26,7 @@ from omegaconf import OmegaConf
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4]))  # repository root: policies/policy_select.py
 from policies import policy_select  # noqa: E402
+from source.robot_models.robots import asmr2026_payload  # noqa: E402
 
 parser = argparse.ArgumentParser(description="Export an RSL-RL actor to ONNX with a deployment config.")
 parser.add_argument("--checkpoint", type=str, required=True, help="RSL-RL checkpoint (model_*.pt).")
@@ -30,6 +36,7 @@ parser.add_argument("--template", type=str, default=policy_select.DEFAULT,
                     help="Name of the policy whose policy.yaml is copied (same robot and task). Default baseline.")
 parser.add_argument("--action_limit", type=float, default=None,
                     help="Action bound the policy was trained with (the runner's clip_actions), for the config.")
+asmr2026_payload.add_argument(parser)
 args = parser.parse_args()
 
 
@@ -66,8 +73,16 @@ config = OmegaConf.load(policy_select.config(args.template))
 config.policy_checkpoint_path = f"policies/{args.name}/policy.onnx"
 if args.action_limit is not None:
     config.action_limit_lower, config.action_limit_upper = -args.action_limit, args.action_limit
+if args.payload is not None:
+    config.pop("sim_payload", None)
+    if (payload := asmr2026_payload.sim_payload(args.payload)) is not None:
+        config.sim_payload = payload
 config_path = out_dir / "policy.yaml"
 OmegaConf.save(config, config_path)
 shutil.copy2(args.checkpoint, out_dir / Path(args.checkpoint).name)
+info = {"trained_on": "asmr2026", "observation_size": 45}
+if args.payload is not None:
+    info["payload"] = args.payload
+(out_dir / "info.json").write_text(json.dumps(info, indent=1) + "\n")
 print(f"[INFO] {args.checkpoint} (iteration {checkpoint.get('iter')}, {num_obs} observations) -> {onnx_path}")
 print(f"[INFO] Deployment config: {config_path}")

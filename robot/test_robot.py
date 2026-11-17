@@ -34,7 +34,7 @@ def test_config_ports_unique_and_offset(monkeypatch):
     assert rc.load()["ports"]["detections"] == base + 7
     sys.path.insert(0, str(rc.ROOT))
     from policies import policy_select
-    assert policy_select.onnx(c["legs"].get("policy")).exists(), "legs.policy must be a folder name in policies/"
+    assert policy_select.onnx(c["legs"].get("policy"), robot="asmr2026").exists(), "legs.policy must be a folder name in policies/"
     sys.path.insert(0, str(ROOT / "aim"))
     from run import robot_setup
     spray = robot_setup(c["robot"]["concept"])[1].max_spray

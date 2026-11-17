@@ -39,6 +39,7 @@ def policy_run(model, cmd, limit=6.0, seconds=10.0, push=None, seed=0, frames=No
     d = mujoco.MjData(m)
     d.qpos[7:19] = s2s.DEFAULT  # BHL reset, as run.py start="bhl"
     mujoco.mj_forward(m, d)
+    # FIXME(policy): the shipped BHL policy on the BHL model; see sim/sim2sim/bhl_legacy.py.
     policy = ort.InferenceSession(str(s2s.POLICY), providers=["CPUExecutionProvider"])
     rng = np.random.default_rng(seed)
     base, z0 = m.body("base").id, d.site("imu").xpos[2]

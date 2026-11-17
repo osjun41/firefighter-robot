@@ -93,8 +93,13 @@ def add_body_payload(
     mass: float,
     position: tuple[float, float, float],
     size: tuple[float, float, float] = (0.1, 0.1, 0.1),
+    inertia: tuple | None = None,
+    payload: str = "",
 ):
-    """Rigidly attach a solid box payload to one body (mass in kg, box center in the body frame, edge lengths in m).
+    """Rigidly attach a payload to one body: a solid box (mass in kg, box center in the body frame, edge lengths in m),
+    or any rigid payload whose inertia about its own center (3 x 3, body-frame axes) is given in `inertia`, as for the
+    sum of the F3 parts (source/robot_models/robots/asmr2026_payload.combined: mass, position and inertia).
+    `payload` is only the name of the option, for the record in the saved config.
 
     The body's mass, CoM and inertia become those of body + payload, starting from the current values. Use it as
     a startup event placed after the other mass and CoM randomization terms, so the payload sits on the
@@ -113,7 +118,7 @@ def add_body_payload(
         inertias[env_ids, body_id].reshape(n, 3, 3),
         payload_mass,
         torch.tensor(position, dtype=torch.float32).expand(n, 3),
-        box_inertia(payload_mass, size),
+        box_inertia(payload_mass, size) if inertia is None else torch.tensor(inertia, dtype=torch.float32).expand(n, 3, 3),
     )
     masses[env_ids, body_id] = new_mass
     coms[env_ids, body_id, :3] = new_com

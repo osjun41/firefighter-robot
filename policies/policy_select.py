@@ -9,8 +9,14 @@ Code and scripts choose one by NAME only, never by file path. With no name, `bas
 
 CLI scripts: `policy_select.add_argument(parser)` adds `--policy NAME` (default baseline).
 To use a new policy, export or copy it to `policies/<name>/` first (see policies/README.md).
+Each policy also says which robot model it was trained for (info.json: "trained_on": "asmr2026" or "bhl"; a folder with
+a policy.yaml and no info.json is an ASMR policy). Code for the ASMR robot passes robot="asmr2026"; for a policy trained on
+another robot model it WARNS (joint convention, default pose and gains differ, so it may behave oddly) and still loads it.
+Pass strict=True to refuse instead.
 Standard library only, so it also runs on the robot board.
 """
+import json
+import warnings
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -42,8 +48,34 @@ def _file(name, filename):
     return path
 
 
-def onnx(name=None):
-    """policies/<name>/policy.onnx"""
+def info(name=None):
+    """What the policy was trained for: info.json, or {"trained_on": "asmr2026"} for a folder with a policy.yaml."""
+    path = folder(name) / "info.json"
+    if path.is_file():
+        return json.loads(path.read_text())
+    if (folder(name) / "policy.yaml").is_file():
+        return {"trained_on": "asmr2026"}
+    raise FileNotFoundError(f"policy {(name or DEFAULT)!r} has neither info.json nor policy.yaml, so its robot model is unknown")
+
+
+def mismatch(name=None, robot=None):
+    """Text describing the robot-model mismatch of policy `name` against `robot`, or "" when it fits (or robot is None)."""
+    trained = info(name)["trained_on"]
+    if robot is None or trained == robot:
+        return ""
+    return (f"policy {(name or DEFAULT)!r} was trained for {trained!r}, not {robot!r}: its joint convention, default pose "
+            f"and gains differ, so it may behave oddly. Test it in the air first.")
+
+
+def onnx(name=None, robot=None, strict=False):
+    """policies/<name>/policy.onnx. With robot="asmr2026", warn when the policy was trained for another robot model.
+
+    The policy is still returned (the point is to try it). strict=True raises ValueError instead of warning.
+    """
+    if text := mismatch(name, robot):
+        if strict:
+            raise ValueError(text)
+        warnings.warn(text, stacklevel=2)
     return _file(name, "policy.onnx")
 
 

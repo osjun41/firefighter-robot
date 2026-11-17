@@ -12,6 +12,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4]))  # repository root: policies/policy_select.py
 from policies import policy_select  # noqa: E402
+from source.robot_models.robots import asmr2026_payload  # noqa: E402
 import onnxruntime  # noqa: F401,E402  Windows: load its DLLs before Isaac Sim starts, or the import fails afterwards
 
 from isaaclab.app import AppLauncher
@@ -19,6 +20,7 @@ from isaaclab.app import AppLauncher
 # add argparse arguments
 parser = argparse.ArgumentParser(description="Play an exported ONNX policy in Isaac Lab.")
 policy_select.add_argument(parser)
+asmr2026_payload.add_argument(parser)
 parser.add_argument("--video", action="store_true", default=False, help="Record a video.")
 parser.add_argument("--video_length", type=int, default=500, help="Length of the recorded video (in steps).")
 parser.add_argument("--follow", action="store_true", default=False, help="Make the camera follow the first robot.")
@@ -56,6 +58,7 @@ from isaaclab_tasks.utils import parse_env_cfg
 
 # Import extensions to set up environment tasks
 import berkeley_humanoid_lite.tasks  # noqa: F401
+from berkeley_humanoid_lite.tasks.locomotion.velocity.config.asmr_biped.payload import select_payload
 
 
 class OnnxPolicy:
@@ -89,6 +92,7 @@ def main():
     env_cfg = parse_env_cfg(
         args_cli.task, device=args_cli.device, num_envs=args_cli.num_envs, use_fabric=not args_cli.disable_fabric
     )
+    select_payload(env_cfg, args_cli.payload)
     # run the policy at the rate it was trained for
     decimation = round(deploy_cfg.policy_dt / env_cfg.sim.dt)
     if decimation != env_cfg.decimation:

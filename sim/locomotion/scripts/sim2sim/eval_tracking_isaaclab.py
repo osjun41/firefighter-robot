@@ -48,6 +48,18 @@ import berkeley_humanoid_lite.tasks  # noqa: F401
 from tracking_common import COMMANDS, command_at, num_steps, print_summary, tilt_of, trial_metrics, write_rows, yaw_of
 
 
+def payload_difference(payload, sim_payload):
+    """Largest difference of mass and centre between the task's payload event and the config's sim_payload.
+    A box also compares its size. Several parts (F3) are compared by their total mass and centre of mass."""
+    if payload is None or sim_payload is None:
+        return float((payload is None) != (sim_payload is None))
+    if "parts" in sim_payload:
+        masses = np.array([part["mass"] for part in sim_payload["parts"]])
+        centre = (masses[:, None] * np.array([part["position"] for part in sim_payload["parts"]])).sum(0) / masses.sum()
+        return float(max(abs(masses.sum() - payload["mass"]), np.abs(centre - np.array(payload["position"])).max()))
+    return float(max(np.abs(np.array(payload[key]) - np.array(sim_payload[key])).max() for key in ("mass", "position", "size")))
+
+
 def check_deploy_config(deploy_cfg, env_cfg, robot, dt):
     """Compare the deployment config, which drives the MuJoCo side, with the task (at its nominal dynamics)."""
     ids = [robot.joint_names.index(name) for name in deploy_cfg.joints]
@@ -65,9 +77,7 @@ def check_deploy_config(deploy_cfg, env_cfg, robot, dt):
         "joint_kd": (data.joint_damping[0, ids].cpu() - torch.tensor(deploy_cfg.joint_kd)).abs().max().item(),
         "effort_limits": (data.joint_effort_limits[0, ids].cpu()
                           - torch.tensor(deploy_cfg.effort_limits)).abs().max().item(),
-        "payload": float((payload is None) != (sim_payload is None) or (
-            payload is not None and any(np.abs(np.array(payload[key]) - np.array(sim_payload[key])).max() > 1e-6
-                                        for key in ("mass", "position", "size")))),
+        "payload": payload_difference(payload, sim_payload),
     }
     for key, err in checks.items():
         print(f"[CHECK] deploy config vs task: {key:24s} max difference {err:.2e}")
