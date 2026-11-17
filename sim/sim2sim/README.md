@@ -11,8 +11,7 @@ and the real robot stop the walk). Both use the F3 parts on the torso (`--payloa
 Run these commands once, from the repository root:
 
 1. Install the Python environment: `uv sync`
-2. Fetch the BHL meshes and URDF (not in git; `mission/`, `payload/` and `bhl_legacy.py` still use them): `scripts/fetch_bhl_assets.sh`
-3. Build the MuJoCo models `sim/payload/models/bhl_*.xml`: `uv run python sim/payload/models.py`
+2. No model build is needed: the robot is the ASMR MJCF of `source/robot_models`. (The BHL meshes and `sim/payload/models.py` are only for `bhl_legacy.py`, which no script uses any more.)
 
 `run.py`, `hw_risks.py` and `gap_study.py` need neither the BHL meshes nor these models.
 
@@ -23,7 +22,7 @@ Run these commands once, from the repository root:
 | `run.py` | The ASMR runner: policy by name, joint order, standing pose, gains and limits from the MJCF, observation, payload option, one simulation run, video, self-check |
 | `hw_risks.py` | Sim-to-real risks of the course motor drives on the ASMR robot with the F3 parts |
 | `gap_study.py` | Sim-to-real gap study: payloads, one change at a time, combined cases |
-| `bhl_legacy.py` | The old BHL loop (BHL gains, pose and policy). Still used by `sim/mission` only; FIXME(policy): goes when the mission moves to the ASMR robot |
+| `bhl_legacy.py` | The old BHL loop (BHL gains, pose and policy). No script uses it any more (the mission moved to the ASMR robot); it is deleted with `third_party/` and the BHL models in the last step of the model unification |
 | `baseline_detector.py` | Colour-threshold fire "detector" for simulated cameras. Not a real detector |
 | `policy_biped_25hz_a.onnx` | The shipped BHL walking policy, for `bhl_legacy.py` only |
 | `BHL_LICENCE` | The MIT licence of the BHL code, which the policy copy requires |

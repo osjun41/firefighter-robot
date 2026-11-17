@@ -6,7 +6,7 @@ Review it at every weekly meeting.
 
 Status: **planned**. The numbers come from the simulation (**tested in simulation**), unless a line says otherwise.
 
-- **Not verified:** The gap study (`sim/sim2sim/gap_study.py`) and f3_v1 use the BHL model of the F3 robot (`sim/sim2sim/bhl_legacy.py`). The robot runtime now uses the ASMR 2026 model and its baseline policy (`policies/baseline`). The study has not been run again on the ASMR model.
+- **Not verified:** The gap study (`sim/sim2sim/gap_study.py`) now runs the ASMR 2026 model with the F3 parts and the baseline policy (`policies/baseline`), but it has not been run again: the numbers in this file come from the old study on the BHL model (`archive/sim2sim_bhl/`). f3_v1 was trained on the BHL model.
 
 ## Why walking is hard for us
 

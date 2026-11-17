@@ -1,11 +1,11 @@
-"""One firefighting mission with the final robot F2: walking policy + rendered robot camera with fire sprites + detector +
-aim/ controller + ST3215 pan-tilt + water droplets + fire model.
+"""One firefighting mission with the ASMR robot and the F3 parts: walking policy + rendered robot camera with fire sprites +
+detector + aim/ controller + ST3215 pan-tilt + water droplets + fire model.
 
     MUJOCO_GL=egl uv run python sim/mission/mission.py --seed 3                      one mission, prints the result
     MUJOCO_GL=egl uv run python sim/mission/mission.py --seed 3 --video hero.mp4     the same, with the video
     MUJOCO_GL=egl uv run python sim/mission/mission.py --seed 3 --sil                aim/run.py and the actuator node as
                                                                                      separate processes over UDP
-Options: --detector FILE (detect(rgb, t)), --policy FILE (ONNX, BHL interface), --outdoor / --indoor.
+Options: --detector FILE (detect(rgb, t)), --policy NAME (a folder of policies/, default baseline), --outdoor / --indoor.
 """
 import argparse
 import importlib.util
@@ -24,6 +24,12 @@ import numpy as np
 import onnxruntime as ort
 from PIL import Image, ImageDraw, ImageFont
 
+for _i, _a in enumerate(sys.argv):  # --policy NAME is read before sim/sim2sim/run.py loads the policy
+    if _a == "--policy" and _i + 1 < len(sys.argv):
+        os.environ["SIM2SIM_POLICY"] = sys.argv[_i + 1]
+        del sys.argv[_i:_i + 2]
+        break
+
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 sys.path[:0] = [str(HERE), str(ROOT / "aim")]
@@ -39,10 +45,9 @@ def load_module(path, name):
     return mod
 
 
-s2s = load_module(ROOT / "sim" / "sim2sim" / "bhl_legacy.py", "s2s_bhl_legacy")
-# FIXME(policy): the missions run the shipped BHL policy on the BHL model. Select a policy from policies/ after the models are unified.
+s2s = world.s2s  # sim/sim2sim/run.py: the ASMR robot contract and the policy chosen by --policy (default baseline)
 ACTION_SCALE, DEFAULT, NOISE, POLICY, TILT_LIMIT = s2s.ACTION_SCALE, s2s.DEFAULT, s2s.NOISE, s2s.POLICY, s2s.TILT_LIMIT
-observation, quat_rotate_inverse = s2s.observation, s2s.quat_rotate_inverse
+JOINT_LIMITS, observation, quat_mul, quat_rotate_inverse = s2s.JOINT_LIMITS, s2s.observation, s2s.quat_mul, s2s.quat_rotate_inverse
 
 CFG = world.CFG
 BASELINE = ROOT / "sim" / "sim2sim" / "baseline_detector.py"
@@ -51,7 +56,6 @@ RUNS = Path.home() / "runs" / "firefighter" / "mission"
 PHYSICS_DT, POLICY_DT, AIM_DT, CHUNK = 0.0005, 0.04, 0.1, 10  # s, s, s, physics steps per chunk (5 ms: servos, droplets)
 ZERO_DEG, CMD_DELAY = 2.0, 20  # hw_risks case 7: leg zero error +-2 deg, 10 ms command latency (20 physics steps)
 SERVO_SPEED = 4.7  # rad/s, ST3215 at 12 V: 0.222 s / 60 deg (45 rpm), Waveshare listing
-DAMP_D = 2.0  # Nm s/rad, legs after a fall or ABORT: damping only (K = 0)
 FPS = 30
 PIVOT_H = 0.64 + world.DZ  # m, aim/geometry.BASE_Z in the base frame: aim/ tilts the torso about this point
 
@@ -64,14 +68,14 @@ def load_detector(path):
 
 
 class Policy:
-    """Any ONNX walking policy with the BHL interface: obs 1 x 45 in, actions 1 x 12 out."""
+    """Any ONNX walking policy with the ASMR interface: obs 1 x 45 in, actions 1 x 12 out."""
 
     def __init__(self, path):
         so = ort.SessionOptions()
         so.intra_op_num_threads = 1
         self.s = ort.InferenceSession(str(path), so, providers=["CPUExecutionProvider"])
         self.inp = self.s.get_inputs()[0].name
-        assert self.s.get_inputs()[0].shape[-1] == 45, "policy input is not the BHL 45-value observation"
+        assert self.s.get_inputs()[0].shape[-1] == 45, "policy input is not the 45-value observation"
 
     def __call__(self, obs):
         return self.s.run(None, {self.inp: obs})[0][0]
@@ -217,16 +221,18 @@ class Video:
         self.r.close()
 
 
-def run(spec, detector=BASELINE, policy=POLICY, video=None, sil=None, title="", crf=26, video_speed=1.0, keep_log=True, limit=6.0,
+def run(spec, detector=BASELINE, policy=POLICY, video=None, sil=None, title="", crf=26, video_speed=1.0, keep_log=True, limit=None,
         snaps=None, aim=None):
     """One mission. Returns a JSON-able result dict. video: mp4 path. sil: None or a SilLink-like object factory.
-    limit: leg torque limit, Nm (hw_risks case 7: 6 Nm). snaps: (directory, list of times): save the robot camera image
+    limit: leg torque cap, Nm (default: the effort limits of the MJCF). snaps: (directory, list of times): save the robot camera image
     with the detection boxes at these times. aim: aim/ ControllerConfig values to override, for example {"min_conf": 0.3}."""
     t_wall = time.time()
     detect = None if str(detector) == "oracle" else load_detector(detector)
     m = mujoco.MjModel.from_xml_string(world.build_xml(spec))
     m.opt.timestep = PHYSICS_DT
-    m.actuator_forcerange[:12] = [-limit, limit]
+    if limit is not None:
+        cap = np.minimum(m.actuator_forcerange[:12, 1], float(limit))
+        m.actuator_forcerange[:12] = np.c_[-cap, cap]
     d = mujoco.MjData(m)
     legs = [m.joint(f"leg_{s}_{j}_joint").qposadr[0] for s in ("left", "right")
             for j in ("hip_roll", "hip_yaw", "hip_pitch", "knee_pitch", "ankle_pitch", "ankle_roll")]
@@ -235,19 +241,18 @@ def run(spec, detector=BASELINE, policy=POLICY, video=None, sil=None, title="", 
     vpan, vtilt = m.joint("pan").dofadr[0], m.joint("tilt").dofadr[0]
     base, tiltb, nozzle = m.body("base").id, m.body("tilt").id, m.site("nozzle").id
     cam_id = m.camera("rgb").id
-    water_b = m.body("payload_water").id
-    m_water, i_water = m.body_mass[water_b], m.body_inertia[water_b].copy()
     fire_lights = [m.light(f"fire{i}").id for i in range(len(spec["fires"]))]
     light0 = m.light_diffuse[fire_lights].copy() if fire_lights else None
 
     x0, y0, yaw0 = spec["start"]
-    d.qpos[:3] = x0, y0, 0.0  # BHL start: upright, default joints, feet 3.9 cm above the floor
+    d.qpos[:3] = x0, y0, s2s.DEFAULT_BASE_POSITION[2]  # upright, default joints, standing on the floor
     d.qpos[3:7] = math.cos(yaw0 / 2), 0, 0, math.sin(yaw0 / 2)
     d.qpos[7:19] = DEFAULT
     mujoco.mj_forward(m, d)
 
     rng = np.random.default_rng([spec["seed"], 11])
     off = np.deg2rad(np.random.default_rng([spec["seed"], 1]).uniform(-1, 1, 12) * ZERO_DEG)  # leg zero errors
+    imu_in_base, base_quat_in_imu = s2s._imu_frame_transform(m, d)  # the MJCF IMU frame to the base frame
     pol = Policy(policy)
     ctl = Controller(CFG)
     # the jet of this design, as aim/ knows it: speed at the measured battery voltage, nominal drag, tank size
@@ -290,18 +295,19 @@ def run(spec, detector=BASELINE, policy=POLICY, video=None, sil=None, title="", 
     steps_per_policy = round(POLICY_DT / PHYSICS_DT)
     while d.time < t_max:
         R = d.xmat[base].reshape(3, 3)
-        quat, gyro = d.sensor("imu_quat").data.copy(), d.sensor("imu_gyro").data.copy()
+        quat = quat_mul(d.sensor("imu_quat").data.copy(), base_quat_in_imu)
+        gyro = imu_in_base @ d.sensor("imu_gyro").data.copy()
         obs = observation(cmd_vec, quat, gyro, d.qpos[7:19] + off, d.qvel[6:18], action)
         obs += (rng.uniform(-1, 1, 45) * NOISE).astype(np.float32)  # training noise, as hw_risks
         action = pol(obs)
-        goal = DEFAULT + ACTION_SCALE * action
+        goal = np.clip(DEFAULT + ACTION_SCALE * action, JOINT_LIMITS[:, 0], JOINT_LIMITS[:, 1])
         if link:
             link.realtime(d.time)
             link.send_pose(odo_pose(odo, R, spec, d.time))
         for k in range(steps_per_policy // CHUNK):
             if k * CHUNK == CMD_DELAY and not damping:  # the drives get the new targets 10 ms after the policy step
                 d.ctrl[:12] = goal - off
-            if damping:  # fall or ABORT: the drives go to damping (K = 0), like the BHL runtime's idle mode
+            if damping:  # fall or ABORT: the drives go to damping (K = 0, D of the MJCF), like the idle mode of the runtime
                 d.ctrl[:12] = 0
                 m.actuator_gainprm[:12, 0] = 0
                 m.actuator_biasprm[:12, 1] = 0
@@ -324,8 +330,6 @@ def run(spec, detector=BASELINE, policy=POLICY, video=None, sil=None, title="", 
                     t_out[i] = round(d.time, 2)
             if fire_lights:
                 m.light_diffuse[fire_lights] = light0 * np.array(strengths)[:, None] * (0.85 + 0.3 * rng.random((len(fires), 1)))
-            frac = water.left / (spec["tank"] / 1000)
-            m.body_mass[water_b], m.body_inertia[water_b] = max(m_water * frac, 1e-4), np.maximum(i_water * frac, 1e-8)
             mujoco.mj_step(m, d, nstep=CHUNK)
 
             if d.time >= next_aim - 1e-9:  # 10 Hz: robot camera, detector, aim/
@@ -424,7 +428,7 @@ def run(spec, detector=BASELINE, policy=POLICY, video=None, sil=None, title="", 
                           for i, s in enumerate(strengths)]
                 vid.frame(m, d, base, tgt_w, water.p, fires, strengths, d.time, sprites, inset, st, lines)
 
-        g = quat_rotate_inverse(d.sensor("imu_quat").data, np.array([0, 0, -1.0]))
+        g = quat_rotate_inverse(quat_mul(d.sensor("imu_quat").data, base_quat_in_imu), np.array([0, 0, -1.0]))
         tilt_now = math.acos(np.clip(-g[2], -1, 1))
         if fall is None and (tilt_now > TILT_LIMIT or d.site("imu").xpos[2] < 0.6 * z0):
             fall, damping = round(d.time, 2), True
@@ -486,7 +490,7 @@ def odo_pose(odo, R, spec, t):
 
 # ---------------- software in the loop ----------------
 class SilLink:
-    """aim/run.py F2 --feedback and actuators/actuator_node.py --mock as separate processes, over the robot's UDP ports
+    """aim/run.py F3 --feedback and actuators/actuator_node.py --mock as separate processes, over the robot's UDP ports
     (robot/config.toml). The simulator replaces the camera, the legs and the servos, and runs
     in real time because the programs use time.monotonic(). The detector runs here, on each rendered image."""
 
@@ -506,12 +510,12 @@ class SilLink:
         self.fb_rx.setblocking(False)
         self.tx = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         RUNS.mkdir(parents=True, exist_ok=True)
-        # robot/config.toml for this test: concept F2, the field of view of the rendered camera (no lens calibration: the
+        # robot/config.toml for this test: concept F3, the field of view of the rendered camera (no lens calibration: the
         # rendered images are pinhole images), the ST3215 speed (270 deg/s), and the jet speed at this mission's battery
         # voltage (the mock servos report no voltage, the real ones do: aim/run.py reads it)
         import re
         text = (ROOT / "robot" / "config.toml").read_text()
-        text = re.sub(r'(?m)^concept = "\w+"', f'concept = "{spec.get("robot", "F2")}"', text)
+        text = re.sub(r'(?m)^concept = "\w+"', f'concept = "{spec.get("robot", "F3")}"', text)
         text = re.sub(r'(?m)^calib = ".*?"', 'calib = ""', text)
         text = re.sub(r"(?m)^hfov_deg = [0-9.]+", f"hfov_deg = {math.degrees(2 * math.atan(world.W / 2 / world.K.fx)):.3f}", text)
         text = re.sub(r"(?m)^max_speed_dps = [0-9.]+", "max_speed_dps = 270", text)
@@ -523,7 +527,7 @@ class SilLink:
         self.node = subprocess.Popen([sys.executable, "-u", "actuators/actuator_node.py", "--mock"],
                                      cwd=ROOT, stdout=subprocess.DEVNULL, stderr=self.logs[0], env=env)
         time.sleep(0.5)
-        self.aim = subprocess.Popen([sys.executable, "-u", "aim/run.py", spec.get("robot", "F2"), "--feedback"], cwd=ROOT, stdout=subprocess.PIPE,
+        self.aim = subprocess.Popen([sys.executable, "-u", "aim/run.py", spec.get("robot", "F3"), "--feedback"], cwd=ROOT, stdout=subprocess.PIPE,
                                     stderr=self.logs[1], text=True, env=env)
         self.cmd, self.cmd_times, self.fb, self.sent, self.lag = {}, [], None, 0, 0.0
         threading.Thread(target=self._read, daemon=True).start()
@@ -590,24 +594,23 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--detector", default=str(BASELINE))
-    ap.add_argument("--policy", default=str(POLICY))
     ap.add_argument("--video", help="mp4 path")
     ap.add_argument("--speed", type=float, default=1.0, help="video playback speed")
     ap.add_argument("--sil", action="store_true", help="aim/run.py and the actuator node as separate processes over UDP")
     ap.add_argument("--outdoor", action="store_true")
     ap.add_argument("--indoor", action="store_true")
     ap.add_argument("--json", help="write the result here")
-    ap.add_argument("--design", default="f2", choices=list(world.DESIGNS), help="water system and fire model")
+    ap.add_argument("--design", default="f3", choices=list(world.DESIGNS), help="water system and fire model")
     ap.add_argument("--flames", default="procedural", choices=["procedural", "real"], help="flame sprites")
-    ap.add_argument("--min-conf", type=float, help="aim/ min_conf override (default: aim/geometry.py F2, 0.3)")
-    ap.add_argument("--limit", type=float, default=6.0, help="leg torque limit, Nm")
+    ap.add_argument("--min-conf", type=float, help="aim/ min_conf override (default: aim/geometry.py F3, 0.3)")
+    ap.add_argument("--limit", type=float, help="leg torque cap, Nm (default: the effort limits of the MJCF)")
     ap.add_argument("--snaps", nargs="+", type=float, help="save the robot camera image at these times (s) in --snapdir")
     ap.add_argument("--snapdir", default=str(RUNS / "snaps"))
     a = ap.parse_args()
     spec = world.random_spec(a.seed, True if a.outdoor else False if a.indoor else None, a.design, a.flames)
     if a.snaps:
         Path(a.snapdir).mkdir(parents=True, exist_ok=True)
-    r = run(spec, a.detector, a.policy, a.video, SilLink if a.sil else None, title=f"mission seed {a.seed}", video_speed=a.speed, limit=a.limit,
+    r = run(spec, a.detector, POLICY, a.video, SilLink if a.sil else None, title=f"mission seed {a.seed}", video_speed=a.speed, limit=a.limit,
             snaps=(a.snapdir, a.snaps) if a.snaps else None, aim=None if a.min_conf is None else {"min_conf": a.min_conf})
     short = {k: v for k, v in r.items() if k not in ("log", "det_samples", "loc_samples", "path", "spec")}
     print(json.dumps(short, indent=1, default=str))

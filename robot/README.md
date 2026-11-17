@@ -55,11 +55,7 @@ Run all commands from the repository root. Do steps 1 to 3 once.
 bash scripts/fetch_bhl_assets.sh
 ```
 
-3. Build the MuJoCo models. The fake legs use `sim/payload/models/bhl_biped.xml`.
-
-```sh
-uv run --extra sim --extra dev python sim/payload/models.py
-```
+3. No model build is needed. The fake legs use the ASMR MJCF of `source/robot_models` (with the F3 parts).
 
 4. Run the fast tests of `aim/`, `actuators/` and `robot/` (about 30 s):
 

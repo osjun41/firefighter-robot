@@ -5,7 +5,7 @@
 It runs the ASMR runner `sim/sim2sim/run.py`.
 
 `models.py` builds the older MuJoCo models of the Berkeley Humanoid Lite (BHL) biped with the payload of the designs F2 and F3.
-Only `sim/mission` still uses them (`bhl_legacy.py`, FIXME(policy)); they go when the mission moves to the ASMR robot.
+No script uses them any more (the mission moved to the ASMR robot); they are deleted in the last step of the model unification.
 
 **Status:** tested in simulation (MuJoCo 3.15.0, CPU only). Nothing here is measured on board. **The check has not been run on the ASMR
 robot yet** (only its quick self-check): the old F2 results of the BHL model are in `archive/payload_f2/`.
@@ -26,8 +26,8 @@ Run these commands from the repository root.
    ```
 3. `MUJOCO_GL=egl uv run python sim/payload/final_check.py video` films one walk and one push (needs ffmpeg). The videos stay local.
 
-The BHL models are only needed for `sim/mission`: fetch the meshes with `scripts/fetch_bhl_assets.sh` and build the XML files
-(not in git; about 5 s) with `uv run python sim/payload/models.py`.
+No BHL model is needed for the checks above. To build the old BHL models anyway, fetch the meshes with `scripts/fetch_bhl_assets.sh` and run
+`uv run python sim/payload/models.py` (about 5 s).
 
 ## What `models.py` builds
 

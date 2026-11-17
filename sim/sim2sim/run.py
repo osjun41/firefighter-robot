@@ -76,9 +76,12 @@ NOISE = np.r_[
 ]
 
 
-def add_payload(spec, payload=None):
-    """Weld the parts of a payload option (default: PAYLOAD) to the base of an ASMR MJCF spec, one body per part."""
+def add_payload(spec, payload=None, skip=()):
+    """Weld the parts of a payload option (default: PAYLOAD) to the base of an ASMR MJCF spec, one body per part.
+    skip: names of parts to leave out (sim/mission replaces the pan-tilt parts by moving bodies)."""
     for part in payloads.parts(payload or PAYLOAD):
+        if part["name"] in skip:
+            continue
         body = spec.body("base").add_body(name=part["name"], pos=part["position"])
         body.mass = part["mass"]
         body.ipos = [0.0, 0.0, 0.0]

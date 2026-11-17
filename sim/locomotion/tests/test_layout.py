@@ -311,3 +311,15 @@ def test_payload_check_runs_the_asmr_robot():
     assert "--policy" in check and "final_f3" in check and '"f3"' in check
     run = (ROOT / "sim/sim2sim/run.py").read_text(encoding="utf-8")
     assert "push=None" in run and "payload=None" in run
+
+
+def test_no_script_uses_the_bhl_model():
+    """Only bhl_legacy.py and the BHL model builder models.py are left of the Berkeley simulation code, and nothing imports them."""
+    own = {"bhl_legacy.py", "models.py", "measured.py", "test_layout.py", "test_mission.py"}
+    for path in (ROOT / "sim").rglob("*.py"):
+        if path.name in own or ".venv" in path.parts or "locomotion" in path.parts:
+            continue
+        text = path.read_text(encoding="utf-8")
+        assert "bhl_legacy" not in text and "payload/models" not in text and "bhl_F" not in text, path
+    mission = (ROOT / "sim/mission/mission.py").read_text(encoding="utf-8") + (ROOT / "sim/mission/world.py").read_text(encoding="utf-8")
+    assert "bhl_" not in mission and "out_f2" not in mission and "payload/models" not in mission
