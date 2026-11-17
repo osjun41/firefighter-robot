@@ -48,7 +48,7 @@ def parts(name=DEFAULT):
         return []
     if name == "box_1kg":
         return [dict(_BOX)]
-    layout = json.loads(F3_LAYOUT.read_text())
+    layout = json.loads(F3_LAYOUT.read_text(encoding="utf-8"))
     return [dict(name=f"payload_{i['name']}", mass=float(i["mass_kg"]),
                  position=(i["com_m"][0], i["com_m"][1], i["com_m"][2] + Z_LAYOUT_TO_BASE),
                  size=tuple(i["size_m"]))

@@ -17,7 +17,7 @@ Status: **planned**. The numbers come from the simulation (**tested in simulatio
 
 ## What the simulation says
 
-The gap study runs the shipped BHL policy and our policies f1_v1 and f3_v1 on F3 with one error at a time, then with several errors together ([gap_study.md](../../sim/sim2sim/results/gap_study.md)).
+The gap study runs the shipped BHL policy and our policies f1_v1 and f3_v1 on F3 with one error at a time, then with several errors together ([gap_study.md](../../archive/sim2sim_bhl/gap_study.md)).
 Each case has 40 runs of 20 s per policy, or 20 runs per policy in the combined cases.
 The ranking below counts the shipped policy and f1_v1. f3_v1 trained with these errors (point 7).
 

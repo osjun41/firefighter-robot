@@ -97,7 +97,7 @@ Largest push with no fall, F2 with full tanks (worst of 3 push times):
 | Standing | 3.8 N s | 5.6 N s | 4.9 N s | 4.5 N s |
 | Walking at 0.3 m/s | 9.4 N s | 5.2 N s | 3.0 N s | 3.0 N s |
 
-Drive model of `sim/sim2sim/hw_risks.py` (4 commands × 10 seeds of 20 s):
+Drive model of `sim/sim2sim/hw_risks.py` (4 commands × 10 seeds of 20 s). **Old result:** `hw_risks.py` ran the BHL model with F2 when this table was made. It now runs the ASMR robot with the F3 parts, so these numbers are not reproduced by the script any more (the old report is in `archive/sim2sim_bhl/`).:
 
 | Case | Falls | Mean motor bus power, walking |
 |---|---|---|
@@ -123,7 +123,7 @@ Findings:
 | `analyze.py` | Static joint torques and centre of mass (stand, crouch, one leg) |
 | `torso_tank.py` | Walking and push test helpers. `final_check.py` uses them (`archive/rl_f1/f1_eval.py` did too). |
 | `report.py` | Plot palette and style of the simulation figures |
-| `final_check.py` | The F2 check: statics, walking, push test and drive cases |
+| `final_check.py` | The F2 check: statics, walking and push test (the drive cases moved to `sim/sim2sim/hw_risks.py`) |
 | `measured.py`, `masses.csv` | The sheet of parts to weigh, and the script that puts the weighed masses into the model |
 | `results/final_f2.md`, `results/final_f2.json` | Results of `final_check.py` |
 

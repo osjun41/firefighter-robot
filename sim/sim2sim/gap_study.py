@@ -1,15 +1,17 @@
-"""Sim-to-real gap study of the trolley version F3: which differences between the simulation and the real robot most
-likely stop the real robot from walking, and how much F3 and its options help.
+"""Sim-to-real gap study of the F3 payload on the ASMR robot: which differences between the simulation and the real robot
+most likely stop the real robot from walking, and how much the payload matters.
 
-    uv run python sim/sim2sim/gap_study.py                 all cases, shipped BHL policy and f1_v1 -> results/gap_study.*
-    uv run python sim/sim2sim/gap_study.py --policy PATH   all cases for another ONNX policy, added to results/gap_study.*
-    uv run python sim/sim2sim/gap_study.py --cases ID,ID   only these cases (for --policy PATH if given), added
+    uv run python sim/sim2sim/gap_study.py                 all cases, policy baseline -> results/gap_study.*
+    uv run python sim/sim2sim/gap_study.py --policy NAME   all cases for another policy of policies/, added to results/gap_study.*
+    uv run python sim/sim2sim/gap_study.py --cases ID,ID   only these cases (for --policy NAME if given), added
     uv run python sim/sim2sim/gap_study.py --report        tables and figure again from results/gap_study.json, 1 s
-    uv run python sim/sim2sim/gap_study.py --quick         self-check, under 1 min
+    uv run python sim/sim2sim/gap_study.py --quick         self-check, about 1 min
 
-Each case runs hw_risks.simulate() (the bhl_legacy.py policy loop with the drive model of hw_risks.py) on a model of
-sim/payload/models, with model changes and drive settings: 4 commands x 10 seeds of 20 s, and a standing push test.
+Each case runs hw_risks.simulate() (the run.py policy loop with the drive model of hw_risks.py) on the ASMR robot with a
+payload, with model changes and drive settings: 4 commands x 10 seeds of 20 s, and a standing push test.
 All cases use the same seeds, so each run of a case pairs with one run of the F3 nominal case.
+The ASMR model already has measured leg masses and fitted armature and joint friction (its MJCF), so these are the
+nominal values here, and the cases move them up and down.
 """
 import json
 import math
@@ -28,36 +30,39 @@ ROOT = HERE.parents[1]
 sys.path[:0] = [str(HERE), str(HERE.parent / "payload")]
 sys.path.insert(0, str(ROOT))
 from policies import policy_select  # noqa: E402
-import bhl_legacy as s2s  # noqa: E402  legacy BHL simulator shared helpers (the F3 policy runs on the BHL model)
+ASKED_POLICY = None  # --policy NAME adds a policy; hw_risks.py would read it as its own policy, so take it out first
+if "--policy" in sys.argv:
+    ASKED_POLICY = sys.argv[sys.argv.index("--policy") + 1]
+    del sys.argv[sys.argv.index("--policy"):sys.argv.index("--policy") + 2]
+import run as s2s  # noqa: E402  the ASMR runner: policy, contract, model, observation
 import hw_risks as hw  # noqa: E402  sim/sim2sim/hw_risks.py: drive model
 import report  # noqa: E402  sim/payload/report.py: palette and plot style
 
 plt = report.plt
 JSON = s2s.OUT / "gap_study.json"
-# FIXME(policy): shipped, f1_v1 and f3_v1 are BHL-model policies run on the BHL F3 model. When the models are unified (source/robot_models),
-# run the study with policies trained on the ASMR model and add `baseline`.
-POLICIES = {"shipped": s2s.POLICY, "f1_v1": policy_select.onnx("f1_v1")}
+POLICIES = {policy_select.DEFAULT: policy_select.onnx(policy_select.DEFAULT, robot="asmr2026")}
 WORKERS = 6  # shared machine: a GPU training job and a render run at the same time
 SEEDS = hw.SEEDS  # 10 seeds x 4 commands = 40 runs per case and policy, as hw_risks.py
 PUSH_DIRS = {"forward": 0.0, "back": math.pi, "left": math.pi / 2, "right": -math.pi / 2}
 PUSH_T = (3.0, 3.3)  # s, standing push times, one per push seed
 PUSH_HI, PUSH_ITERS = 12.0, 5  # N s, bisection resolution 0.375 N s
 JOINT_TYPES = ["hip roll", "hip yaw", "hip pitch", "knee", "ankle pitch", "ankle roll"]
-F3 = "bhl_F3"
+F3 = "f3"  # payload option of source/robot_models/robots/asmr2026_payload.py
 
 
-def torque(s, lim=6.0):
+def torque(s):
     """Torque per amp x s: the drive works in amps, so K, D and the torque limit all scale with s."""
-    return {"K": s2s.KP * s, "D": s2s.KD * s, "lim": lim * s}
+    return {"K": s2s.KP * s, "D": s2s.KD * s, "lim": s2s.EFFORT_LIMITS * s}
 
 
-REAL = ({"armature": (0.014, 0.0047), "frictionloss": 0.3, "leg_mass": 1.05, "friction": 0.6},
-        {"obs_ms": 10, "cmd_ms": 20, "imu_deg": 2.0, "backlash_deg": 0.5, "hose_n": 1.0, "hose_var": True,
-         "zero_deg": 1.0})
-PESS = ({"armature": (0.0224, 0.00743), "frictionloss": 0.5, "leg_mass": 1.1, "com_dx": -0.02, "friction": 0.4},
+# Nominal (MJCF of the ASMR robot): armature 0.0228 hip and knee / 0.0056 ankle kg m², joint friction 0.38 / 0.32 Nm, measured leg
+# masses, foot friction 1.0 (floor). R: the realistic robot, a guess. P: every value at its pessimistic value.
+REAL = ({"friction": 0.6},
+        {"obs_ms": 10, "cmd_ms": 20, "imu_deg": 2.0, "backlash_deg": 0.5, "hose_n": 1.0, "hose_var": True, "zero_deg": 1.0})
+PESS = ({"armature": (0.034, 0.0085), "frictionloss": 0.5, "leg_mass": 1.1, "com_dx": -0.02, "friction": 0.4},
         {**torque(0.85), "obs_ms": 20, "cmd_ms": 40, "imu_deg": 4.0, "backlash_deg": 1.0, "hose_n": 3.0, "zero_deg": 2.0})
 # R with one value moved to its P value: (label, model change keys, drive change keys)
-R_PLUS = {"armature": ("armature 0.0224 / 0.0074", ["armature"], []), "friction": ("joint friction 0.5 Nm", ["frictionloss"], []),
+R_PLUS = {"armature": ("armature 0.034 / 0.0085", ["armature"], []), "friction": ("joint friction 0.5 Nm", ["frictionloss"], []),
           "legs": ("legs +10 %", ["leg_mass"], []), "com": ("torso CoM 2 cm back", ["com_dx"], []),
           "foot": ("foot friction 0.4", ["friction"], []), "torque": ("torque per amp × 0.85", [], ["K", "D", "lim"]),
           "obs": ("observation latency 20 ms", [], ["obs_ms"]), "cmd": ("command latency 40 ms", [], ["cmd_ms"]),
@@ -71,17 +76,15 @@ def r_plus(e_keys, d_keys):
     return {**e, **{k: PESS[0][k] for k in e_keys}}, {**d, **{k: PESS[1][k] for k in d_keys if k in PESS[1]}}
 
 
-# id: (label, factor, model, model changes, drive settings on top of hw_risks case 1)
+# id: (label, factor, payload option, model changes, drive settings on top of hw_risks case 1)
 CASES = {
-    "biped": ("bare biped", "model", "bhl_biped", {}, {}),
-    "F2": ("F2, two full side tanks", "model", "bhl_F2", {}, {}),
-    "F3": ("F3, trolley version (nominal)", "model", F3, {}, {}),
-    "F3_1pack": ("F3 with one 6S motor pack", "model", "bhl_F3_1pack", {}, {}),
-    "F3_tether": ("F3 with motor power by cable", "model", "bhl_F3_tether", {}, {}),
-    "arm_train": ("armature 0.007 / 0.002 kg m² (BHL training)", "armature", F3, {"armature": (0.007, 0.002)}, {}),
+    "bare": ("bare robot, no payload", "model", "none", {}, {}),
+    "box_1kg": ("1 kg box (what the baseline trained with)", "model", "box_1kg", {}, {}),
+    "F3": ("F3 parts, 4.14 kg (nominal)", "model", F3, {}, {}),
+    "arm_low": ("armature 0.007 / 0.002 kg m² (BHL training value)", "armature", F3, {"armature": (0.007, 0.002)}, {}),
     "arm_mid": ("armature 0.014 / 0.0047 kg m²", "armature", F3, {"armature": (0.014, 0.0047)}, {}),
-    "arm_page": ("armature 0.0224 / 0.0074 kg m² (BHL motor page)", "armature", F3, {"armature": (0.0224, 0.00743)}, {}),
-    "fric_0.3": ("joint friction 0.3 Nm", "joint friction", F3, {"frictionloss": 0.3}, {}),
+    "arm_high": ("armature 0.034 / 0.0085 kg m² (1.5 x nominal)", "armature", F3, {"armature": (0.034, 0.0085)}, {}),
+    "fric_0.3": ("joint friction 0.3 Nm (nominal 0.38 / 0.32)", "joint friction", F3, {"frictionloss": 0.3}, {}),
     "fric_0.5": ("joint friction 0.5 Nm", "joint friction", F3, {"frictionloss": 0.5}, {}),
     "torque_0.85": ("torque per amp × 0.85", "torque per amp", F3, {}, torque(0.85)),
     "torque_1.15": ("torque per amp × 1.15", "torque per amp", F3, {}, torque(1.15)),
@@ -105,8 +108,6 @@ CASES = {
     "zero_2": ("joint zero error ±2°", "zero error", F3, {}, {"zero_deg": 2.0}),
     "R": ("realistic: the middle values together", "combined", F3, *REAL),
     "P": ("pessimistic: the worst values together", "combined", F3, *PESS),
-    "R9": ("realistic, 9 Nm limit", "combined", F3, REAL[0], {**REAL[1], "lim": 9.0}),
-    "P9": ("pessimistic, 9 Nm limit (7.65 Nm real)", "combined", F3, PESS[0], {**PESS[1], **torque(0.85, 9.0)}),
     **{f"R+{k}": (f"R with {lab}", "R plus one", F3, *r_plus(e, d)) for k, (lab, e, d) in R_PLUS.items()},
 }
 MODEL_IDS = [c for c in CASES if CASES[c][1] == "model"]
@@ -117,7 +118,7 @@ R_PLUS_IDS = [c for c in CASES if CASES[c][1] == "R plus one"]
 
 @lru_cache(maxsize=None)
 def model(cid):
-    """The model of a case: a model file of sim/payload/models with the case changes."""
+    """The model of a case: the ASMR robot with the payload of the case, and the case changes."""
     _, _, name, e, _ = CASES[cid]
     m = hw.load_model(name)
     if not e:
@@ -176,10 +177,10 @@ def jobs(policies, cases):
 
 
 def model_info(cid):
-    """Mass (kg) and CoM height (m) in the flat-foot stand keyframe."""
+    """Mass (kg) and CoM height (m) in the standing pose."""
     m = model(cid)
     d = mujoco.MjData(m)
-    mujoco.mj_resetDataKeyframe(m, d, 0)
+    d.qpos[:3], d.qpos[7:19] = s2s.DEFAULT_BASE_POSITION, s2s.DEFAULT
     mujoco.mj_forward(m, d)
     return float(m.body_subtreemass[1]), float(d.subtree_com[1][2])
 
@@ -194,7 +195,7 @@ def main(policies, cases, merge):
     js = jobs(policies, cases)
     with Pool(WORKERS) as pool:
         rows = pool.starmap(job, js, chunksize=1)
-    old = json.loads(JSON.read_text()) if merge and JSON.exists() else {"policies": {}, "walk": [], "push": [], "minutes": 0}
+    old = json.loads(JSON.read_text(encoding="utf-8")) if merge and JSON.exists() else {"policies": {}, "walk": [], "push": [], "minutes": 0}
     done = {(c, p) for c in cases for p in policies}
     res = {"policies": {**old["policies"], **{p: rel(f) for p, f in policies.items()}},
            "cases": {c: {"label": v[0], "factor": v[1], "model": v[2], "changes": v[3], "drive": v[4]} for c, v in CASES.items()},
@@ -202,7 +203,7 @@ def main(policies, cases, merge):
            "minutes": old["minutes"] + (time.time() - t0) / 60}
     for kind in ("walk", "push"):
         res[kind] = [r for r in old[kind] if (r["case"], r["policy"]) not in done] + [r for r in rows if r["kind"] == kind]
-    JSON.write_text(json.dumps(res))
+    JSON.write_text(json.dumps(res), encoding="utf-8")
     write(res)
     print(f"{len(js)} jobs in {(time.time() - t0) / 60:.1f} min")
 
@@ -282,10 +283,10 @@ def tables(res):
     pols = list(res["policies"])
     info = res["model_info"]
     L = ["### Policies", "", "| Name | File |", "|---|---|"] + [f"| {p} | `{f}` |" for p, f in res["policies"].items()]
-    L += ["", "### 1. Model comparison (nominal drive: hw_risks case 1)", "",
+    L += ["", "### 1. Payload comparison (nominal drive: hw_risks case 1)", "",
           f"Falls in {4 * SEEDS} runs. Speeds: mean of the runs without a fall, from 5 s to 20 s. "
           "Push: the smallest standing push survived, over 4 directions and 2 push times, and its direction.", "",
-          "| Model | Mass (kg) | CoM height (m) | Policy | Falls | vx at cmd 0.3 (m/s) | Yaw rate, turn on the spot 0.5 "
+          "| Payload | Mass (kg) | CoM height (m) | Policy | Falls | vx at cmd 0.3 (m/s) | Yaw rate, turn on the spot 0.5 "
           "(rad/s) | vx, yaw rate at cmd 0.2 + 0.5 | Smallest standing push (N s) |", "|---|---|---|---|---|---|---|---|---|"]
     for c in MODEL_IDS:
         for q in pols:
@@ -295,9 +296,9 @@ def tables(res):
                      f"| {fmt(mean_ok(runs(res, c, q, 'vx 0.3'), 'vx'))} | {fmt(mean_ok(runs(res, c, q, 'yaw 0.5'), 'wz'))} "
                      f"| {fmt(mean_ok(both, 'vx'))}, {fmt(mean_ok(both, 'wz'))} | {fmt(pv, 1)} {pd} |")
     L += ["", "### 2. Joint torque while walking (cmd vx 0.3, nominal drive)", "",
-          "Share of the time at the torque limit (6 Nm), mean of both legs and all 10 runs, from 1 s to the end or the fall. "
-          "Peak: the largest torque in the 10 runs. The drive clips at 6 Nm, so 6.0 means that the joint reached the limit.", "",
-          "| Model | Policy | " + " | ".join(f"{j} (%)" for j in JOINT_TYPES) + " | Peak hip pitch (Nm) | Peak knee (Nm) |",
+          "Share of the time at the torque limit of the joint (18.1 Nm hip and knee, 22.6 Nm ankle), mean of both legs and all 10 runs, "
+          "from 1 s to the end or the fall. Peak: the largest torque in the 10 runs.", "",
+          "| Payload | Policy | " + " | ".join(f"{j} (%)" for j in JOINT_TYPES) + " | Peak hip pitch (Nm) | Peak knee (Nm) |",
           "|---|---|" + "---|" * (len(JOINT_TYPES) + 2)]
     for c in MODEL_IDS:
         for q in pols:
@@ -365,7 +366,7 @@ def plot(res, out):
             axs[0].vlines(100 * f / n, y[-1] - 0.5, y[walk] + 0.5, color=cols[i % 4], lw=1, ls="--")
     axs[0].set_yticks(y, [f"{c}: {CASES[c][0]}" for c in ids], fontsize=8)
     axs[0].legend(frameon=False, fontsize=9, loc="lower right")
-    fig.suptitle("Gap study of F3. Blocks from the top: the models with the nominal drive, one change at a time on F3, "
+    fig.suptitle("Gap study of the F3 payload. Blocks from the top: the payloads with the nominal drive, one change at a time on F3, "
                  "the combined cases,\nR with one value moved to its pessimistic value (walking commands only, no push test). "
                  "Dashed lines: F3 nominal (push), R on the same walking runs (bottom block).", fontsize=10, x=0.01, ha="left")
     fig.savefig(out, dpi=130, bbox_inches="tight")
@@ -373,154 +374,65 @@ def plot(res, out):
 
 
 def write(res, md=s2s.OUT / "gap_study.md", png=s2s.OUT / "gap_study.png"):
-    md.write_text(REPORT_HEAD + tables(res) + REPORT_TAIL.format(minutes=res["minutes"], workers=WORKERS))
+    md.write_text(REPORT_HEAD + tables(res) + REPORT_TAIL.format(minutes=res["minutes"], workers=WORKERS),
+                  encoding="utf-8")
     plot(res, png)
     print(f"wrote {md} and {png.name}")
 
 
-REPORT_HEAD = """# Sim-to-real gap study of the trolley version F3
+REPORT_HEAD = """# Sim-to-real gap study of the F3 payload on the ASMR robot
 
-**Status:** tested in simulation (MuJoCo 3.15.0, CPU only). Nothing here is measured on board.
+**Status:** tested in simulation (MuJoCo, CPU only). Nothing here is measured on board.
 
-F3 is the trolley version of the robot (team decision of 2026-10-29).
-The water tank and the pump hang high on a trolley that a teammate pushes behind the robot. Only the hose comes to the robot.
+The robot is the ASMR 2026 course robot (`source/robot_models`), walking with a policy of `policies/` (baseline unless
+`--policy NAME` adds another). F3 is the payload of 47 parts, 4.14 kg (`source/robot_models/robots/asmr2026_payload.py`).
 This study asks two questions:
 
-1. How much does F3 help, compared with F2 and the bare biped?
+1. How much does the payload matter (bare robot, the 1 kg box of the training, F3)?
 2. Which differences between the simulation and the real robot most likely stop the real robot from walking?
 
 The answers set the order of the hardware measurements and the randomization ranges of the next training.
 
-## Answers
-
-Status: tested in simulation, with the shipped BHL policy, f1_v1 and f3_v1. Details in "Findings" at the end.
-
-1. F3 helps, mostly with torque margin. With the nominal drive, F2 and F3 fall at most once in 40 runs.
-   F3 walks faster (0.25 against 0.22 m/s, shipped policy) and spends less time at the torque limit.
-   F3 also tolerates drive errors better. 40 ms of command latency gives 2 falls in 40 runs on F3.
-   On F2, it gives 13 (shipped policy, `hw_risks.py` case 5c).
-2. The two lighter options (one 6S pack, motor power by cable) help a little more. They do not change the falls.
-3. Alone, only three changes cause clear falls on F3: a constant 3 N hose pull, a 4° IMU tilt and 15 % less torque per amp.
-4. Small errors add up. With the realistic case R, the shipped policy falls in 5 of 40 runs. f1_v1 does not fall.
-   In R, five values cause many falls when they move to their pessimistic value.
-   These are: torque per amp × 0.85, CoM 2 cm back, 3 N constant hose pull, 40 ms command latency, 4° IMU tilt.
-5. The mechanical details matter less than expected: armature, joint friction, foot friction, leg mass and gear play.
-6. With everything at the pessimistic value (case P), all 80 runs fall within 1 s. With a 9 Nm limit, 77 of 80 runs still fall.
-7. Our policy f3_v1 trained with the recommended ranges below. It does not fall in R or in the 25 cases with one change.
-   It falls once in the 240 runs of R with one value at its pessimistic value (CoM 2 cm back).
-   It still falls in all 40 runs of P, and in 26 of 40 runs of P with a 9 Nm limit.
-   These cases test the same kinds of errors as its training. So they do not prove that it walks on the robot.
-
-## Ranking of the differences
-
-Ranked by the extra falls in R (the realistic robot), then by the effect alone on F3 nominal.
-The shipped policy and f1_v1 together. f3_v1 is not in the ranking, because it trained with these errors (answer 7).
-"In R": 20 walking runs per policy. "Alone": 40 runs per policy. p is given when it is below 0.05.
-
-| Rank | Difference | Extra falls alone (of 80) | Extra falls in R (of 40) | How to measure it |
-|---|---|---|---|---|
-| 1 | Torque per amp 15 % low (K, D and limit) | +8 (p < 0.01) | +22 (p < 0.01) | lever with a known mass, drive in torque mode |
-| 2 | Torso CoM 2 cm back | +1 | +21 (p < 0.01) | weighed parts, then a balance test |
-| 3 | Hose pull 3 N, constant | +12 (p < 0.01) | +20 (p < 0.01) | spring scale at the nozzle mount, trolley moving |
-| 4 | IMU tilt 4° | +11 (p < 0.01) | +17 (p < 0.01) | gravity vector with the torso on a level table |
-| 5 | Command latency 40 ms | +2 | +17 (p < 0.01) | time stamps in the policy loop |
-| 6 | Observation latency 20 ms | +1 | +8 (p < 0.01) | time stamps in the policy loop |
-| 7 | Joint zero error ±2° | +1 | +4 | zero jig |
-| 8 | Armature 0.0224 / 0.0074 kg m² | 0 | +3 | free swing or step test of one actuator |
-| 9 | Foot friction 0.4 | 0 | +2 | incline test on the demo floor |
-| 10 | Joint friction 0.5 Nm | 0 | +1 | the same lever test as rank 1 |
-| 10 | Leg mass +10 % | +1 | +1 | scale |
-| 12 | Gear play 1° | +1 | 0 | lock the joint, rock the motor, read the encoder |
-
-## Recommended order of hardware measurements
-
-Status: planned. Measure first the differences with the largest effect. Each step gives the limit from this study.
-
-1. **Torque per amp** of one hip or knee drive and one ankle drive. Put the drive in torque mode and hang a known mass on a lever.
-   Find the current that just lifts the mass and the current that just lets it drop. Their mean gives the torque per amp.
-   Half their difference gives the joint friction. Then set `current_lim` so that the joint really gets 6 Nm, or 9 Nm.
-2. **Torso CoM in x.** Compute it from the weighed parts (planned), then check it with a balance test of the built torso.
-   2 cm back already costs many falls in R. Move parts forward if the CoM is behind the model value.
-3. **Hose pull** with the trolley. Put a spring scale between the hose and the nozzle mount while a teammate walks the trolley.
-   Keep the mean pull below 1 N with a slack hose. A hose clamp lower on the torso would also tilt the robot less (not tested).
-4. **IMU tilt.** Put the torso on a level table and read the gravity vector. This takes 5 minutes.
-   Correct the offset in software if it is above 1°. 2° changed nothing, 4° caused falls.
-5. **Loop latency** on the ROCK 3C. Log the times of the encoder sample, the policy step and the CAN send.
-   Keep the total from the sensor sample to the new drive target at 20 ms or less, as `hw_risks.py` recommends.
-6. **Joint zero error.** Check each joint with a jig after the zero procedure. Aim for ±1°, as `hw_risks.py` recommends.
-7. **Last:** armature, foot friction, leg masses and gear play. They changed the falls by 3 or less in this study.
-
-## Recommended randomization ranges for the next training
-
-Status: planned. The column "f1_v1" gives the ranges of its last training stage (`policies/f1_v1/train_ranges.json`, `archive/rl_f1/f1_env.py`).
-The recommended ranges cover the tested values with some margin.
-f3_v1 (stage E) uses them, with a constant hose pull of 0 to 2.5 N plus a changing pull of 0 to 1.5 N ([archive/rl_f1](../../../archive/rl_f1/README.md)).
-
-| Term | f1_v1 | Recommended | Reason |
-|---|---|---|---|
-| Torque per amp: one scale on K, D and the torque limit together | none (K and D × 0.8 to 1.2 for each joint, limit 6 to 9 Nm) | × 0.8 to 1.2, on top of the K and D ranges | rank 1. A torque constant error moves K, D and the limit together |
-| Torso CoM, torso and payload together | ±3 cm in x, y and z | keep ±3 cm | rank 2 |
-| Hose pull at the nozzle (0.03, 0, 0.944) m, horizontal, backward in the heading frame | none (recoil 0 to 1.5 N along the nozzle, constant force on the torso ±1 N) | 0 to 4 N: a constant part per episode plus a slow change (period 2 to 8 s) | rank 3. The constant part hurts most |
-| IMU tilt: one fixed rotation of the gravity and gyro inputs, random axis | none (only the noise of ±0.05) | 0 to 5° | rank 4. The noise does not teach a constant offset |
-| Command latency | 0 to 20 ms | 0 to 40 ms | rank 5. f1_v1, trained to 20 ms, falls much less than the shipped policy at 40 ms |
-| Observation latency | 0 to 20 ms | keep 0 to 20 ms | rank 6 |
-| Joint zero error | ±0.05 rad (±2.9°) | keep | rank 7 |
-| Armature, hip and knee / ankle | 0.004 to 0.008 kg m², all joints | 0.007 to 0.025 / 0.002 to 0.008 kg m² | small effect, but the true value is unknown |
-| Joint friction | 0.05 to 0.15 Nm | 0.05 to 0.5 Nm | no extra falls, but it slows the turn on the spot |
-| Leg link mass | none | × 0.9 to 1.1 | small effect |
-| Foot friction | 0.4 to 1.2 | keep | 0.4 changed nothing on a flat floor |
-| Gear play | none | not needed now | no effect with this simple model |
-
-**Assumed:** the realistic case R is a guess of the real robot. Measure the ranked values, then run the study again with them.
-**Not verified:** the hose model is a horizontal force at the nozzle. A real hose also pulls down and sideways, and it moves with the pan-tilt.
-**Not verified:** the motor speed limit is not in the model. The fastest joint in the F3 nominal runs reached 13.3 rad/s.
-At 22.2 V, the no-load speed at the joint is about 23 rad/s (150KV, hip and knee) and 17 rad/s (110KV, ankle).
-**Open:** the BHL training config sets a velocity limit of 10 rad/s. We do not know if Isaac Lab applied it to the joints.
-**Open:** every run starts with the BHL 4 cm drop. A start from a gantry is gentler. P falls during this phase.
+**Findings:** see "Findings" at the end. The older study on the BHL biped (shipped BHL policy, f1_v1, f3_v1) is in `archive/sim2sim_bhl/`.
 
 ## Setup
 
 - Loop: `hw_risks.simulate()`. This is the `run.py` policy loop with the drive model of `hw_risks.py`.
-  Policy at 25 Hz, physics at 2 kHz, the training observation noise, and the BHL start with a 4 cm drop.
-- Nominal drive (`hw_risks.py` case 1): K = 20 Nm/rad, D = 2 Nm s/rad, 6 Nm torque limit, PASSTHROUGH input mode.
-  No zero error, no latency.
-- Policies: the shipped BHL policy and our policy f1_v1. f1_v1 was trained on F1 (15.24 kg). Both have the same 45 inputs and 12 outputs.
+  Policy at 25 Hz, physics at 2 kHz, the training observation noise, the standing start of `run.py`.
+- Nominal drive (`hw_risks.py` case 1): the gains and torque limits of the ASMR MJCF (K 90 / 22 Nm/rad, D 5.7 / 0.49 Nm s/rad,
+  18.1 / 22.6 Nm for hip and knee / ankle), PASSTHROUGH input mode. No zero error, no latency.
 - Commands: stand, vx 0.3 m/s, turn on the spot at 0.5 rad/s, and vx 0.2 m/s + yaw 0.5 rad/s. 10 seeds per command, 20 s per run.
   So each case has 40 runs per policy.
 - Seeds: the seed sets the sensor noise, the zero errors, the IMU tilt axis and the phase of the varying hose pull.
   All cases use the same seeds. So each run of a case pairs with one run of F3 nominal (same policy, command and seed).
 - Push test: the robot stands with a zero command. A 0.1 s push hits the torso forward, back, left or right, at 3.0 s or 3.3 s.
   A bisection finds the largest push with no fall in the next 3 s (resolution 0.375 N s).
-  "Smallest standing push" is the smallest of these 8 values. 0 means that the robot fell without a push.
+  "Smallest standing push" is the smallest of these values. 0 means that the robot fell without a push.
 - Fall: a torso tilt above 0.78 rad or a large height drop, as in `run.py`.
-- Knee: F3 has no side tanks. So this study does not clip the knee target at 1.4 rad, unlike `archive/rl_f1/f1_eval.py`.
 
 ### The changes
 
-| Change | Values tested | Nominal | Source of the values |
-|---|---|---|---|
-| Joint armature, hip and knee / ankle (kg m²) | 0.007 / 0.002, 0.014 / 0.0047, 0.0224 / 0.0074 | 0.005 / 0.005 | BHL Isaac Lab training config, the middle, BHL motor page |
-| Joint friction (`frictionloss`, Nm) | 0.3, 0.5 | 0.1 | BHL model value and two higher guesses |
-| Torque per amp: K, D and the torque limit together | × 0.85, × 1.15 | × 1 | BHL and the course config use different torque constants |
-| Leg link mass and inertia, 12 bodies | +10 % (+0.82 kg) | CAD values | printed parts, screws and cables |
-| Torso CoM in x: the torso and all payload parts | +2 cm, −2 cm | model | |
-| Foot friction (all geoms) | 0.6, 0.4 | 1.0 | BHL training range 0.4 to 1.2 |
-| Observation latency | 10 ms, 20 ms | 0 | `hw_risks.py` model |
-| Command latency | 20 ms, 40 ms | 0 | `hw_risks.py` model |
-| IMU mounting tilt | 2°, 4° | 0 | |
-| Gear play (backlash) at the joint | 0.5°, 1° | 0 | model below |
-| Hose pull at the nozzle | 1 N, 3 N, constant or from 0 to the value and back in 4 s | 0 | |
-| Joint zero error | ±2° | 0 | `hw_risks.py` case 4b |
+The nominal values are those of the ASMR MJCF: armature 0.0228 (hip, knee) / 0.0056 (ankle) kg m², joint friction 0.38 / 0.32 Nm,
+measured leg masses, foot friction 1.0 (floor).
 
-- Armature: the BHL motor page gives a reflected rotor inertia of 0.0224 kg m² (M6C12, hip and knee) and 0.00743 kg m² (5010, ankle).
-  The page uses a thin-shell rotor, which probably gives too much. So the true value is probably between the training value and the page value.
-- Torque per amp: the drive turns the gains into a current with its configured torque constant.
-  A wrong torque constant scales K, D and the torque limit together. BHL uses 0.0919 and 0.1176 Nm/A, the course config 0.067 and 0.0836 Nm/A.
+| Change | Values tested | Source of the values |
+|---|---|---|
+| Joint armature, hip and knee / ankle (kg m²) | 0.007 / 0.002 (BHL training value), 0.014 / 0.0047, 0.034 / 0.0085 (1.5 × nominal) | guesses around the nominal |
+| Joint friction (`frictionloss`, Nm) | 0.3, 0.5 | guesses around the nominal |
+| Torque per amp: K, D and the torque limit together | × 0.85, × 1.15 | the drive turns the gains into a current with its configured torque constant |
+| Leg link mass and inertia, 12 bodies | +10 % | printed parts, screws and cables |
+| Torso CoM in x: the torso and all payload parts | +2 cm, −2 cm | |
+| Foot friction (all geoms) | 0.6, 0.4 | |
+| Observation latency | 10 ms, 20 ms | `hw_risks.py` model |
+| Command latency | 20 ms, 40 ms | `hw_risks.py` model |
+| IMU mounting tilt | 2°, 4° | |
+| Gear play (backlash) at the joint | 0.5°, 1° | model below |
+| Hose pull at the nozzle (F3 layout: -0.02, 0, 0.93 m) | 1 N, 3 N, constant or from 0 to the value and back in 4 s | |
+| Joint zero error | ±2° | `hw_risks.py` case 4b |
+
 - IMU tilt: the IMU frame turns about a horizontal axis. The seed sets the direction of the axis.
   The policy sees the turned gravity and gyro vectors. The fall check uses the true torso.
-- Hose pull: a horizontal force, backward in the heading frame, at the nozzle point (0.03, 0, 0.944) m of the torso frame.
-  The seed sets the phase of the varying pull.
-- Joint zero error: we added it because `hw_risks.py` found that ±2° matters on F2.
+- Hose pull: a horizontal force, backward in the heading frame, at the nozzle point. The seed sets the phase of the varying pull.
 
 **Assumed:** the gear play model. It is simple, so read its results as a first estimate:
 
@@ -528,20 +440,17 @@ At 22.2 V, the no-load speed at the joint is about 23 rad/s (150KV, hip and knee
 - The rotor pushes the joint only when it touches a wall of the play. Then the joint gets the drive torque, and the rotor turns with the joint.
 - Between the walls, the joint gets no torque. The rotor turns at the speed where the drive torque is zero: K × (target − rotor) / D.
 - The policy sees the rotor position and speed, as on the real robot.
-- So the position loop has a dead band of ± half the play, and the measured joint position is off by up to ± half the play.
 - Not in the model: the rotor inertia while it crosses the gap, the impact at the wall, and the gear stiffness.
 
 ### Combined cases
 
 | Case | Changes |
 |---|---|
-| R: realistic | armature 0.014 / 0.0047, joint friction 0.3 Nm, legs +5 %, foot friction 0.6, observation latency 10 ms, command latency 20 ms, IMU tilt 2°, gear play 0.5°, hose 0 to 1 N (4 s), zero error ±1°. Torque per amp × 1 and torso CoM 0 (the middle of their ranges) |
-| P: pessimistic | armature 0.0224 / 0.0074, joint friction 0.5 Nm, torque per amp × 0.85, legs +10 %, torso CoM 2 cm back, foot friction 0.4, observation latency 20 ms, command latency 40 ms, IMU tilt 4°, gear play 1°, hose 3 N constant, zero error ±2° |
-| R9, P9 | R and P with a 9 Nm drive limit. In P9, the torque per amp error makes it 7.65 Nm at the joint |
+| R: realistic | foot friction 0.6, observation latency 10 ms, command latency 20 ms, IMU tilt 2°, gear play 0.5°, hose 0 to 1 N (4 s), zero error ±1° |
+| P: pessimistic | armature 0.034 / 0.0085, joint friction 0.5 Nm, torque per amp × 0.85, legs +10 %, torso CoM 2 cm back, foot friction 0.4, observation latency 20 ms, command latency 40 ms, IMU tilt 4°, gear play 1°, hose 3 N constant, zero error ±2° |
 | R+armature to R+zero | R with one value moved to its value in P. These 12 cases run only the two walking commands (20 runs per policy) and no push test, to save compute time |
 
-- P takes the worse direction of the two-sided changes: the torso CoM 2 cm back and the constant hose pull.
-  The one-change results confirmed both choices.
+R is a guess of the real robot. Measure the ranked values, then run the study again with them.
 
 Metrics:
 
@@ -559,63 +468,10 @@ Metrics:
 REPORT_TAIL = """
 ## Findings
 
-Status: tested in simulation, with the shipped policy, f1_v1 and f3_v1 (runs of 2026-10-30). Most important first.
+Not written yet. Read the tables above: section 3 ranks the single changes, section 6 shows which value hurts most in R.
+After the run, write here the ranking, the recommended order of hardware measurements, and the randomization ranges for the next training.
 
-1. **Small errors add up, and the margin is thin.** The realistic case R makes the shipped policy fall in 5 of 40 runs (p = 0.06).
-   f1_v1 does not fall in R. In R, one value at its pessimistic value gives these extra falls in 40 paired walking runs (p < 0.01):
-   - torque per amp × 0.85: +22
-   - torso CoM 2 cm back: +21
-   - constant 3 N hose pull: +20
-   - IMU tilt 4°: +17
-   - command latency 40 ms: +17
-   - observation latency 20 ms: +8
-
-   The other values give +4 or less.
-2. **The CoM shift and the command latency hurt only together with other errors.** Alone on F3, they give 1 and 2 falls in 80 runs.
-   In R, they give +21 and +17. So a test of one error at a time on an ideal robot misses them.
-   Alone, the CoM 2 cm back already slows walking by 0.05 to 0.06 m/s.
-3. **Knee torque is the common thread.** The three worst values all make the knee hit its 6 Nm limit more often.
-   At vx 0.3 on F3, the knee is at the limit 21 % (shipped) and 16 % (f1_v1) of the time.
-   With the CoM 2 cm back or a constant 3 N pull, it is 28 to 38 %. In R with one of the three worst values, it is 40 to 57 %.
-   A 9 Nm limit cuts the falls of the shipped policy in R from 5 to 1 in 40.
-4. **A constant backward hose pull is the strongest single change on F3.** 3 N gives +12 falls in 80 runs, and the walking speed drops by about half.
-   f1_v1 even falls in 2 of 10 standing runs with this pull. A pull that swings from 0 to 3 N gives only +2. The mean pull matters most.
-5. **A 4° IMU tilt causes falls, 2° does not.** 4° gives +11 falls in 80 runs. The policies then see a constant gravity error of 0.07.
-   This is larger than the training noise of ±0.05.
-6. **15 % less torque per amp causes falls alone too.** × 0.85 gives +8 falls in 80 runs and slows walking from 0.25 to 0.17 m/s (shipped).
-   × 1.15 gives no falls and faster walking.
-7. **F3 tolerates drive errors better than F2.** With the shipped policy and the same seeds, 40 ms of command latency gives 2 falls in 40 runs on F3.
-   `hw_risks.py` case 5c gives 13 on F2. A zero error of ±2° gives 1 fall on F3 and 4 on F2 (case 4b).
-8. **F3 gives more torque margin than F2, but the same falls with the nominal drive.** Both fall at most once in 40 runs.
-   F3 walks 0.03 m/s faster with the shipped policy and 0.02 m/s faster with f1_v1.
-   At vx 0.3, the hip yaw is at the limit 22.6 % of the time on F3 and 29.2 % on F2. The knee: 20.7 % and 26.5 % (shipped).
-9. **The lighter options help a little.** One 6S pack or motor power by cable cut the time at the limit by 1 to 7 more percentage points.
-   The smallest standing push of f1_v1 drops from 3.8 to 3.0 N s with the cable option. A lighter robot gains more speed from the same push.
-   **Not verified:** the cable option needs a power cable from the trolley. This study does not model the pull of that cable.
-10. **The pessimistic case P falls at once.** All 80 runs fall within 0.9 s, during or right after the start drop.
-    With 9 Nm (7.65 Nm at the joint after the torque per amp error), 77 of 80 runs still fall.
-    A one-off check (not in the script, shipped policy, 6 runs per variant) removed one change at a time from an earlier P
-    with a hose pull from 0 to 3 N. No single removal stopped the falls.
-    In the same check, the P model changes alone (armature, frictions, masses, CoM) gave no falls. The P drive and sensor changes alone made all 6 runs fall.
-11. **The mechanical details did not change the falls.** Alone on F3, the armature (all three values), joint friction up to 0.5 Nm,
-    foot friction down to 0.4, gear play up to 1° and legs +10 % give 1 fall or less in 80 runs each.
-    In R, their pessimistic values give +3 or less. Joint friction changes the gait:
-    0.5 Nm slows the turn on the spot of f1_v1 from 0.44 to 0.32 rad/s.
-    The armature result surprised us. The BHL motor page value is about 4.5 times the model value at the hip and knee.
-    It changed neither the falls nor the pushes.
-12. **The two policies fail in different ways.** f1_v1 handles latency and IMU tilt much better. In R with 40 ms of command latency,
-    f1_v1 falls in 3 of 20 walking runs and the shipped policy in 19. f1_v1 saw latency and zero errors in training.
-    f1_v1 is weaker against a backward pull. In R with a constant 3 N pull, it falls in 15 of 20 runs, and the shipped policy in 10.
-    f1_v1 also walks slower: 0.17 against 0.25 m/s on F3 at a 0.3 m/s command.
-13. **Noise.** A change of 5 falls or less is not significant (p ≥ 0.06), even when all the changed runs go one way.
-    The push values have a resolution of 0.375 N s and often move by one step between similar cases.
-14. **f3_v1 passes R and the R+ cases.** f3_v1 trained with the recommended ranges (runs of 2026-10-30).
-    It falls once in 240 R+ runs (CoM 2 cm back) and never in the 1000 runs with one change.
-    In R, it walks at 0.18 m/s at a 0.3 m/s command. The shipped policy walks at 0.22 m/s and f1_v1 at 0.15 m/s.
-    P still makes all its 40 runs fall. P has every value at its worst at the same time, and gear play, which is not in the training.
-    **Not verified:** these cases use the same kinds of errors as the training of f3_v1, so they do not prove that it walks on the robot.
-
-Run time of all results in `gap_study.json`: {minutes:.0f} min with {workers} worker processes, shared with a GPU training job.
+Run time of all results in `gap_study.json`: {minutes:.0f} min with {workers} worker processes.
 """
 
 
@@ -639,8 +495,8 @@ def clean(rec, seed):
 
 def quick():
     t0 = time.time()
-    shipped = str(POLICIES["shipped"])
-    # 1. The F3 nominal case gives the same run as hw_risks.py with MODEL = bhl_F3.
+    shipped = str(POLICIES[policy_select.DEFAULT])
+    # 1. The F3 nominal case gives the same run as hw_risks.py with MODEL = f3.
     hw.MODEL = F3
     a = hw.simulate(hw.BASE, (0.3, 0.0, 0.0), 0, 3.0)
     b = hw.simulate(drive("F3"), (0.3, 0.0, 0.0), 0, 3.0, env=(model("F3"), session(shipped)))
@@ -651,7 +507,7 @@ def quick():
     legs = mass(nom, lambda b: b.startswith("leg_"))
     upper = mass(nom, lambda b: b == "base" or b.startswith("payload_"))
     assert abs(model("leg_mass").body_subtreemass[1] - nom.body_subtreemass[1] - 0.1 * legs) < 1e-9
-    assert np.allclose(model("arm_page").dof_armature[6:18], np.where(hw.IS_6512, 0.0224, 0.00743))
+    assert np.allclose(model("arm_high").dof_armature[6:18], np.where(hw.IS_6512, 0.034, 0.0085))
     assert np.all(model("foot_0.4").geom_friction[:, 0] == 0.4) and np.all(model("fric_0.5").dof_frictionloss[6:] == 0.5)
     com = []
     for c in ("F3", "com_fwd"):
@@ -682,26 +538,30 @@ def quick():
         assert np.all(np.abs(gap) <= h + 1e-5) and np.allclose(gap[on], h * np.sign(s["tau"][on]), atol=1e-5)
         pushing.append(on.mean())
     assert 0 < np.mean(pushing) < 1, "the play test needs joints at a wall and joints in the gap"
-    # 5. Hose pull: during the start drop (no contact), the robot gains F t of backward momentum and the torque of F
-    # at the nozzle about the CoM.
-    fall = []
+    # 5. Hose pull: the force and torque that the drive loop sets on the base are those of a force F at the nozzle point
+    # (mj_applyFT of F at the point gives the same generalized force).
+    seen, prev = [], []  # the loop sets the force from the body positions of the previous step, so compare with those
 
     def frames2(m, d):
-        if d.time <= 0.05:
-            mujoco.mj_subtreeVel(m, d)
-            fall.append((d.time, d.ncon, d.subtree_linvel[1].copy(), d.subtree_angmom[1].copy(),
-                         d.xpos[1][2] + hw.NOZZLE[2] - d.subtree_com[1][2]))
+        base = m.body("base").id
+        if prev:
+            xpos, xmat, xipos = prev[-1]
+            R = xmat.reshape(3, 3)
+            ang = math.atan2(R[1, 0], R[0, 0])
+            F = -3.0 * np.array([math.cos(ang), math.sin(ang), 0.0])
+            want, got = np.zeros(m.nv), np.zeros(m.nv)
+            mujoco.mj_applyFT(m, d, F, np.zeros(3), xpos + R @ hw.NOZZLE, base, want)
+            mujoco.mj_applyFT(m, d, d.xfrc_applied[base, :3], d.xfrc_applied[base, 3:], xipos, base, got)
+            seen.append(np.abs(want - got).max())
+        prev.append((d.xpos[base].copy(), d.xmat[base].copy(), d.xipos[base].copy()))
     frames2.n = 0
-    hw.simulate({**drive("F3"), "hose_n": 3.0}, (0.0, 0.0, 0.0), 0, 0.08, frames=frames2, env=(nom, Recorder()))
-    t, ncon, v, L, arm = fall[-1]
-    t, M = t - s2s.PHYSICS_DT, nom.body_subtreemass[1]  # mj_subtreeVel uses the body speeds of the start of the step
-    assert ncon == 0 and abs(v[2] + 9.81 * t) < 1e-3, "free fall"
-    assert abs(v[0] + 3.0 * t / M) < 1e-6 and abs(L[1] + 3.0 * arm * t) < 0.02 * 3.0 * arm * t, (v, L)
+    hw.simulate({**drive("F3"), "hose_n": 3.0}, (0.0, 0.0, 0.0), 0, 0.5, frames=frames2, env=(nom, Recorder()))
+    assert seen and max(seen) < 1e-6, max(seen)
     # 6. Every case runs, both kinds of job work, and the report builds.
-    js = [("walk", c, "shipped", shipped, "vx 0.2 + yaw 0.5", 0, 6.0) for c in CASES] + [("push", "F3", "shipped", shipped, "back", 0)]
+    js = [("walk", c, policy_select.DEFAULT, shipped, "vx 0.2 + yaw 0.5", 0, 6.0) for c in CASES] + [("push", "F3", policy_select.DEFAULT, shipped, "back", 0)]
     with Pool(WORKERS) as pool:
         rows = pool.starmap(job, js, chunksize=1)
-    res = {"policies": {"shipped": rel(shipped)}, "model_info": {c: model_info(c) for c in CASES}, "minutes": 0,
+    res = {"policies": {policy_select.DEFAULT: rel(shipped)}, "model_info": {c: model_info(c) for c in CASES}, "minutes": 0,
            "walk": [r for r in rows if r["kind"] == "walk"], "push": [r for r in rows if r["kind"] == "push"]}
     with tempfile.TemporaryDirectory() as tmp:
         write(res, Path(tmp) / "gap_study.md", Path(tmp) / "gap_study.png")
@@ -717,9 +577,9 @@ if __name__ == "__main__":
     if "--quick" in sys.argv:
         quick()
     elif "--report" in sys.argv:
-        write(json.loads(JSON.read_text()))
+        write(json.loads(JSON.read_text(encoding="utf-8")))
     else:
-        pols = {Path(arg("--policy")).stem: Path(arg("--policy")).resolve()} if arg("--policy") else POLICIES
+        pols = {ASKED_POLICY: policy_select.onnx(ASKED_POLICY, robot="asmr2026")} if ASKED_POLICY else POLICIES
         ids = arg("--cases").split(",") if arg("--cases") else list(CASES)
         assert all(c in CASES for c in ids), f"unknown case in {ids}"
-        main(pols, ids, merge=bool(arg("--policy") or arg("--cases")))
+        main(pols, ids, merge=bool(ASKED_POLICY or arg("--cases")))

@@ -5,7 +5,9 @@
     MUJOCO_GL=egl uv run python sim/payload/final_check.py video   # results/final_f2_walk.mp4, final_f2_push.mp4 (ffmpeg)
 
 Needs models/bhl_biped.xml and models/bhl_F2*.xml: run models.py first. Statics, walking and the push test use
-torso_tank.py. The drive cases use sim/sim2sim/hw_risks.py (K 20 / D 2 in the drive, zero errors, CAN latency).
+torso_tank.py. The drive cases used sim/sim2sim/hw_risks.py, which now runs the ASMR robot with the F3 parts, so they are
+not part of this F2 check any more (HW is empty). FIXME(policy): this whole F2 check is on the BHL model with the shipped
+BHL policy; it moves to the ASMR robot or is archived in the next step of the model unification.
 """
 import json
 import sys
@@ -19,10 +21,9 @@ sys.path[:0] = [str(HERE), str(HERE.parent / "sim2sim")]
 import torso_tank as tk  # noqa: E402
 import hw_risks as hw  # noqa: E402
 
-hw.MODEL = "bhl_F2"  # set before the pool forks, so every worker loads the design
 OUT = HERE / "results"
 LIMITS = (6.0, 9.0)
-HW = ("1", "7", "7b")      # hw_risks cases: as trained, realistic drive, realistic + 10 ms observation latency
+HW = ()                    # hw_risks cases of the F2 check: none, hw_risks.py is on the ASMR robot now
 WH_MOTOR = 2 * 111.0       # Wh, two Zeee 6S 5000 mAh (cad/final/parts.json)
 USABLE = 0.8               # ASSUMED: do not run a LiPo below 20 %. The drives also trip at 21 V under load.
 
@@ -72,11 +73,14 @@ def tables(res):
         L.append(f"| {cid}: {hw.CASES[cid][0]} | {sum(r['fall'] is not None for r in rs)} of {len(rs)} | "
                  f"{np.mean(vx):.2f} | {np.mean(pw):.0f} | {min(r['p_bus'] for r in rs):.0f} | "
                  f"{max(r['e'] for r in rs):.2f} |")
-    pw = np.mean([r["p_mean"] for r in res["hw"] if r["case"] == "7" and r["cmd"] == "vx 0.3" and not r["fall"]])
-    res["runtime_h"] = WH_MOTOR * USABLE / pw
-    L += ["", f"Motor battery time while walking (two 6S, {USABLE:.0%} usable, case 7 power): about "
-          f"{res['runtime_h']:.1f} h. **Not verified:** drive standby power, motor iron losses and the real phase "
-          "resistance are not in this number. Measure the bus current on the robot.", ""]
+    if HW:
+        pw = np.mean([r["p_mean"] for r in res["hw"] if r["case"] == "7" and r["cmd"] == "vx 0.3" and not r["fall"]])
+        res["runtime_h"] = WH_MOTOR * USABLE / pw
+        L += ["", f"Motor battery time while walking (two 6S, {USABLE:.0%} usable, case 7 power): about "
+              f"{res['runtime_h']:.1f} h. **Not verified:** drive standby power, motor iron losses and the real phase "
+              "resistance are not in this number. Measure the bus current on the robot.", ""]
+    else:
+        L += ["", "The drive cases are in `sim/sim2sim/hw_risks.py` (ASMR robot with the F3 parts).", ""]
     return "\n".join(L)
 
 

@@ -175,7 +175,7 @@ The trolley tips about the line between its two front casters. The worst case: t
 - When the slack is gone, the pull rises until the breakaway clip lets go at about 1.5 N. The pull points 34° above the horizontal, toward the boom tip. At the anchor height (0.835 m) this gives a backward pitch moment of 1.0 N·m.
 - If the clip does not let go, the pull rises until the trolley tips (7 to 11 N). The pitch moment is then 4.8 to 7.6 N·m. This can pull the robot over.
 - For comparison: F2 carried tanks, water and pump on the robot. F3 is 1.4 kg lighter (F3 model: 14.60 kg).
-- The gap study ([gap_study.md](../../sim/sim2sim/results/gap_study.md)) checked the walking policies with a hose pull. A constant 3 N pull adds 12 falls in 80 runs, and 20 falls in 40 together with the other realistic errors. A pull that changes between 0 and 3 N adds 2 falls. So the clip lets go at 1.5 N, and the person who pushes keeps the mean pull below 1 N.
+- The gap study ([gap_study.md](../../archive/sim2sim_bhl/gap_study.md)) checked the walking policies with a hose pull. A constant 3 N pull adds 12 falls in 80 runs, and 20 falls in 40 together with the other realistic errors. A pull that changes between 0 and 3 N adds 2 falls. So the clip lets go at 1.5 N, and the person who pushes keeps the mean pull below 1 N.
 
 ## 11. Parts
 

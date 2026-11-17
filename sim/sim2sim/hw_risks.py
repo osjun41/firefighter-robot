@@ -1,4 +1,4 @@
-"""Sim-to-real risks of the course motor drives, for the shipped BHL policy on the final design F2 (bhl_F2).
+"""Sim-to-real risks of the course motor drives, for a walking policy of policies/ (default baseline) on the ASMR robot with the F3 parts.
 
 The robot uses XDrive MINI drives (ODrive v3.6 clone, firmware v0.5.1). The drive does the PD at 8 kHz, in motor turns:
 vel_sp = pos_gain (pos_set - pos) + vel_ff, torque = vel_gain (vel_sp - vel). With the gear ratio N = 15 this gives
@@ -10,6 +10,10 @@ adds: per-joint K, D and torque limit, a joint zero error, command and observati
     uv run python sim/sim2sim/hw_risks.py --regen    regen analysis only, added to results/hw_risks.json, about 1 min
     uv run python sim/sim2sim/hw_risks.py --check    self-check, about 20 s
     MUJOCO_GL=egl uv run python sim/sim2sim/hw_risks.py --video   the two videos (needs ffmpeg and hw_risks.json)
+
+--policy NAME (a folder of policies/, default baseline) and --payload NAME (none, box_1kg, f3; default f3) go before the
+other options. The robot, its gains and limits, the standing pose and the IMU mount come from the ASMR model
+(sim/sim2sim/run.py, source/robot_models), so "as trained" means the gains and torque limits of its MJCF.
 """
 import json
 import math
@@ -27,15 +31,19 @@ import onnxruntime as ort
 
 HERE = Path(__file__).resolve().parent
 sys.path[:0] = [str(HERE), str(HERE.parent / "payload")]
-import bhl_legacy as s2s  # noqa: E402  legacy BHL simulator shared helpers
+for _option, _variable in (("--policy", "SIM2SIM_POLICY"), ("--payload", "SIM2SIM_PAYLOAD")):  # before run.py reads them
+    if _option in sys.argv:
+        os.environ[_variable] = sys.argv[sys.argv.index(_option) + 1]
+        del sys.argv[sys.argv.index(_option):sys.argv.index(_option) + 2]
+import run as s2s  # noqa: E402  the ASMR runner: policy, contract, model, observation
 import report  # noqa: E402  sim/payload/report.py: palette and plot style
 
 plt = report.plt
 OUT = s2s.OUT
-MODEL = "bhl_F2"  # final design F2: two full R2 tanks outside the torso (sim/payload/README.md)
-N = 15  # BHL actuator gear ratio
+MODEL = os.environ.get("SIM2SIM_PAYLOAD") or "f3"  # payload on the torso (source/robot_models/robots/asmr2026_payload.py)
+N = 15  # actuator gear ratio of the course leg drives
 # Leg joint order of run.py JOINTS: hip roll, hip yaw, hip pitch, knee (6512), ankle pitch, ankle roll (5010).
-# Source: BHL robot_configuration.backup.json torque_constant 0.0919 (150KV 6512) and 0.1176 (110KV 5010).
+# Source: the course drive config, torque constants 0.067 (6512) and 0.0836 (5010) Nm/A (BHL file: 0.0919 and 0.1176).
 IS_6512 = np.tile([True] * 4 + [False] * 2, 2)
 
 
@@ -52,13 +60,13 @@ TRAP_V, TRAP_A = 10 * 2 * math.pi / N, 5 * 2 * math.pi / N  # trap_traj vel_limi
 OVERSPEED = 1.2 * 50 * 2 * math.pi / N  # rad/s at the joint: vel_limit 50 turn/s x vel_limit_tolerance 1.2 (default)
 REGEN_W, BUS_W = 3.0 * 24.0, 12.0 * 24.0  # W: dc_max_negative_current 3 A, dc_max_positive_current 12 A, at 24 V
 
-BASE = dict(K=s2s.KP, D=s2s.KD, lim=6.0, zero_deg=0.0, cmd_ms=0, obs_ms=0, trap=False)
+BASE = dict(K=s2s.KP, D=s2s.KD, lim=s2s.EFFORT_LIMITS, zero_deg=0.0, cmd_ms=0, obs_ms=0, trap=False)  # the MJCF of the ASMR robot
 COURSE = dict(K=COURSE_K, D=COURSE_D)
 CASES = {  # id: (label, settings). The first character of the id is the case group (GROUPS).
-    "1": ("baseline: K 20, D 2, 6 Nm (as trained)", BASE),
+    "1": ("baseline: MJCF gains K 90 / 22 Nm/rad, D 5.7 / 0.49, 18 / 23 Nm (as trained)", BASE),
     "2": ("course gains, 18 A, PASSTHROUGH (course file run to the end)", {**BASE, **COURSE, "lim": COURSE_LIM}),
     "2b": ("course gains, 18 A, TRAP_TRAJ (course file section 4)", {**BASE, **COURSE, "lim": COURSE_LIM, "trap": True}),
-    "3": ("course gains, 6 Nm", {**BASE, **COURSE}),
+    "3": ("course gains, 67 % of the 18 A current limit", {**BASE, **COURSE, "lim": 0.67 * COURSE_LIM}),
     "4a": ("zero error ±1°", {**BASE, "zero_deg": 1.0}),
     "4b": ("zero error ±2°", {**BASE, "zero_deg": 2.0}),
     "4c": ("zero error ±4°", {**BASE, "zero_deg": 4.0}),
@@ -67,13 +75,13 @@ CASES = {  # id: (label, settings). The first character of the id is the case gr
     "5c": ("command latency 40 ms", {**BASE, "cmd_ms": 40}),
     "5d": ("command latency 60 ms (edge test)", {**BASE, "cmd_ms": 60}),
     "5e": ("observation latency 10 ms", {**BASE, "obs_ms": 10}),
-    "6a": ("torque limit 4 Nm", {**BASE, "lim": 4.0}),
-    "6b": ("torque limit 9 Nm", {**BASE, "lim": 9.0}),
-    "7": ("realistic: K 20, D 2, 6 Nm, ±2°, 10 ms command latency", {**BASE, "zero_deg": 2.0, "cmd_ms": 10}),
+    "6a": ("torque limit 67 % (12 / 15 Nm)", {**BASE, "lim": 0.67 * s2s.EFFORT_LIMITS}),
+    "6b": ("torque limit 50 % (9 / 11 Nm)", {**BASE, "lim": 0.5 * s2s.EFFORT_LIMITS}),
+    "7": ("realistic: MJCF gains and limits, ±2°, 10 ms command latency", {**BASE, "zero_deg": 2.0, "cmd_ms": 10}),
     "7b": ("realistic + 10 ms observation latency", {**BASE, "zero_deg": 2.0, "cmd_ms": 10, "obs_ms": 10}),
     "7c": ("course file (case 2) + ±2°, 10 ms command latency",
            {**BASE, **COURSE, "lim": COURSE_LIM, "zero_deg": 2.0, "cmd_ms": 10}),
-    "7d": ("7b with a 9 Nm limit", {**BASE, "lim": 9.0, "zero_deg": 2.0, "cmd_ms": 10, "obs_ms": 10}),
+    "7d": ("7b with a 67 % torque limit", {**BASE, "lim": 0.67 * s2s.EFFORT_LIMITS, "zero_deg": 2.0, "cmd_ms": 10, "obs_ms": 10}),
 }
 SEEDS, PUSH_SEEDS = 10, 5  # noise sequence and zero errors per seed; the push time also changes with the seed
 PUSH_DIRS = {"back": math.pi, "left": math.pi / 2}  # walking at 0.3 m/s. Sideways pushes are the weakest (payload push test)
@@ -83,10 +91,10 @@ COURSE_IDS = ("2", "2b", "3", "7c")
 
 
 def load_model(name):
-    """A model of sim/payload/models at the run.py physics rate, for the drive model."""
-    m = mujoco.MjModel.from_xml_path(str(s2s.MODELS / f"{name}.xml"))
-    m.opt.timestep = s2s.PHYSICS_DT
-    m.actuator_forcerange[:] = [-30.0, 30.0]  # the model stops at 20 Nm; the drive limit below does the clipping
+    """The ASMR robot with the payload `name` at the run.py physics rate. Its position servos become torque motors
+    (the drive model below does the PD and the clipping)."""
+    m = s2s.load_model(payload=name)
+    s2s.configure_torque_actuators(m, 30.0)  # the model stops at 30 Nm; the drive limit below does the clipping
     return m
 
 
@@ -99,7 +107,6 @@ def session(path):
 @lru_cache(maxsize=1)
 def load():
     """Model and policy, once per worker process."""
-    # FIXME(policy): the shipped BHL policy on the BHL model. Use a policy trained on the ASMR model after the models are unified.
     return load_model(MODEL), session(s2s.POLICY)
 
 
@@ -112,14 +119,14 @@ def trap_step(p, v, goal, dt):
     return p + v * dt, v
 
 
-NOZZLE = np.array([0.03, 0.0, 0.944])  # m, base frame: the nozzle, where the hose pulls (as archive/rl_f1/f1_env.py)
+NOZZLE = np.array([-0.0201, 0.0, 0.9323])  # m, base frame: the brass nozzle of the F3 layout (0.8925 + 0.0398), where the hose pulls
 HOSE_PERIOD = 4.0  # s, period of the slowly varying hose pull
 
 
 def simulate(cfg, command, seed, seconds=20.0, push=None, frames=None, log=None, env=None):
-    """One run of the shipped policy on MODEL with the drive model cfg, with the training observation noise.
+    """One run of the policy (default baseline) on the ASMR robot with the payload MODEL and the drive model cfg, with the training observation noise.
     push = (t0 s, impulse N s, direction rad in the heading frame): a horizontal force on the torso for 0.1 s.
-    Returns the fall time and the metrics. The torque metrics start at 1 s, after the BHL start drop.
+    Returns the fall time and the metrics. The torque metrics start at 1 s.
     log: optional list that gets [12 joint torques, 12 joint speeds] per physics step from 1 s.
     env: optional (MjModel, ONNX session) instead of load(), for other models and policies (gap_study.py).
     Optional cfg keys of gap_study.py, off when missing: imu_deg (IMU mounting tilt about a horizontal axis that the
@@ -127,8 +134,10 @@ def simulate(cfg, command, seed, seconds=20.0, push=None, frames=None, log=None,
     from 0 to hose_n and back in HOSE_PERIOD s)."""
     m, policy = env or load()
     d = mujoco.MjData(m)
-    d.qpos[7:19] = s2s.DEFAULT  # BHL reset, as run.py start="bhl"
+    d.qpos[:3] = s2s.DEFAULT_BASE_POSITION  # the standing pose, as run.py
+    d.qpos[7:19] = s2s.DEFAULT
     mujoco.mj_forward(m, d)
+    imu_in_base, base_in_imu = s2s._imu_frame_transform(m, d)  # the IMU of the ASMR robot is turned about z
     rng = np.random.default_rng(seed)
     off = np.deg2rad(np.random.default_rng([seed, 1]).uniform(-1, 1, 12) * cfg["zero_deg"])  # measured - true
     K, D, lim = (np.broadcast_to(np.asarray(cfg[k], dtype=float), 12) for k in ("K", "D", "lim"))
@@ -145,9 +154,10 @@ def simulate(cfg, command, seed, seconds=20.0, push=None, frames=None, log=None,
 
     def reading():
         quat, gyro = d.sensor("imu_quat").data.copy(), d.sensor("imu_gyro").data.copy()
-        if mount:  # the IMU frame is the base frame turned by q_imu
+        if mount:  # the IMU frame is turned by q_imu (mounting error)
             mujoco.mju_mulQuat(quat, d.sensor("imu_quat").data, q_imu)
             gyro = s2s.quat_rotate_inverse(q_imu, gyro)
+        quat, gyro = s2s.quat_mul(quat, base_in_imu), imu_in_base @ gyro  # to the base frame, as run.py
         return (quat, gyro) + ((qr + off, vr.copy()) if h else (d.qpos[7:19] + off, d.qvel[6:18].copy()))
     hist = deque([reading()], maxlen=obs_steps + 1)  # hist[0] is the reading of obs_steps physics steps ago
     queue = deque()  # (physics step when the drive gets it, joint target)
@@ -163,7 +173,7 @@ def simulate(cfg, command, seed, seconds=20.0, push=None, frames=None, log=None,
         prev, action = action, policy.run(None, {"obs": obs})[0][0]
         if d.time >= 1.0:
             rate_sq, rate_n = rate_sq + float(np.sum((action - prev) ** 2)), rate_n + 12
-        queue.append((n + cmd_steps, s2s.DEFAULT + s2s.ACTION_SCALE * action))
+        queue.append((n + cmd_steps, np.clip(s2s.DEFAULT + s2s.ACTION_SCALE * action, s2s.JOINT_LIMITS[:, 0], s2s.JOINT_LIMITS[:, 1])))
         for _ in range(sub):
             while queue and queue[0][0] <= n:
                 goal = queue.popleft()[1]
@@ -210,7 +220,8 @@ def simulate(cfg, command, seed, seconds=20.0, push=None, frames=None, log=None,
             if frames and d.time * 30 >= frames.n:
                 frames(m, d)
         t = d.time
-        tilt = np.arccos(np.clip(-s2s.quat_rotate_inverse(d.sensor("imu_quat").data, np.array([0, 0, -1.0]))[2], -1, 1))
+        base_quat = s2s.quat_mul(d.sensor("imu_quat").data, base_in_imu)
+        tilt = np.arccos(np.clip(-s2s.quat_rotate_inverse(base_quat, np.array([0, 0, -1.0]))[2], -1, 1))
         if fall is None and (tilt > s2s.TILT_LIMIT or d.site("imu").xpos[2] < 0.6 * z0):
             fall = t
         if fall is not None and (not frames or t > fall + 2.0):  # a video shows 2 s after the fall
@@ -321,7 +332,7 @@ def table_row(cid, s):
 
 
 GROUPS = {"1": "Case 1: baseline", "2": "Case 2: course default gains, course current limit",
-          "3": "Case 3: course default gains, 6 Nm", "4": "Case 4: joint zero error (baseline gains)",
+          "3": "Case 3: course default gains, 67 % of the current limit", "4": "Case 4: joint zero error (baseline gains)",
           "5": "Case 5: latency (baseline gains)", "6": "Case 6: torque limit (baseline gains)",
           "7": "Case 7: combined realistic cases"}
 
@@ -372,7 +383,7 @@ def plots(S):
         ax.set_axisbelow(True)
     axs[1].axvline(0.3, color=report.INK, lw=1)
     axs[0].set_yticks(y, [f"{c}: {CASES[c][0]}" for c in ids], fontsize=8)
-    fig.suptitle(f"Drive risks, {MODEL}, shipped BHL policy, {SEEDS} seeds x 4 commands. Dashed line: baseline. "
+    fig.suptitle(f"Drive risks, ASMR robot, payload {MODEL}, {s2s.POLICY.parent.name}, {SEEDS} seeds x 4 commands. Dashed line: baseline. "
                  "Orange: course drive gains.", fontsize=10, x=0.01, ha="left")
     fig.savefig(OUT / "hw_risks.png", dpi=150, bbox_inches="tight")
     plt.close(fig)
@@ -383,16 +394,16 @@ REPORT_HEAD = """# Sim-to-real risks of the course motor drives
 **Status:** tested in simulation (MuJoCo, CPU only). Nothing here is measured on board.
 
 **Not verified:** The MuJoCo actuator model has no motor dynamics, no CAN jitter and no gearbox backlash.
-The model has only a constant joint friction of 0.1 Nm and an armature of 0.005 kg m², from the BHL model.
-We did not check the drive trip limits (last table) on an XDrive MINI. They come from the course config and the ODrive v0.5.1 defaults.
+The joint friction and armature are those of the ASMR MJCF. We did not check the drive trip limits (last table) on an XDrive MINI.
+They come from the course config and the ODrive v0.5.1 defaults.
 
 **Assumed:** Hip roll, hip yaw, hip pitch and knee use the 6512 motor. Ankle pitch and ankle roll use the 5010 motor.
-Source: the BHL low-level config `robot_configuration.backup.json` (torque constant 0.0919 for the 150KV 6512, 0.1176 for the 110KV 5010).
+Torque constants 0.067 and 0.0836 Nm/A from the course drive config.
 
 ## Setup
 
-- Model: `bhl_F2` (`sim/payload/models/bhl_F2.xml`). This is the final design F2 with two full R2 tanks, 15.99 kg.
-- Policy: the shipped BHL policy at 25 Hz, physics at 2 kHz, the training observation noise, and the BHL start with a 4 cm drop.
+- Robot: the ASMR 2026 robot with the payload given by `--payload` (default `f3`: 47 parts, 4.14 kg, 16.35 kg in all).
+- Policy: `policies/<name>` (`--policy`, default baseline) at 25 Hz, physics at 2 kHz, the training observation noise, and the standing start of `run.py`.
 - `hw_risks.py` imports the `run.py` functions. With the baseline settings, it gives the same result as `run.py` `simulate()` (self-check).
 - Commands: the 4 commands of `run.py`: stand, vx 0.3, yaw 0.5, and vx 0.2 + yaw 0.5. Each run lasts 20 s.
 - Seeds: {seeds} seeds per command, so each case has {runs} runs. The seed sets the sensor noise and the zero errors.
@@ -401,6 +412,7 @@ Source: the BHL low-level config `robot_configuration.backup.json` (torque const
 - The {push_seeds} push seeds put the push at 3.0 to 3.4 s, so it hits 5 phases of one step. "Worst" is the smallest of the 5 values.
   A worst value of 0.0 means that the robot fell without a push before 6 s.
 - Drive model: the drive does the PD. Torque = K × (target − measured position) − D × velocity, clipped to the joint limit.
+  Case 1 uses the gains and limits of the MJCF (K 90 / 22 Nm/rad, D 5.7 / 0.49 Nm s/rad, 18.1 / 22.6 Nm, hip and knee / ankle), the values the policy trained with.
 - Course gains: pos_gain 12.6 and vel_gain 0.223 (6512) give K = 100.6 Nm/rad and D = 8.0 Nm s/rad.
   pos_gain 20 and vel_gain 0.1 (5010) give K = 71.6 Nm/rad and D = 3.6 Nm s/rad.
   current_lim 18 A gives 18.1 Nm (6512) and 22.6 Nm (5010) at the joint.
@@ -410,10 +422,8 @@ Source: the BHL low-level config `robot_configuration.backup.json` (torque const
 - Command latency: the drive gets the new target L ms after the policy computes it.
   Observation latency: the policy sees the sensor values of 10 ms before.
 - Extra cases: 2b tests TRAP_TRAJ, because section 4 of the course config sets it. 5d finds the latency limit.
-  7b to 7d support the recommendation.
-- 8 kHz check: the real drive runs at 8 kHz. A one-off run of cases 2 and 3 at 8 kHz physics agreed with 2 kHz.
-  That run used an earlier payload model and is not in the script.
-- Run time: {minutes:.1f} min on 8 CPU cores.
+  7b to 7d combine the errors.
+- Run time: {minutes:.1f} min on this machine.
 
 Metrics:
 
@@ -430,55 +440,11 @@ Metrics:
 """
 
 REPORT_TAIL = """
-## Findings
+## Findings and recommendation
 
-1. **The course gains do not suit this policy.** With K ≈ 101 / 72 Nm/rad and 18 A, 20 of 40 runs fall.
-   vx reaches only 0.10 of 0.3 m/s. The stiff joints and the policy oscillate: the action rate almost doubles (0.214 against 0.127 rad).
-   The peak joint speed reaches 45 rad/s. The drive trips at about 25 rad/s (overspeed), so the real robot would lose joints.
-   With a 6 Nm limit (case 3), the course gains still give 21 falls in 40 runs and clip a torque in 87 % of the steps.
-2. **TRAP_TRAJ makes the robot fall at once.** All 40 runs fall, after 1.6 s on average.
-   The course trajectory limits (2.1 rad/s² at the joint) are far too slow for new targets every 40 ms.
-   The last section of the course file sets PASSTHROUGH and saves it. So the input mode depends on how far the course file was run.
-3. **Keep the joint zero error within ±2°.** ±1° changes nothing (1 fall in 40 runs, as the baseline). ±2° gives 4 falls. ±4° gives 10 falls.
-   ±4° also cuts the worst backward push from 6.0 to 0.0 N s.
-   The BHL training randomizes the default joint position by ±0.05 rad (±2.9°). This probably explains why ±2° works and ±4° does not.
-4. **Keep the latency at 20 ms or less.** A command latency of 10 ms changes nothing.
-   20 ms gives 2 falls in 40 runs, 40 ms gives 13, and 60 ms gives 28.
-   An observation latency of 10 ms alone gives 1 fall. The shipped policy saw no delay in training.
-5. **4 Nm is too low. 6 Nm works. 9 Nm adds margin.** With 4 Nm, 27 of 40 runs fall.
-   With 9 Nm, no run falls, only 11 % of the steps clip, and the mean backward push rises from 8.6 to 11.6 N s.
-6. **Small errors add up.** The realistic case 7 (matched gains, ±2°, 10 ms command latency, 6 Nm) falls in 1 of 40 runs.
-   With 10 ms observation latency as well (case 7b), 7 of 40 runs fall, and the worst backward push drops from 4.1 to 0.8 N s.
-   The course file with the same errors (case 7c) falls in 30 of 40 runs.
-
-## Recommendation
-
-Status: tested in simulation. Set these values on all 12 leg drives:
-
-| Drive setting (ODrive v0.5.1) | Value | Joint value |
-|---|---|---|
-| `controller.config.control_mode` | `CONTROL_MODE_POSITION_CONTROL` | - |
-| `controller.config.input_mode` | `INPUT_MODE_PASSTHROUGH` (1). Never `TRAP_TRAJ` (5) or `POS_FILTER` (3) | the target goes straight to the PD |
-| `controller.config.pos_gain` | 10.0 (turn/s)/turn | K = 20 Nm/rad, as trained |
-| `controller.config.vel_gain` | 0.0559 Nm/(turn/s) | D = 2 Nm s/rad, as trained |
-| `controller.config.vel_integrator_gain` | 0 | no integral term |
-| `motor.config.current_lim` | 6.0 A (6512), 4.8 A (5010) | 6 Nm, as trained |
-
-- The 6 Nm limit uses the course torque constants (0.067 and 0.0836 Nm/A). `motor.config.torque_lim` = 0.4 Nm (motor side) gives the same limit, if v0.5.1 has it.
-- Start with 6 Nm. 9 Nm (9.0 A and 7.2 A) also worked in simulation and gave more push margin.
-  With all realistic errors, 9 Nm gave 1 fall in 40 runs against 7 for 6 Nm (case 7d against 7b). Check the printed gearboxes before you use 9 Nm.
-- Zero tolerance: aim for ±1° on every joint. Accept ±2° at most.
-  A one-turn error of the motor encoder is 24° at the joint. The start-up check must detect it and stop.
-- Latency budget: at most 20 ms from the encoder sample to the new target in the drive, and aim for 10 ms.
-  Read the encoders right before each policy step. Send the targets right after it.
-- One CAN frame takes about 0.25 ms at 500 kbps. 12 frames per bus per policy step (6 targets, 6 encoder replies) take about 3 ms.
-  So the CAN bus alone fits the budget. The USB-CAN adapters and Linux can add more. Log the loop times on the robot.
-- For more margin, retrain the policy with a random action delay of 0 to 20 ms. The shipped policy saw no delay in training.
-
-**Not verified:** bench checks before the first walk:
-
-- Regen: the bus will probably trip on overvoltage in normal walking. See the section "Regen and the bus diode" below.
-- Run `dump_errors(odrv0)` on each drive after the first walks. Look for overspeed and regen errors.
+Not written yet. Read the tables above and write here: which cases fall, how the course gains and TRAP_TRAJ compare with the MJCF gains,
+the zero and latency limits, the drive settings to put on the 12 leg drives, and the bench checks before the first walk.
+The drive settings of the older BHL study (K 20, D 2, 6 Nm) do not apply to this robot. That study is in `archive/sim2sim_bhl/hw_risks.md`.
 """
 
 
@@ -498,16 +464,6 @@ REGEN_TEXT = """
 - Runs: cases 1 and 7, 4 commands × 10 seeds, 20 s each. Runs that fall count up to the fall.
 
 {table}
-- One drive alone is at its limit. The worst drive reaches −3.3 A in case 7, against the −3 A trip (1 of 40 runs).
-- The shared bus is the real problem. The 12 drives together return up to 2.1 J in one stretch of up to 153 ms.
-- Only 0.12 J lifts 6 mF from 25.2 V to 26 V. So the drives would trip on overvoltage in normal walking.
-- The guesses do not change this. A one-off check used R = 0.05 to 0.2 Ω, with and without 1.5 W standby power per drive.
-  The peak stayed at 26.9 to 38.7 V. That check used an earlier payload model and is not in the script.
-- The mean regen power is small: about 1.4 W at most in one run (`docs/hardware/power_calc.md`). So a small resistor can take it.
-- The course config sets `brake_resistance` = 0, so the drives themselves do not burn regen energy.
-
-**Recommendation:** add a brake chopper on the shared 24 V bus before the first walk: about 5 Ω, 10 to 25 W, switched on above about 25.5 V.
-Raise `dc_max_negative_current` to about −5 A only after the brake chopper works.
 """
 
 
@@ -515,7 +471,8 @@ def write(res):
     text, S = tables(res)
     (OUT / "hw_risks.md").write_text(REPORT_HEAD.format(minutes=res["minutes"], seeds=SEEDS, runs=4 * SEEDS, push_seeds=PUSH_SEEDS)
                                      + text + REPORT_TAIL
-                                     + (REGEN_TEXT.format(table=regen_table(res)) if "regen" in res else ""))
+                                     + (REGEN_TEXT.format(table=regen_table(res)) if "regen" in res else ""),
+                                     encoding="utf-8")
     plots(S)
     print(text)
 
@@ -530,7 +487,7 @@ def main():
     res["cases"] = {cid: {"label": lab, **{k: np.asarray(v).tolist() if isinstance(v, np.ndarray) else v
                                             for k, v in cfg.items()}} for cid, (lab, cfg) in CASES.items()}
     add_regen(res)
-    (OUT / "hw_risks.json").write_text(json.dumps(res))
+    (OUT / "hw_risks.json").write_text(json.dumps(res), encoding="utf-8")
     write(res)
     print(f"run time {res['minutes']:.1f} min, without the regen runs")
 
@@ -538,11 +495,11 @@ def main():
 def video(cid, cmd_name, seed, out, seconds):
     """run.py video() with this drive model: run.py looks up simulate() at call time, so point it here."""
     s2s.simulate = lambda _m, command, _l, secs, frames=None, noise=False: simulate(CASES[cid][1], command, seed, secs, frames=frames)
-    s2s.video(MODEL, cmd_name, 0, str(OUT / out), seconds)
+    s2s.video(cmd_name, str(OUT / out), seconds)
 
 
 def videos():
-    res = json.load(open(OUT / "hw_risks.json"))
+    res = json.loads((OUT / "hw_risks.json").read_text(encoding="utf-8"))
     w = sorted((r for r in res["walk"] if r["case"] == VIDEO_WORST and r["fall"] is not None), key=lambda r: r["fall"])
     r = w[len(w) // 2]  # the median fall, so the video shows a typical run
     video(VIDEO_WORST, r["cmd"], r["seed"], "hw_risks_worst.mp4", r["fall"] + 2.0)
@@ -559,7 +516,8 @@ def check():
         p, v = trap_step(p, v, np.ones(1), s2s.PHYSICS_DT)
     assert abs(p[0] - 1) < 1e-3 and abs(v[0]) < 1e-2, (p, v)
     a = simulate(BASE, (0.3, 0.0, 0.0), 0, 6.0)
-    b = s2s.simulate(MODEL, (0.3, 0.0, 0.0), 6.0, 6.0, noise=True)  # same noise seed, same loop -> same result
+    s2s.PAYLOAD = MODEL  # run.simulate() loads the payload from this
+    b = s2s.simulate(s2s.MODEL, (0.3, 0.0, 0.0), None, 6.0, noise=True)  # same noise seed, same loop -> same result
     assert a["fall"] is None and b["fall"] is None and abs(a["vx"] - b["vx"]) < 1e-6, (a, b)
     lat = simulate({**BASE, "cmd_ms": 40, "obs_ms": 10}, (0.0, 0.0, 0.0), 0, 2.0)
     assert lat["fall"] is None, lat
@@ -572,11 +530,11 @@ if __name__ == "__main__":
     elif "--video" in sys.argv:
         videos()
     elif "--regen" in sys.argv:
-        res = json.load(open(OUT / "hw_risks.json"))
+        res = json.loads((OUT / "hw_risks.json").read_text(encoding="utf-8"))
         add_regen(res)
-        (OUT / "hw_risks.json").write_text(json.dumps(res))
+        (OUT / "hw_risks.json").write_text(json.dumps(res), encoding="utf-8")
         print(regen_table(res))
     elif "--report" in sys.argv:
-        write(json.load(open(OUT / "hw_risks.json")))
+        write(json.loads((OUT / "hw_risks.json").read_text(encoding="utf-8")))
     else:
         main()

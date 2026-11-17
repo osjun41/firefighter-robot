@@ -16,7 +16,7 @@ The same random missions run for each configuration, so we can compare detectors
 |---|---|
 | Robot | `sim/payload/models/bhl_F2.xml` (15.99 kg, tanks full). The ST3215 pan-tilt is two joints with position servos: 4.7 rad/s, 2.9 Nm, pan ±90°, tilt −40° to +45°. |
 | Walking | Any ONNX policy with the BHL interface (45 inputs, 12 outputs, 25 Hz). Default: the shipped BHL policy. |
-| Leg drives | Case 7 of `sim/sim2sim/hw_risks.py`: PD in the drive (K 20, D 2), 6 Nm limit, joint zero error ±2°, 10 ms command latency. Physics at 2 kHz. |
+| Leg drives | Case 7 of the old BHL version of `hw_risks.py` (`archive/sim2sim_bhl/hw_risks_bhl.py`): PD in the drive (K 20, D 2), 6 Nm limit, joint zero error ±2°, 10 ms command latency. Physics at 2 kHz. FIXME(policy): the missions still run the BHL model with the BHL policy; `sim/sim2sim/hw_risks.py` is on the ASMR robot now. |
 | Camera | Arducam B0201 on the tilt head: 640 × 480, f = 476 px (67.8° horizontal, the lens calibration of 5 Nov), pinhole model, 10 Hz. The real lens sees 80° with its distortion. Mounting error ±1°, exposure ±15 %, pixel noise. |
 | Fire images | Animated flame sprites, drawn as billboards with a depth test against the MuJoCo depth buffer, plus a glow. `--flames real` uses clips of real fires (`sprites/`). |
 | Detector | Any module with `detect(rgb, t)`. Default: `sim/sim2sim/baseline_detector.py` (colour threshold). `oracle` gives the true flame boxes. 100 ms delay. |

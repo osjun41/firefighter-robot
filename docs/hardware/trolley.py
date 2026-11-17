@@ -49,7 +49,7 @@ SILICONE = 1150.0        # kg/m3
 CABLE_KG_M = 0.010       # pump cable, 2 x 22 AWG (ASSUMED 5 g/m per wire)
 HOSE_KG_M = SILICONE * math.pi / 4 * (HOSE_OD ** 2 - HOSE_BORE ** 2) + 998 * math.pi / 4 * HOSE_BORE ** 2 + CABLE_KG_M
 BREAKAWAY_N = 1.5        # ASSUMED: the boom tip clip lets the hose go at this pull (set it with test TT2). The gap study
-                         # (sim/sim2sim/results/gap_study.md): a constant 3 N pull adds falls, so keep the pull low.
+                         # (archive/sim2sim_bhl/gap_study.md (old BHL run)): a constant 3 N pull adds falls, so keep the pull low.
 OFFSET = (0.1, 0.4)      # keep the boom tip this far behind the hose anchor (horizontal)
 
 # ---------------- masses: (kg, x, z of the centre), ASSUMED ----------------

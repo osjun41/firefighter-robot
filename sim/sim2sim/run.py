@@ -238,7 +238,7 @@ def run_all(noise=False):
     lines.extend(row(result, names[result["command"]]) for result in results)
     report = "\n".join(lines) + "\n"
     suffix = ("" if PAYLOAD == payloads.DEFAULT else f"_{PAYLOAD}") + ("_noise" if noise else "")
-    (OUT / f"results{suffix}.md").write_text(report)
+    (OUT / f"results{suffix}.md").write_text(report, encoding="utf-8")
     print(report)
 
 

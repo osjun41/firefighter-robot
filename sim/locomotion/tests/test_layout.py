@@ -15,7 +15,7 @@ DEPLOY_CONFIGS = sorted((ROOT / "policies").glob("*/policy.yaml")) + sorted((LOC
 
 
 def _value(path, key):
-    match = re.search(rf"^{key}:\s*(\S+)", path.read_text(), re.MULTILINE)
+    match = re.search(rf"^{key}:\s*(\S+)", path.read_text(encoding="utf-8"), re.MULTILINE)
     return match.group(1) if match else None
 
 
@@ -43,7 +43,7 @@ def test_policy_files_exist():
 def test_no_stale_script_paths():
     old = re.compile(r"(?<![\w/])scripts/(isaaclab|rsl_rl|sim2sim|push_test|s2r|scenario|sim2real)/")
     for path in SCRIPTS:
-        for number, line in enumerate(path.read_text().splitlines(), 1):
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
             assert not old.search(line), f"{path.relative_to(ROOT)}:{number}: {line.strip()}"
 
 
@@ -52,7 +52,7 @@ def test_robot_model_has_single_definition():
     for path in SCRIPTS + SOURCES:
         if path == Path(__file__):
             continue
-        text = path.read_text()
+        text = path.read_text(encoding="utf-8")
         assert "berkeley_humanoid_lite_assets" not in text, path.relative_to(ROOT)
 
 
@@ -78,7 +78,7 @@ def test_internal_imports_resolve():
 
     own = ("berkeley_humanoid_lite", "source.", "policies.")
     for path in SCRIPTS + SOURCES + sorted(LOCO.joinpath("tests").glob("*.py")):
-        tree = ast.parse(path.read_text())
+        tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             names = []
             if isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
@@ -121,16 +121,16 @@ def test_policy_select_by_name():
 def test_scripts_select_policies_by_name():
     """No script asks for a policy path (--config) or a NAME=CHECKPOINT pair; robot/config.toml names a policy folder."""
     for path in SCRIPTS:
-        text = path.read_text()
+        text = path.read_text(encoding="utf-8")
         assert '"--config"' not in text.replace("markers.config", ""), f"{path.relative_to(ROOT)}: use --policy NAME"
         assert "NAME=CHECKPOINT" not in text, path.relative_to(ROOT)
-    toml = (ROOT / "robot" / "config.toml").read_text()
+    toml = (ROOT / "robot" / "config.toml").read_text(encoding="utf-8")
     match = re.search(r'^\[legs\][^\[]*?^policy\s*=\s*"([^"]*)"', toml, re.MULTILINE | re.DOTALL)
     assert match and "/" not in match.group(1) and not match.group(1).endswith(".onnx"), "[legs] policy is a NAME"
 
 
 def test_old_task_names_are_not_registered():
-    registered = "\n".join(p.read_text() for p in (LOCO / "packages").rglob("__init__.py"))
+    registered = "\n".join(p.read_text(encoding="utf-8") for p in (LOCO / "packages").rglob("__init__.py"))
     assert not re.search(r'id\s*=\s*["\']Velocity-Berkeley-Humanoid-Lite-Biped', registered)
     ids = re.findall(r'\bid\s*=\s*f?["\'](Velocity-[^"\']*)', registered)
     assert ids and all(i.startswith("Velocity-ASMR-Biped") for i in ids), ids
@@ -165,7 +165,7 @@ def test_no_code_reads_the_archive_or_sim_rl():
         rel = path.relative_to(ROOT).as_posix()
         if rel.startswith(("archive/", ".venv/", "third_party/")) or "/.venv/" in rel or rel == "sim/locomotion/tests/test_layout.py":
             continue
-        for number, line in enumerate(path.read_text().splitlines(), 1):
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
             code = line.split("#")[0]
             if pattern.search(code) and not code.strip().startswith(('"', "'")):
                 raise AssertionError(f"{rel}:{number}: {line.strip()}")
@@ -192,9 +192,9 @@ def test_payload_options():
     box = payloads.parts("box_1kg")
     assert len(box) == 1 and box[0]["mass"] == 1.0 and abs(box[0]["position"][2] - 0.8838) < 1e-9
     task = (ROOT / "sim/locomotion/packages/berkeley_humanoid_lite/berkeley_humanoid_lite/tasks/locomotion/velocity/"
-            "config/asmr_biped/env_cfg.py").read_text()
+            "config/asmr_biped/env_cfg.py").read_text(encoding="utf-8")
     assert "TORSO_TOP_Z_M = 0.8338" in task and "PAYLOAD_MASS_KG = 1.0" in task  # the box above is the task's
-    layout = json.loads((ROOT / "cad/final/out_f3/layout.json").read_text())
+    layout = json.loads((ROOT / "cad/final/out_f3/layout.json").read_text(encoding="utf-8"))
     f3 = payloads.parts("f3")
     assert len(f3) == len(layout["items"]) > 40
     mass, centre, inertia = payloads.combined("f3")
@@ -241,15 +241,15 @@ def test_scripts_select_the_payload():
 
     scripts = ROOT / "sim/locomotion/scripts/rsl_rl"
     for name in ("train.py", "play.py", "play_onnx.py"):
-        text = (scripts / name).read_text()
+        text = (scripts / name).read_text(encoding="utf-8")
         assert "asmr2026_payload.add_argument(parser)" in text and "select_payload(env_cfg, args_cli.payload)" in text, name
-    assert "asmr2026_payload.add_argument(parser)" in (scripts / "export_onnx.py").read_text()
+    assert "asmr2026_payload.add_argument(parser)" in (scripts / "export_onnx.py").read_text(encoding="utf-8")
     task = ROOT / "sim/locomotion/packages/berkeley_humanoid_lite/berkeley_humanoid_lite"
     for path in (task / "tasks/locomotion/velocity/config/asmr_biped/payload.py", task / "environments/mujoco.py",
                  task / "tasks/locomotion/velocity/mdp/dynamics.py", ROOT / "sim/locomotion/scripts/s2r/eval_dynamics_gap.py",
                  ROOT / "sim/locomotion/scripts/sim2sim/eval_tracking_isaaclab.py"):
-        ast.parse(path.read_text())
-    assert "SIM2SIM_PAYLOAD" in (ROOT / "sim/sim2sim/run.py").read_text()
+        ast.parse(path.read_text(encoding="utf-8"))
+    assert "SIM2SIM_PAYLOAD" in (ROOT / "sim/sim2sim/run.py").read_text(encoding="utf-8")
 
 
 def test_payload_merge_matches_mujoco_fusion():
@@ -287,3 +287,14 @@ def test_payload_merge_matches_mujoco_fusion():
     com = (mass0 * com0 + pmass * pcom) / mass
     inertia = inertia0 + shift(mass0, com0 - com) + pinertia + shift(pmass, pcom - com)
     assert abs(mass - mass1) < 1e-9 and np.abs(com - com1).max() < 1e-9 and np.abs(inertia - inertia1).max() < 1e-9
+
+
+def test_drive_and_gap_studies_run_the_asmr_robot():
+    """hw_risks.py and gap_study.py use the ASMR runner (run.py), the policies/ names and an ASMR payload, not the BHL files."""
+    for name in ("hw_risks.py", "gap_study.py"):
+        text = (ROOT / "sim/sim2sim" / name).read_text(encoding="utf-8")
+        assert "import run as s2s" in text and "bhl_legacy" not in text and "bhl_F" not in text and "/models" not in text, name
+    gap = (ROOT / "sim/sim2sim/gap_study.py").read_text(encoding="utf-8")
+    assert "policy_select.onnx(policy_select.DEFAULT, robot=\"asmr2026\")" in gap
+    for case in ("bare", "box_1kg", "F3"):
+        assert f'"{case}": (' in gap, case
