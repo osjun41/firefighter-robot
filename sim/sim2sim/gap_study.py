@@ -203,7 +203,7 @@ def main(policies, cases, merge):
            "minutes": old["minutes"] + (time.time() - t0) / 60}
     for kind in ("walk", "push"):
         res[kind] = [r for r in old[kind] if (r["case"], r["policy"]) not in done] + [r for r in rows if r["kind"] == kind]
-    JSON.write_text(json.dumps(res), encoding="utf-8")
+    JSON.write_text(json.dumps(res, default=lambda o: o.tolist() if hasattr(o, "tolist") else str(o)), encoding="utf-8")  # the drive of a case holds numpy arrays
     write(res)
     print(f"{len(js)} jobs in {(time.time() - t0) / 60:.1f} min")
 

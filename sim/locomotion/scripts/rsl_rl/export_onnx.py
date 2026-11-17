@@ -8,7 +8,8 @@ so every script and the robot select it by NAME afterwards (--policy NAME).
 
 Usage (from the repository root):
     uv run --project sim/locomotion sim/locomotion/scripts/rsl_rl/export_onnx.py \
-        --checkpoint logs/rsl_rl/asmr_biped/<run>/model_5999.pt --name my_policy [--template baseline] [--payload f3]
+        --checkpoint logs/rsl_rl/asmr_biped/<run>/model_5999.pt --name my_policy
+    (or --checkpoint model_5999.pt [--load_run <run>], a run folder, or no --checkpoint: the last model of the newest run) [--template baseline] [--payload f3]
 
 --payload NAME says which payload the policy was trained with (none, box_1kg or f3, as train.py --payload). It is
 written to info.json and to the sim_payload of policy.yaml, so MuJoCo scripts weld the same parts. Without it,
@@ -29,7 +30,11 @@ from policies import policy_select  # noqa: E402
 from source.robot_models.robots import asmr2026_payload  # noqa: E402
 
 parser = argparse.ArgumentParser(description="Export an RSL-RL actor to ONNX with a deployment config.")
-parser.add_argument("--checkpoint", type=str, required=True, help="RSL-RL checkpoint (model_*.pt).")
+parser.add_argument("--checkpoint", type=str, default=None,
+                    help="RSL-RL checkpoint: a path, a file name inside the run folder (like play.py), a run folder (its last "
+                         "model_*.pt is used) or nothing (the last model of the newest run).")
+parser.add_argument("--load_run", type=str, default=None,
+                    help="Run folder name in logs/rsl_rl/asmr_biped/ for a file name or no --checkpoint (default: the newest run).")
 parser.add_argument("--name", type=str, required=True, help="Name of the new policy: written to policies/<name>/.")
 parser.add_argument("--force", action="store_true", help="Overwrite an existing policies/<name>/policy.onnx.")
 parser.add_argument("--template", type=str, default=policy_select.DEFAULT,
@@ -38,6 +43,36 @@ parser.add_argument("--action_limit", type=float, default=None,
                     help="Action bound the policy was trained with (the runner's clip_actions), for the config.")
 asmr2026_payload.add_argument(parser)
 args = parser.parse_args()
+
+LOG_ROOT = Path("logs") / "rsl_rl" / "asmr_biped"  # relative to the working directory, like play.py
+
+
+def last_model(folder):
+    """The model_<iteration>.pt with the highest iteration in a run folder."""
+    models = [(int(f.stem.split("_")[1]), f) for f in Path(folder).glob("model_*.pt") if f.stem.split("_")[1].isdigit()]
+    if not models:
+        raise FileNotFoundError(f"no model_*.pt in {folder}")
+    return max(models)[1]
+
+
+def resolve_checkpoint(checkpoint, load_run, log_root=LOG_ROOT):
+    """A path, a file name in the run folder, a run folder, or nothing: the file to export."""
+    if checkpoint is not None and Path(checkpoint).is_file():
+        return Path(checkpoint)
+    if checkpoint is not None and Path(checkpoint).is_dir():
+        return last_model(checkpoint)
+    runs = sorted(d for d in Path(log_root).glob("*") if d.is_dir())
+    if load_run is not None:
+        run = Path(log_root) / load_run
+    elif runs:
+        run = runs[-1]
+    else:
+        raise FileNotFoundError(f"no run in {log_root}; give --checkpoint with the path of a model_*.pt")
+    if checkpoint is None:
+        return last_model(run)
+    if (run / checkpoint).is_file():
+        return run / checkpoint
+    raise FileNotFoundError(f"{checkpoint!r} is not a file, a folder or a file in {run}")
 
 
 def build_actor(state_dict):
@@ -55,7 +90,9 @@ def build_actor(state_dict):
     return torch.nn.Sequential(*layers).eval()
 
 
-checkpoint = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
+checkpoint_path = resolve_checkpoint(args.checkpoint, args.load_run)
+print(f"checkpoint: {checkpoint_path}")
+checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
 actor = build_actor(checkpoint["model_state_dict"])
 num_obs = actor[0].in_features
 if "/" in args.name or "\\" in args.name:
@@ -79,10 +116,10 @@ if args.payload is not None:
         config.sim_payload = payload
 config_path = out_dir / "policy.yaml"
 OmegaConf.save(config, config_path)
-shutil.copy2(args.checkpoint, out_dir / Path(args.checkpoint).name)
+shutil.copy2(checkpoint_path, out_dir / checkpoint_path.name)
 info = {"trained_on": "asmr2026", "observation_size": 45}
 if args.payload is not None:
     info["payload"] = args.payload
 (out_dir / "info.json").write_text(json.dumps(info, indent=1) + "\n")
-print(f"[INFO] {args.checkpoint} (iteration {checkpoint.get('iter')}, {num_obs} observations) -> {onnx_path}")
+print(f"[INFO] {checkpoint_path} (iteration {checkpoint.get('iter')}, {num_obs} observations) -> {onnx_path}")
 print(f"[INFO] Deployment config: {config_path}")

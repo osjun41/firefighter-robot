@@ -145,9 +145,10 @@ Figure 2. Side view, front view and the middle level from the top. The boxes are
 | Wiring and clips | lumped at the torso centre (guess) | 0.32 kg |
 
 The parts add 4.14 kg, with their centre of mass at x −26.8, y 1.0, z 666 mm.
-We take the BHL battery (603 g) and the BHL computer (280 g) out of the BHL torso mass.
-The robot weighs 14.60 kg. The bare biped weighs 11.34 kg. F2 weighed 15.99 kg with full tanks.
-In the standing pose, the centre of mass of the whole robot is 0.43 m above the floor (F2 with full tanks: 0.45 m). We computed this with the model builder of `sim/payload/models.py`.
+On the ASMR robot (`source/robot_models`, MJCF) the bare robot weighs 12.21 kg and the robot with these parts weighs 16.35 kg.
+In the standing pose, the centre of mass of the whole robot is 0.43 m above the floor without the parts and 0.49 m with them
+(x −43 mm, y 0 mm). We computed this with `sim/payload/stability.py` (`static_rows()`, payload `f3` of `source/robot_models/robots/asmr2026_payload.py`).
+Older numbers on the BHL model (kept for the history, `archive/payload_bhl/models.py`): we took the BHL battery (603 g) and the BHL computer (280 g) out of the BHL torso mass, the robot weighed 14.60 kg (bare biped 11.34 kg), its centre of mass was 0.43 m high; F2 with full tanks: 15.99 kg and 0.45 m.
 
 The e-stop is back at the lab's place on the left side face: centre x −13, z 670. F2 moved it 50 mm up, because the left tank covered this place.
 The nozzle tip is at z 892.5 mm with the tilt at 0.

@@ -35,9 +35,9 @@ uv sync --project sim/locomotion
 ## Train, play, export
 
 ```bash
-uv run --project sim/locomotion sim/locomotion/scripts/rsl_rl/train.py --task Velocity-ASMR-Biped-v0 --headless
-uv run --project sim/locomotion sim/locomotion/scripts/rsl_rl/play.py --task Velocity-ASMR-Biped-v0 --checkpoint <model.pt>
-uv run --project sim/locomotion sim/locomotion/scripts/rsl_rl/play_onnx.py --policy baseline --task Velocity-ASMR-Biped-v0
+uv run --project sim/locomotion sim/locomotion/scripts/rsl_rl/train.py --task Velocity-ASMR-Biped-v0 --payload f3 --headless
+uv run --project sim/locomotion sim/locomotion/scripts/rsl_rl/play.py --task Velocity-ASMR-Biped-v0 --payload f3 --checkpoint <model.pt>
+uv run --project sim/locomotion sim/locomotion/scripts/rsl_rl/play_onnx.py --policy baseline --task Velocity-ASMR-Biped-v0 --payload f3
 uv run --project sim/locomotion sim/locomotion/scripts/sim2sim/eval_tracking_mujoco.py --policy baseline --name baseline
 uv run --project sim/locomotion sim/locomotion/scripts/list_envs.py     # registered tasks
 ```
@@ -48,11 +48,25 @@ The default run (4096 environments, 6000 iterations) took about 2 h 20 min on an
 
 ```bash
 uv run --project sim/locomotion sim/locomotion/scripts/rsl_rl/train.py --task Velocity-ASMR-Biped-v0 --payload f3 --headless
-uv run --project sim/locomotion sim/locomotion/scripts/rsl_rl/export_onnx.py --checkpoint <model.pt> --name baseline_f3 --payload f3
+uv run --project sim/locomotion sim/locomotion/scripts/rsl_rl/export_onnx.py --name baseline_f3 --payload f3     # the last model of the newest run
 uv run python sim/sim2sim/run.py --policy baseline_f3 --payload f3     # MuJoCo, no Isaac
 ```
 
 `export_onnx.py --payload NAME` writes the payload into `info.json` and into the `sim_payload` of `policy.yaml`, so MuJoCo scripts weld the same parts. The saved `params/env.yaml` of a run also records the payload event.
+
+**Which `<model_*.pt>`?** `train.py` writes one run folder per start, `logs/rsl_rl/asmr_biped/<date_time>/`, and saves `model_<iteration>.pt` in it
+(`model_0.pt` is the start, the file with the highest number is the last one; a run that was stopped has fewer files).
+The two scripts take the file differently:
+
+| Script | `--checkpoint` is | Example |
+|---|---|---|
+| `play.py` | a file **name** inside the run folder; the newest run is used unless `--load_run <date_time>` is given | `--checkpoint model_5999.pt` |
+| `export_onnx.py` | the same as `play.py` (a file name; `--load_run` too), or a **path**, or a run folder (its last model), or nothing (the last model of the newest run) | `--checkpoint model_5999.pt` or no `--checkpoint` |
+
+List the files with `ls logs/rsl_rl/asmr_biped/*` (PowerShell: `Get-ChildItem logs/rsl_rl/asmr_biped/*`). Do not type the `<` and `>`; they only
+mark the place of a name. Add `--headless` to `play.py` when the PC has no usable display GPU (it then writes the ONNX and the config but opens no window).
+
+
 
 **Policies are chosen by name.** Every evaluation, play and recording script takes `--policy NAME` (a folder in `policies/`, default `baseline`); the `s2r/` scripts use `policies/<name>/model_*.pt`. `export_onnx.py --checkpoint <model.pt> --name NAME` creates `policies/NAME/` from a training run. Copy `params/` of the run into it too.
 
