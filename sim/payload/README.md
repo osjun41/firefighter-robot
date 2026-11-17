@@ -1,33 +1,33 @@
-# Payload models and the F2 payload check
+# Payload check (ASMR robot, F3 parts) and the BHL payload models
 
-This folder builds the MuJoCo models of the Berkeley Humanoid Lite (BHL) biped with the payload of the final design F2.
-It also checks that the robot can carry this payload: statics, walking, pushes and the motor drive model, with the shipped BHL policy.
-`sim/sim2sim`, `sim/mission` and `docs/hardware/power_calc.py` load these models.
+`final_check.py` checks that the ASMR robot can carry the F3 parts: statics, walking and pushes, with the policy chosen by name
+(default `baseline`) and the payload options `none`, `box_1kg` and `f3` of `source/robot_models/robots/asmr2026_payload.py`.
+It runs the ASMR runner `sim/sim2sim/run.py`.
 
-**Status:** tested in simulation (MuJoCo 3.15.0, CPU only). Nothing here is measured on board.
+`models.py` builds the older MuJoCo models of the Berkeley Humanoid Lite (BHL) biped with the payload of the designs F2 and F3.
+Only `sim/mission` still uses them (`bhl_legacy.py`, FIXME(policy)); they go when the mission moves to the ASMR robot.
+
+**Status:** tested in simulation (MuJoCo 3.15.0, CPU only). Nothing here is measured on board. **The check has not been run on the ASMR
+robot yet** (only its quick self-check): the old F2 results of the BHL model are in `archive/payload_f2/`.
 
 ## How to run
 
 Run these commands from the repository root.
 
-1. Fetch the BHL meshes and URDF (not in git):
-   ```
-   scripts/fetch_bhl_assets.sh
-   ```
-2. Build the models. The XML files are not in git, so every other simulation needs this step first (about 5 s):
-   ```
-   uv run python sim/payload/models.py
-   ```
-3. Run the quick check (about 10 s):
+1. Run the quick check (about 10 s):
    ```
    uv run python sim/payload/final_check.py check
    ```
-4. Run the full F2 check (about 10 min on 8 cores). It writes `results/final_f2.md` and `results/final_f2.json`:
+2. Run the full check (about 10-20 min on 8 cores). It writes `results/final_f3.md` and `results/final_f3.json`.
+   `--policy NAME` takes another folder of `policies/`:
    ```
    uv run python sim/payload/final_check.py
+   uv run python sim/payload/final_check.py --policy NAME
    ```
+3. `MUJOCO_GL=egl uv run python sim/payload/final_check.py video` films one walk and one push (needs ffmpeg). The videos stay local.
 
-`MUJOCO_GL=egl uv run python sim/payload/final_check.py video` films one walk and one push (needs ffmpeg). The videos stay local.
+The BHL models are only needed for `sim/mission`: fetch the meshes with `scripts/fetch_bhl_assets.sh` and build the XML files
+(not in git; about 5 s) with `uv run python sim/payload/models.py`.
 
 ## What `models.py` builds
 
@@ -68,64 +68,27 @@ The CAD model guesses many masses. The team weighs the real parts, and `measured
 - A row that is more than 20 % off the model gets a note. Check it before you trust it: a part may be in the wrong row.
 - `--design F3_1pack` uses another design. `--template new.csv` writes a blank sheet. `--check` runs the self-check.
 
-## Results of the F2 check
+## Results
 
-Status: tested in simulation. Policy: the shipped BHL policy `sim/sim2sim/policy_biped_25hz_a.onnx`. Full tables: [results/final_f2.md](results/final_f2.md).
+**Not run yet on the ASMR robot.** `final_check.py` writes the tables (statics, walking at the MJCF torque limit and at 12 Nm,
+push test) for the bare robot, the robot with the 1 kg box and the robot with the F3 parts to `results/final_f3.md`.
+Read them and write the findings into its last section and here.
 
-Statics (stand pose):
-
-| Model | Mass (kg) | CoM height (m) | CoM x / y (mm) | Peak torque, stand (Nm) | Peak pitch torque on one leg (Nm) |
-|---|---|---|---|---|---|
-| bare biped | 11.34 | 0.362 | −2 / 0 | 1.5 | 4.3 |
-| F2, tanks full | 15.99 | 0.448 | +1 / 0 | 2.5 | 6.6 |
-| F2, tanks half | 15.60 | 0.443 | 0 / 0 | 2.4 | 6.3 |
-| F2, tanks empty | 15.21 | 0.439 | −1 / 0 | 2.3 | 6.1 |
-
-Walking, 20 s with the training noise (speed reached at each command):
-
-| Model | Limit | vx 0.3 m/s | vx 0.2 m/s + yaw 0.5 rad/s |
-|---|---|---|---|
-| F2, tanks full | 6 Nm | 0.21 m/s | 0.11 m/s, 0.44 rad/s |
-| F2, tanks full | 9 Nm | 0.28 m/s | 0.13 m/s, 0.47 rad/s |
-| F2, tanks half | 6 Nm | 0.21 m/s | falls at 10.2 s |
-| F2, tanks half | 9 Nm | 0.29 m/s | 0.15 m/s, 0.51 rad/s |
-
-Largest push with no fall, F2 with full tanks (worst of 3 push times):
-
-| Robot state | Forward | Back | Left | Right |
-|---|---|---|---|---|
-| Standing | 3.8 N s | 5.6 N s | 4.9 N s | 4.5 N s |
-| Walking at 0.3 m/s | 9.4 N s | 5.2 N s | 3.0 N s | 3.0 N s |
-
-Drive model of `sim/sim2sim/hw_risks.py` (4 commands × 10 seeds of 20 s). **Old result:** `hw_risks.py` ran the BHL model with F2 when this table was made. It now runs the ASMR robot with the F3 parts, so these numbers are not reproduced by the script any more (the old report is in `archive/sim2sim_bhl/`).:
-
-| Case | Falls | Mean motor bus power, walking |
-|---|---|---|
-| 1: K 20, D 2, 6 Nm (as trained) | 1 of 40 | 22 W |
-| 7: as 1, with ±2° zero errors and 10 ms command latency | 1 of 40 | 22 W |
-| 7b: as 7, with 10 ms observation latency | 7 of 40 | 22 W |
-
-Findings:
-
-1. The payload adds 4.64 kg and lifts the centre of mass from 0.362 m to 0.448 m. It stays within 1 mm of the middle.
-2. On one leg, the pitch torque reaches 6.6 Nm. This is above the 6 Nm training limit. A 9 Nm limit gives margin.
-3. At 6 Nm, the robot walks at 0.21 m/s for a 0.3 m/s command. At 9 Nm it walks at 0.28 m/s and does not fall.
-4. The weakest push is 3.0 N s to the side while walking.
-5. Observation latency matters: 10 ms more gives 7 falls in 40 runs instead of 1.
-6. The walking power (22 W) has only the mechanical power and the copper loss. `docs/hardware/power_calc.md` adds the drive standby power.
+The old F2 check (BHL biped with F2 parts, shipped BHL policy, 6 / 9 Nm) is in `archive/payload_f2/final_f2.md`. It does not describe this robot:
+the ASMR model has other masses, gains and torque limits, and F3 has no water.
 
 ## Files
 
 | File | What it is |
 |---|---|
-| `models.py` | Builds `models/bhl_biped.xml` and `models/bhl_F2*.xml`, then runs its self-check |
-| `poses.py` | Leg poses and flat-foot placement on the floor |
-| `analyze.py` | Static joint torques and centre of mass (stand, crouch, one leg) |
-| `torso_tank.py` | Walking and push test helpers. `final_check.py` uses them (`archive/rl_f1/f1_eval.py` did too). |
+| `models.py` | Builds `models/bhl_biped.xml` and `models/bhl_F*.xml` (BHL biped, used by `sim/mission` only), then runs its self-check |
+| `poses.py` | Leg poses (ASMR: the right pitch joints turn the other way) and flat-foot placement on the floor |
+| `analyze.py` | Static joint torques and centre of mass of the ASMR robot (stand, crouch, one leg) |
+| `torso_tank.py` | Walking and push test helpers on the ASMR runner (`run.simulate` with a push). `final_check.py` uses them. |
 | `report.py` | Plot palette and style of the simulation figures |
-| `final_check.py` | The F2 check: statics, walking and push test (the drive cases moved to `sim/sim2sim/hw_risks.py`) |
+| `final_check.py` | The check of the ASMR robot with the F3 parts: statics, walking and push test (the drive cases are in `sim/sim2sim/hw_risks.py`) |
 | `measured.py`, `masses.csv` | The sheet of parts to weigh, and the script that puts the weighed masses into the model |
-| `results/final_f2.md`, `results/final_f2.json` | Results of `final_check.py` |
+| `results/final_f3.md`, `results/final_f3.json` | Results of `final_check.py` (written by the run) |
 
 ## Open points
 

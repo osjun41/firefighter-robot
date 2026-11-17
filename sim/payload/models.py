@@ -134,10 +134,10 @@ def load(variant):
 
 def save(s, variant):
     """Add the stand keyframe (feet flat, 1 mm above the floor) and write models/bhl_<variant>.xml."""
-    from poses import stand_qpos
+    from poses import SAME, stand_qpos
     os.makedirs(OUT, exist_ok=True)
     m = s.compile()
-    s.add_key(name="stand", qpos=stand_qpos(m, STAND), ctrl=np.zeros(m.nu))
+    s.add_key(name="stand", qpos=stand_qpos(m, STAND, side=SAME), ctrl=np.zeros(m.nu))
     with open(path(variant), "w") as f:  # relative mesh path, so the file works from any working directory
         f.write(s.to_xml().replace(f'meshdir="{s.meshdir}', f'meshdir="{MESHDIR}'))
 

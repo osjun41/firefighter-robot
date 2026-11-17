@@ -24,8 +24,8 @@ Run these commands from the repository root.
 
 | Folder | What it simulates | Main command (from the repository root) |
 |---|---|---|
-| [payload/](payload/README.md) | The robot models (F2, F3 and the F3 options), the model with the weighed masses, and the payload check | `uv run python sim/payload/final_check.py` |
-| [sim2sim/](sim2sim/README.md) | The shipped BHL walking policy loop (shared by `legs/`, `robot/` and the other folders), the motor drive risks and the sim-to-real gap study | `uv run python sim/sim2sim/gap_study.py --quick` |
+| [payload/](payload/README.md) | The payload check of the ASMR robot with the F3 parts (statics, walking, pushes), and the older BHL payload models used by `sim/mission` | `uv run python sim/payload/final_check.py` |
+| [sim2sim/](sim2sim/README.md) | The walking policy loop of the ASMR robot (shared by `legs/`, `robot/` and the other folders), the motor drive risks and the sim-to-real gap study | `uv run python sim/sim2sim/gap_study.py --quick` |
 | [mission/](mission/README.md) | Complete missions: walking, robot camera, fire detector, aiming, water droplets and fire model | `MUJOCO_GL=egl uv run python sim/mission/mission.py --seed 1055` |
 | [locomotion/](locomotion/README.md) | Isaac Lab training of the walking policy in `policies/`, with its sim2sim, push and sim-to-real evaluations. Own uv project (Isaac Sim, NVIDIA GPU). | `uv sync --project sim/locomotion` |
 | [water/](water/README.md) | Pump, hose, nozzle and jet range of the water trolley | `uv run python sim/water/water.py` |
@@ -34,7 +34,7 @@ Run these commands from the repository root.
 
 | Check | Command | Time |
 |---|---|---|
-| Robot models | `uv run python sim/payload/models.py` | 5 s |
+| BHL payload models (for `sim/mission`) | `uv run python sim/payload/models.py` | 5 s |
 | Payload check | `uv run python sim/payload/final_check.py check` | 10 s |
 | Policy loop | `uv run python sim/sim2sim/run.py --check` | 10 s |
 | Drive model | `uv run python sim/sim2sim/hw_risks.py --check` | 20 s |

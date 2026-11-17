@@ -143,15 +143,18 @@ def _imu_frame_transform(model, data):
     return imu_rotation_in_base, base_quat_in_imu
 
 
-def simulate(model, command, limit=None, seconds=20.0, frames=None, start="standing", noise=False):
-    """Run the ASMR model and return tracking, fall and actuator saturation metrics."""
+def simulate(model, command, limit=None, seconds=20.0, frames=None, start="standing", noise=False, push=None,
+             payload=None, seed=0):
+    """Run the ASMR model and return tracking, fall and actuator saturation metrics.
+    payload: payload option name (default: the --payload option of this run). push = (t0 s, impulse N s, direction rad in
+    the heading frame, 0 = forward): a horizontal force on the base for 0.1 s, as in sim/payload/torso_tank.py."""
     if model not in (MODEL, "asmr2026", "asmr2026_humanoid"):
         raise ValueError(f"only {MODEL!r} is configured; got {model!r}")
     if start not in ("standing", "default"):
         raise ValueError("ASMR sim2sim supports start='standing' or 'default'")
 
-    rng = np.random.default_rng(0)
-    m = load_model(torque_limit=limit)
+    rng = np.random.default_rng(seed)
+    m = load_model(torque_limit=limit, payload=payload)
     d = mujoco.MjData(m)
     d.qpos[:3] = DEFAULT_BASE_POSITION
     d.qpos[7:19] = DEFAULT
@@ -183,6 +186,10 @@ def simulate(model, command, limit=None, seconds=20.0, frames=None, start="stand
 
         for _ in range(substeps):
             d.ctrl[:] = target
+            d.xfrc_applied[base, :2] = 0.0
+            if push and push[0] <= d.time < push[0] + 0.1:
+                heading = np.arctan2(d.xmat[base][3], d.xmat[base][0]) + push[2]
+                d.xfrc_applied[base, :2] = push[1] / 0.1 * np.array([np.cos(heading), np.sin(heading)])
             mujoco.mj_step(m, d)
             tau = d.actuator_force.copy()
             sat += np.any(np.abs(tau) >= effort_limits * 0.999)

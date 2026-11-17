@@ -298,3 +298,16 @@ def test_drive_and_gap_studies_run_the_asmr_robot():
     assert "policy_select.onnx(policy_select.DEFAULT, robot=\"asmr2026\")" in gap
     for case in ("bare", "box_1kg", "F3"):
         assert f'"{case}": (' in gap, case
+
+
+def test_payload_check_runs_the_asmr_robot():
+    """final_check.py and torso_tank.py use the ASMR runner (run.py) and the payload options, not the BHL models."""
+    for name in ("final_check.py", "torso_tank.py", "analyze.py", "poses.py"):
+        text = (ROOT / "sim/payload" / name).read_text(encoding="utf-8")
+        assert "bhl_legacy" not in text and "bhl_F" not in text and 'models.load' not in text, name
+    text = (ROOT / "sim/payload/torso_tank.py").read_text(encoding="utf-8")
+    assert "import run as s2s" in text and "push=push" in text
+    check = (ROOT / "sim/payload/final_check.py").read_text(encoding="utf-8")
+    assert "--policy" in check and "final_f3" in check and '"f3"' in check
+    run = (ROOT / "sim/sim2sim/run.py").read_text(encoding="utf-8")
+    assert "push=None" in run and "payload=None" in run
