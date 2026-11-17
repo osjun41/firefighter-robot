@@ -27,14 +27,8 @@ Run these commands from the repository root.
 | [payload/](payload/README.md) | The robot models (F2, F3 and the F3 options), the model with the weighed masses, and the payload check | `uv run python sim/payload/final_check.py` |
 | [sim2sim/](sim2sim/README.md) | The shipped BHL walking policy loop (shared by `legs/`, `robot/` and the other folders), the motor drive risks and the sim-to-real gap study | `uv run python sim/sim2sim/gap_study.py --quick` |
 | [mission/](mission/README.md) | Complete missions: walking, robot camera, fire detector, aiming, water droplets and fire model | `MUJOCO_GL=egl uv run python sim/mission/mission.py --seed 1055` |
-<<<<<<< HEAD
 | [locomotion/](locomotion/README.md) | Isaac Lab training of the walking policy in `policies/`, with its sim2sim, push and sim-to-real evaluations. Own uv project (Isaac Sim, NVIDIA GPU). | `uv sync --project sim/locomotion` |
-| [water/](water/README.md) | Pump, nozzle and jet range of the KLP02 water system | `uv run python sim/water/water.py` |
-=======
-| [rl/](rl/README.md) | Training and evaluation of walking policies (f1_v1, and f3_v1 for F3). Its own uv project (JAX, GPU) | `uv run python sim/rl/f1_eval.py sim/rl/policies/f3_v1.onnx --model=F3 --quick` |
 | [water/](water/README.md) | Pump, hose, nozzle and jet range of the water trolley | `uv run python sim/water/water.py` |
->>>>>>> origin/main
-| [firescenes/](firescenes/README.md) | Synthetic fire images in Blender, for the detector training set | `blender -b --factory-startup -P sim/firescenes/firescenes.py -- samples 0 200` |
 
 ## Quick checks
 
@@ -48,10 +42,7 @@ Run these commands from the repository root.
 | Weighed masses | `uv run python sim/payload/measured.py --check` | 5 s |
 | Mission tests | `MUJOCO_GL=egl uv run pytest sim/mission/test_mission.py -q` | 10 s |
 | Water model | `uv run python sim/water/water.py check` | 5 s |
-<<<<<<< HEAD
-=======
-| Policy evaluation | `uv run python sim/rl/f1_eval.py sim/rl/policies/f3_v1.onnx --model=F3 --quick` | 15 s |
->>>>>>> origin/main
+| Locomotion layout | `uv run pytest sim/locomotion/tests/test_layout.py -q` | 1 s |
 
 ## Key numbers
 
