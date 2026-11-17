@@ -1,0 +1,402 @@
+<mujoco model="bhl_F2_empty">
+  <compiler angle="radian" meshdir="../../../third_party/berkeley-humanoid-lite-assets/data/robots/berkeley_humanoid/berkeley_humanoid_lite/meshes"/>
+
+  <size nkey="1"/>
+
+  <default>
+    <default class="berkeley-humanoid-lite">
+      <joint armature="0.005" frictionloss="0.1"/>
+      <general biastype="affine" gainprm="50" biasprm="0 -50 1"/>
+      <default class="visual">
+        <geom type="mesh" contype="0" conaffinity="0" group="2"/>
+      </default>
+      <default class="collision">
+        <geom group="3"/>
+      </default>
+    </default>
+  </default>
+
+  <asset>
+    <material name="base_visual_material" rgba="0.67254 0.67254 0.67254 1"/>
+    <material name="imu_2_visual_material" rgba="0.8 0.8 0.8 1"/>
+    <material name="leg_left_hip_roll_visual_material" rgba="0.559597 0.559597 0.559597 1"/>
+    <material name="leg_left_hip_yaw_visual_material" rgba="0.559547 0.559547 0.559547 1"/>
+    <material name="leg_left_hip_pitch_visual_material" rgba="0.587522 0.587522 0.587522 1"/>
+    <material name="leg_left_knee_pitch_visual_material" rgba="0.644721 0.644721 0.644721 1"/>
+    <material name="leg_left_ankle_pitch_visual_material" rgba="0.743029 0.743029 0.743029 1"/>
+    <material name="leg_left_ankle_roll_visual_material" rgba="0.664849 0.664849 0.664849 1"/>
+    <material name="leg_right_hip_roll_visual_material" rgba="0.559597 0.559597 0.559597 1"/>
+    <material name="leg_right_hip_yaw_visual_material" rgba="0.559547 0.559547 0.559547 1"/>
+    <material name="leg_right_hip_pitch_visual_material" rgba="0.587522 0.587522 0.587522 1"/>
+    <material name="leg_right_knee_pitch_visual_material" rgba="0.644721 0.644721 0.644721 1"/>
+    <material name="leg_right_ankle_pitch_visual_material" rgba="0.743029 0.743029 0.743029 1"/>
+    <material name="leg_right_ankle_roll_visual_material" rgba="0.664849 0.664849 0.664849 1"/>
+    <mesh name="base_visual" file="base_visual.stl"/>
+    <mesh name="leg_left_knee_pitch_visual" file="leg_left_knee_pitch_visual.stl"/>
+    <mesh name="leg_right_hip_pitch_visual" file="leg_right_hip_pitch_visual.stl"/>
+    <mesh name="leg_left_hip_yaw_visual" file="leg_left_hip_yaw_visual.stl"/>
+    <mesh name="leg_right_hip_yaw_visual" file="leg_right_hip_yaw_visual.stl"/>
+    <mesh name="leg_left_hip_pitch_visual" file="leg_left_hip_pitch_visual.stl"/>
+    <mesh name="leg_left_hip_roll_visual" file="leg_left_hip_roll_visual.stl"/>
+    <mesh name="leg_right_hip_roll_visual" file="leg_right_hip_roll_visual.stl"/>
+    <mesh name="leg_right_knee_pitch_visual" file="leg_right_knee_pitch_visual.stl"/>
+    <mesh name="leg_left_ankle_roll_visual" file="leg_left_ankle_roll_visual.stl"/>
+    <mesh name="leg_right_ankle_roll_visual" file="leg_right_ankle_roll_visual.stl"/>
+    <mesh name="imu_2_visual" file="imu_2_visual.stl"/>
+    <mesh name="leg_right_ankle_pitch_visual" file="leg_right_ankle_pitch_visual.stl"/>
+    <mesh name="leg_left_ankle_pitch_visual" file="leg_left_ankle_pitch_visual.stl"/>
+  </asset>
+
+  <worldbody>
+    <geom name="floor" size="0 0 0.05" type="plane" rgba="0.3 0.35 0.4 1"/>
+    <light pos="0 0 2.5" type="directional"/>
+    <body name="base" childclass="berkeley-humanoid-lite">
+      <inertial pos="-0.00674223 -0.00252806 0.628066" quat="0.99986 0.00566675 0.0155111 0.00255851" mass="2.27759" diaginertia="0.0358878 0.0269471 0.0174964"/>
+      <joint name="base_freejoint" type="free" armature="0" frictionloss="0"/>
+      <geom class="collision" size="0.075 0.07 0.115" pos="0 0 0.71" quat="0.707107 0 0 -0.707107" type="box"/>
+      <geom class="visual" pos="-0.0030965 0.000264765 0.675059" quat="1 0 0 0" material="base_visual_material" mesh="base_visual"/>
+      <body name="imu_2" pos="0.061722 0 0.68" quat="1 0 0 0">
+        <inertial pos="0 0 0.0025" quat="0.5 0.5 -0.5 0.5" mass="0.00197704" diaginertia="1.43815e-07 1.11441e-07 4.06118e-08"/>
+        <geom class="visual" pos="0 0 0.0025" quat="1 0 0 0" material="imu_2_visual_material" mesh="imu_2_visual"/>
+        <site name="imu" pos="0 0 0.005" group="3"/>
+      </body>
+      <body name="leg_left_hip_roll" pos="-0.0290919 0.08 0.542631" quat="0.92388 0 0.382683 0">
+        <inertial pos="-0.00410941 -0.000112596 -0.0464623" quat="0.998579 -0.0134956 0.0323242 0.0401687" mass="0.83786" diaginertia="0.00098151 0.00089565 0.000726479"/>
+        <joint name="leg_left_hip_roll_joint" range="-0.174533 1.5708"/>
+        <geom class="visual" pos="-0.00410941 -0.000112596 -0.0464623" quat="0.92388 0 -0.382683 0" material="leg_left_hip_roll_visual_material" mesh="leg_left_hip_roll_visual"/>
+        <body name="leg_left_hip_yaw" pos="0.027 0 -0.052" quat="0.5 -0.5 0.5 -0.5">
+          <inertial pos="-0.00411632 -8.63203e-05 0.0463382" quat="0.999084 -0.0161651 -0.0382793 -0.010234" mass="0.837683" diaginertia="0.000980566 0.000898328 0.00072259"/>
+          <joint name="leg_left_hip_yaw_joint" range="-0.981748 0.589049"/>
+          <geom class="visual" pos="-0.00411632 -8.63203e-05 0.0463382" quat="0.270598 0.653281 -0.653281 0.270598" material="leg_left_hip_yaw_visual_material" mesh="leg_left_hip_yaw_visual"/>
+          <body name="leg_left_hip_pitch" pos="0.027 0 0.052" quat="0.653281 0.270598 -0.653281 -0.270598">
+            <inertial pos="0.0030405 0.120388 0.0210924" quat="0.761917 0.646837 0.0270387 0.0188057" mass="0.947974" diaginertia="0.00287266 0.00264321 0.000972851"/>
+            <joint name="leg_left_hip_pitch_joint" range="-1.89805 0.981748"/>
+            <geom class="collision" size="0.05 0.065" pos="0.00597627 0.039 0.0295" quat="0.5 0.5 0.5 -0.5" type="cylinder"/>
+            <geom class="visual" pos="0.0030405 0.120388 0.0210924" quat="0.707107 0.707107 0 0" material="leg_left_hip_pitch_visual_material" mesh="leg_left_hip_pitch_visual"/>
+            <body name="leg_left_knee_pitch" pos="0 0.15 -0.018" quat="0 0 0 -1">
+              <inertial pos="-4.14041e-05 -0.112249 0.0257397" quat="0.716105 0.697988 -0.00189175 0.00175183" mass="0.653864" diaginertia="0.00230127 0.00203823 0.000558782"/>
+              <joint name="leg_left_knee_pitch_joint" range="0 2.44346"/>
+              <geom class="collision" size="0.04 0.075" pos="0 -0.115 0.022" quat="0.5 -0.5 0.5 0.5" type="cylinder"/>
+              <geom class="visual" pos="-4.14041e-05 -0.112249 0.0257397" quat="0 0 0.707107 0.707107" material="leg_left_knee_pitch_visual_material" mesh="leg_left_knee_pitch_visual"/>
+              <body name="leg_left_ankle_pitch" pos="0 -0.16 -0.003" quat="0 0 0 -1">
+                <inertial pos="0.0131065 0.0273743 0.0274153" quat="0.97446 -0.0895638 0.0341084 -0.203084" mass="0.106196" diaginertia="0.000199494 0.000133736 7.96933e-05"/>
+                <joint name="leg_left_ankle_pitch_joint" range="-0.785398 0.785398"/>
+                <geom class="visual" pos="0.0131065 0.0273743 0.0274153" quat="0.707107 0.707107 0 0" material="leg_left_ankle_pitch_visual_material" mesh="leg_left_ankle_pitch_visual"/>
+                <body name="leg_left_ankle_roll" pos="0.03 0.05 0.025" quat="0.707107 0 0.707107 0">
+                  <inertial pos="2.29341e-05 0.0226611 0.0197836" quat="0.99849 0.0548312 0.000143945 0.00326776" mass="0.706476" diaginertia="0.00198705 0.00191918 0.000603903"/>
+                  <joint name="leg_left_ankle_roll_joint" range="-0.261799 0.261799"/>
+                  <geom class="collision" size="0.036 0.11 0.02" pos="0 0.03 0.006" quat="0.707107 0.707107 0 0" type="box"/>
+                  <geom class="visual" pos="2.29341e-05 0.0226611 0.0197836" quat="0.5 0.5 -0.5 0.5" material="leg_left_ankle_roll_visual_material" mesh="leg_left_ankle_roll_visual"/>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+      <body name="leg_right_hip_roll" pos="-0.0290919 -0.08 0.542631" quat="0 0.382683 0 0.92388">
+        <inertial pos="0.00410941 -0.00018505 -0.0464478" quat="0.99915 -0.0125114 -0.0311449 -0.0239221" mass="0.83786" diaginertia="0.000980934 0.000896266 0.000726135"/>
+        <joint name="leg_right_hip_roll_joint" range="-1.5708 0.174533"/>
+        <geom class="visual" pos="0.00410941 -0.00018505 -0.0464478" quat="0 -0.382683 0 -0.92388" material="leg_right_hip_roll_visual_material" mesh="leg_right_hip_roll_visual"/>
+        <body name="leg_right_hip_yaw" pos="-0.027 0 -0.052" quat="0.5 -0.5 -0.5 0.5">
+          <inertial pos="0.00411632 -1.3851e-05 0.0463238" quat="0.999168 -0.0154252 0.0370844 -0.00703097" mass="0.837683" diaginertia="0.00098034 0.000898597 0.000722286"/>
+          <joint name="leg_right_hip_yaw_joint" range="-0.589049 0.981748"/>
+          <geom class="visual" pos="0.00411632 -1.3851e-05 0.0463238" quat="0.270598 0.653281 -0.653281 0.270598" material="leg_right_hip_yaw_visual_material" mesh="leg_right_hip_yaw_visual"/>
+          <body name="leg_right_hip_pitch" pos="-0.027 0 0.052" quat="0.653281 0.270598 -0.653281 -0.270598">
+            <inertial pos="0.00319928 0.120388 -0.0210924" quat="0.646378 0.762188 0.00805307 0.0346537" mass="0.947974" diaginertia="0.00287232 0.00264204 0.000972473"/>
+            <joint name="leg_right_hip_pitch_joint" range="-1.89805 0.981748"/>
+            <geom class="collision" size="0.05 0.065" pos="0.00597627 0.039 -0.0295" quat="0.5 0.5 0.5 -0.5" type="cylinder"/>
+            <geom class="visual" pos="0.00319928 0.120388 -0.0210924" quat="0.707107 0.707107 0 0" material="leg_right_hip_pitch_visual_material" mesh="leg_right_hip_pitch_visual"/>
+            <body name="leg_right_knee_pitch" pos="0 0.15 0.018">
+              <inertial pos="-5.09429e-05 0.112249 -0.0257397" quat="0.716106 0.697988 0.00180037 -0.00128014" mass="0.653864" diaginertia="0.00230127 0.00203824 0.00055878"/>
+              <joint name="leg_right_knee_pitch_joint" range="0 2.44346"/>
+              <geom class="collision" size="0.04 0.075" pos="0 0.115 -0.022" quat="0.5 0.5 0.5 -0.5" type="cylinder"/>
+              <geom class="visual" pos="-5.09429e-05 0.112249 -0.0257397" quat="0.707107 0.707107 0 0" material="leg_right_knee_pitch_visual_material" mesh="leg_right_knee_pitch_visual"/>
+              <body name="leg_right_ankle_pitch" pos="0 0.16 0.003" quat="1 0 0 0">
+                <inertial pos="0.0131065 0.0273743 -0.0274153" quat="0.97446 0.0895638 -0.0341084 -0.203084" mass="0.106196" diaginertia="0.000199494 0.000133736 7.96934e-05"/>
+                <joint name="leg_right_ankle_pitch_joint" range="-0.785398 0.785398"/>
+                <geom class="visual" pos="0.0131065 0.0273743 -0.0274153" quat="0.707107 0.707107 0 0" material="leg_right_ankle_pitch_visual_material" mesh="leg_right_ankle_pitch_visual"/>
+                <body name="leg_right_ankle_roll" pos="0.03 0.05 -0.025" quat="0.707107 0 0.707107 0">
+                  <inertial pos="2.29341e-05 0.0226611 0.0197836" quat="0.99849 0.0548312 0.000143945 0.00326776" mass="0.706476" diaginertia="0.00198705 0.00191918 0.000603903"/>
+                  <joint name="leg_right_ankle_roll_joint" range="-0.261799 0.261799"/>
+                  <geom class="collision" size="0.036 0.11 0.02" pos="0 0.03 0.006" quat="0.707107 0.707107 0 0" type="box"/>
+                  <geom class="visual" pos="2.29341e-05 0.0226611 0.0197836" quat="0.5 0.5 -0.5 0.5" material="leg_right_ankle_roll_visual_material" mesh="leg_right_ankle_roll_visual"/>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+      <body name="payload_shelf_acrylic" pos="0 0 0.6825">
+        <inertial pos="0 0 0" mass="0.091" diaginertia="9.02872e-05 0.000148823 0.000238731"/>
+        <geom size="0.07 0.0545 0.0025" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_relay_aep18024" pos="0.028 0 0.7245">
+        <inertial pos="0 0 0" mass="0.4" diaginertia="0.000398042 0.000261367 0.000243342"/>
+        <geom size="0.02 0.03775 0.0395" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_estop_contacts" pos="-0.013 0.0485 0.759">
+        <inertial pos="0 0 0" mass="0.06" diaginertia="1.8545e-05 9e-06 1.8545e-05"/>
+        <geom size="0.015 0.0265 0.015" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_boost_ham5925" pos="-0.0105 -0.0215 0.698">
+        <inertial pos="0 0 0" mass="0.045" diaginertia="1.83788e-05 7.12875e-06 2.04375e-05"/>
+        <geom size="0.0175 0.0325 0.013" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_wiring_small" pos="0 0 0.689">
+        <inertial pos="0 0 0" mass="0.3" diaginertia="0.00041 0.00041 0.00032"/>
+        <geom size="0.04 0.04 0.05" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_lipo_6s_a" pos="-0.025 0 0.6472">
+        <inertial pos="0 0 0" mass="0.603" diaginertia="0.00107516 0.000229203 0.00106796"/>
+        <geom size="0.0235 0.069 0.02425" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_lipo_6s_b" pos="0.025 0 0.6472">
+        <inertial pos="0 0 0" mass="0.603" diaginertia="0.00107516 0.000229203 0.00106796"/>
+        <geom size="0.0235 0.069 0.02425" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_lipo_3s" pos="-0.0965 0 0.653">
+        <inertial pos="0 0 0" mass="0.362" diaginertia="0.000638327 9.09827e-05 0.000601644"/>
+        <geom size="0.015 0.069 0.023" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_diode_mbrt400100" pos="-0.0862 0 0.6972">
+        <inertial pos="0 0 0" mass="0.075" diaginertia="5.62836e-05 4.66862e-06 5.58011e-05"/>
+        <geom size="0.00915 0.04635 0.01015" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_rock3c" pos="-0.0938 -0.045 0.7804">
+        <inertial pos="0 0 0" mass="0.045" diaginertia="4.03398e-05 3.03294e-05 1.35096e-05"/>
+        <geom size="0.0108 0.028 0.04365" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_shunt_100a" pos="-0.0895 0.046 0.7675">
+        <inertial pos="0 0 0" mass="0.08" diaginertia="8.41667e-05 7.76667e-05 1.48333e-05"/>
+        <geom size="0.0125 0.02 0.0525" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_canable_1" pos="-0.123 -0.043 0.643">
+        <inertial pos="0 0 0" mass="0.008" diaginertia="1.97333e-06 2.66667e-07 1.89867e-06"/>
+        <geom size="0.006 0.026 0.008" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_canable_2" pos="-0.123 -0.043 0.663">
+        <inertial pos="0 0 0" mass="0.008" diaginertia="1.97333e-06 2.66667e-07 1.89867e-06"/>
+        <geom size="0.006 0.026 0.008" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_buck_5v" pos="-0.122 0.0007 0.6517">
+        <inertial pos="0 0 0" mass="0.007" diaginertia="7.52687e-07 4.34677e-07 4.34677e-07"/>
+        <geom size="0.005 0.0127 0.0127" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_mosfet_dfr0457" pos="-0.1245 0.04 0.653">
+        <inertial pos="0 0 0" mass="0.01" diaginertia="2.46667e-06 1.04083e-06 1.80083e-06"/>
+        <geom size="0.0075 0.022 0.016" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_meter_hav6001" pos="-0.1235 -0.044 0.7785">
+        <inertial pos="0 0 0" mass="0.02" diaginertia="4.62083e-06 1.90542e-06 4.18542e-06"/>
+        <geom size="0.0105 0.02275 0.01325" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_meter_hav1808" pos="-0.123 -0.044 0.7385">
+        <inertial pos="0 0 0" mass="0.015" diaginertia="3.46562e-06 1.48281e-06 3.19281e-06"/>
+        <geom size="0.011 0.02275 0.01325" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_meter_hav1625a" pos="-0.123 0.044 0.7785">
+        <inertial pos="0 0 0" mass="0.02" diaginertia="4.62083e-06 1.97708e-06 4.25708e-06"/>
+        <geom size="0.011 0.02275 0.01325" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_switch_pushlock_24v" pos="-0.1115 0 0.742">
+        <inertial pos="0 0 0" mass="0.025" diaginertia="2.66704e-06 5.55227e-06 5.55227e-06"/>
+        <geom size="0.0225 0.01265 0.01265" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_switch_pushlock_12v" pos="-0.114 0 0.807">
+        <inertial pos="0 0 0" mass="0.015" diaginertia="9.216e-07 2.4608e-06 2.4608e-06"/>
+        <geom size="0.02 0.0096 0.0096" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_imu_im10a" pos="0.059 0 0.7137">
+        <inertial pos="0 0 0" mass="0.05" diaginertia="2.49604e-05 1.07798e-05 1.53214e-05"/>
+        <geom size="0.00585 0.02975 0.02475" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_brake_resistor_1" pos="0.084 -0.039 0.6">
+        <inertial pos="0 0 0" mass="0.031" diaginertia="1.53476e-05 2.98633e-06 1.36839e-05"/>
+        <geom size="0.008 0.0355 0.015" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_brake_resistor_2" pos="0.084 0.039 0.6">
+        <inertial pos="0 0 0" mass="0.031" diaginertia="1.53476e-05 2.98633e-06 1.36839e-05"/>
+        <geom size="0.008 0.0355 0.015" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_relay_k2" pos="-0.0945 0.0612 0.699">
+        <inertial pos="0 0 0" mass="0.03" diaginertia="3.85063e-06 5.0225e-06 4.95313e-06"/>
+        <geom size="0.0175 0.01375 0.014" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_pump_dwp385" pos="-0.048 -0.0005 0.742">
+        <inertial pos="0 0 0" mass="0.13" diaginertia="0.000131138 3.74833e-05 0.000118701"/>
+        <geom size="0.017 0.0495 0.024" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_filter_inline" pos="-0.01 0.037 0.6985">
+        <inertial pos="0 0 0" mass="0.006" diaginertia="6.505e-07 8.245e-07 8.5e-07"/>
+        <geom size="0.016 0.013 0.0125" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_battery_holder" pos="0 0 0.6185">
+        <inertial pos="0 0 0" mass="0.1147" diaginertia="6.40504e-05 0.000178253 0.000218886"/>
+        <geom size="0.066 0.037 0.0175" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_pod_spacer_left" pos="-0.0725 0.0649 0.7445">
+        <inertial pos="0 0 0" mass="0.0148" diaginertia="2.80657e-05 2.77808e-05 3.46567e-07"/>
+        <geom size="0.0025 0.008 0.075" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_pod_spacer_right" pos="-0.0725 -0.0649 0.7436">
+        <inertial pos="0 0 0" mass="0.0146" diaginertia="2.76865e-05 2.74054e-05 3.41883e-07"/>
+        <geom size="0.0025 0.008 0.075" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_pod_basket" pos="-0.0998 -0.0003 0.6437">
+        <inertial pos="0 0 0" mass="0.1181" diaginertia="0.000242351 6.62935e-05 0.000237785"/>
+        <geom size="0.028 0.0725 0.03" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_pod_cover" pos="-0.1189 0.0009 0.7353">
+        <inertial pos="0 0 0" mass="0.151" diaginertia="0.000833712 0.000581341 0.000352258"/>
+        <geom size="0.0315 0.0775 0.10275" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_imu_mount" pos="0.0553 0 0.7048">
+        <inertial pos="0 0 0" mass="0.0224" diaginertia="1.34741e-05 5.94767e-06 8.736e-06"/>
+        <geom size="0.009 0.033 0.02675" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_pod_plate_al2" pos="-0.076 -0.0001 0.726">
+        <inertial pos="0 0 0" mass="0.157" diaginertia="0.000807294 0.000512971 0.000294427"/>
+        <geom size="0.001 0.075 0.099" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_pump_holder" pos="-0.048 -0.0202 0.703">
+        <inertial pos="0 0 0" mass="0.0331" diaginertia="1.80309e-05 9.91524e-06 1.59149e-05"/>
+        <geom size="0.0188 0.033 0.02335" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_resistor_mount_left" pos="0.073 0.039 0.6005">
+        <inertial pos="0 0 0" mass="0.0148" diaginertia="7.91553e-06 1.3875e-06 6.61683e-06"/>
+        <geom size="0.003 0.0365 0.0165" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_resistor_mount_right" pos="0.073 -0.039 0.6005">
+        <inertial pos="0 0 0" mass="0.0148" diaginertia="7.91553e-06 1.3875e-06 6.61683e-06"/>
+        <geom size="0.003 0.0365 0.0165" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_frame_clips" pos="0 0 0.689">
+        <inertial pos="0 0 0" mass="0.024" diaginertia="3.28e-05 3.28e-05 2.56e-05"/>
+        <geom size="0.04 0.04 0.05" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_deck_f1" pos="-0.0014 0.0014 0.833">
+        <inertial pos="0 0 0" mass="0.0762" diaginertia="5.87502e-05 0.00015875 0.000217043"/>
+        <geom size="0.079 0.048 0.003" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_pan_base" pos="-0.0353 0 0.8374">
+        <inertial pos="0 0 0" mass="0.0426" diaginertia="3.05619e-05 3.05619e-05 4.544e-05"/>
+        <geom size="0.04 0.04 0.0235" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_pan_yoke" pos="-0.038 -0.0001 0.8498">
+        <inertial pos="0 0 0" mass="0.0341" diaginertia="1.8853e-05 1.8853e-05 3.28269e-05"/>
+        <geom size="0.038 0.038 0.01465" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_tilt_u" pos="-0.038 0 0.9087">
+        <inertial pos="0 0 0" mass="0.0278" diaginertia="9.56144e-06 1.06103e-05 1.34812e-05"/>
+        <geom size="0.028 0.0259 0.019" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_head_f1" pos="-0.0218 0 0.9452">
+        <inertial pos="0 0 0" mass="0.054" diaginertia="4.39733e-05 5.49634e-05 3.72341e-05"/>
+        <geom size="0.0366 0.027 0.0414" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_ref_pan_servo" pos="-0.0261 0 0.82">
+        <inertial pos="0 0 0" mass="0.089" diaginertia="1.51221e-05 2.57498e-05 1.96774e-05"/>
+        <geom size="0.0226 0.01235 0.0189" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_ref_tilt_servo" pos="-0.038 0 0.8811">
+        <inertial pos="0 0 0" mass="0.089" diaginertia="2.57498e-05 1.96774e-05 1.51221e-05"/>
+        <geom size="0.01235 0.0189 0.0226" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_ref_pan_bearing" pos="-0.038 0 0.8445">
+        <inertial pos="0 0 0" mass="0.026" diaginertia="5.96483e-06 5.96483e-06 1.17173e-05"/>
+        <geom size="0.026 0.026 0.0035" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_camera_b0201" pos="-0.0017 0 0.9712">
+        <inertial pos="0 0 0" mass="0.025" diaginertia="5.86042e-06 3.78842e-06 3.94467e-06"/>
+        <geom size="0.0106 0.019 0.0185" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_nozzle_brass" pos="-0.0201 0 0.9315">
+        <inertial pos="0 0 0" mass="0.03" diaginertia="5e-07 4.66e-06 4.66e-06"/>
+        <geom size="0.021 0.005 0.005" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_hose_clips" pos="-0.038 0 0.87">
+        <inertial pos="0 0 0" mass="0.0052" diaginertia="1.38667e-06 1.38667e-06 1.38667e-06"/>
+        <geom size="0.02 0.02 0.02" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_hose_and_water" pos="0 -0.035 0.82">
+        <inertial pos="0 0 0" mass="0.025" diaginertia="2.16667e-05 3.41667e-05 1.41667e-05"/>
+        <geom size="0.04 0.01 0.05" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_r2_shell_left" pos="0.0011 0.1004 0.675">
+        <inertial pos="0 0 0" mass="0.1662" diaginertia="0.000171754 0.000413852 0.000308606"/>
+        <geom size="0.0705 0.0245 0.05" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_r2_shell_right" pos="0.0011 -0.1004 0.675">
+        <inertial pos="0 0 0" mass="0.1662" diaginertia="0.000171754 0.000413852 0.000308606"/>
+        <geom size="0.0705 0.0245 0.05" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+      <body name="payload_tank_hardware_tubing" pos="0.02 0 0.679">
+        <inertial pos="0 0 0" mass="0.14" diaginertia="0.000508667 0.000158667 0.000583333"/>
+        <geom size="0.05 0.1 0.03" type="box" contype="0" conaffinity="0" group="1" rgba="0.85 0.2 0.1 1" mass="0"/>
+      </body>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <general name="leg_left_hip_roll_joint" class="berkeley-humanoid-lite" joint="leg_left_hip_roll_joint" forcerange="-20 20" biastype="none" gainprm="1"/>
+    <general name="leg_left_hip_yaw_joint" class="berkeley-humanoid-lite" joint="leg_left_hip_yaw_joint" forcerange="-20 20" biastype="none" gainprm="1"/>
+    <general name="leg_left_hip_pitch_joint" class="berkeley-humanoid-lite" joint="leg_left_hip_pitch_joint" forcerange="-20 20" biastype="none" gainprm="1"/>
+    <general name="leg_left_knee_pitch_joint" class="berkeley-humanoid-lite" joint="leg_left_knee_pitch_joint" forcerange="-20 20" biastype="none" gainprm="1"/>
+    <general name="leg_left_ankle_pitch_joint" class="berkeley-humanoid-lite" joint="leg_left_ankle_pitch_joint" forcerange="-20 20" biastype="none" gainprm="1"/>
+    <general name="leg_left_ankle_roll_joint" class="berkeley-humanoid-lite" joint="leg_left_ankle_roll_joint" forcerange="-20 20" biastype="none" gainprm="1"/>
+    <general name="leg_right_hip_roll_joint" class="berkeley-humanoid-lite" joint="leg_right_hip_roll_joint" forcerange="-20 20" biastype="none" gainprm="1"/>
+    <general name="leg_right_hip_yaw_joint" class="berkeley-humanoid-lite" joint="leg_right_hip_yaw_joint" forcerange="-20 20" biastype="none" gainprm="1"/>
+    <general name="leg_right_hip_pitch_joint" class="berkeley-humanoid-lite" joint="leg_right_hip_pitch_joint" forcerange="-20 20" biastype="none" gainprm="1"/>
+    <general name="leg_right_knee_pitch_joint" class="berkeley-humanoid-lite" joint="leg_right_knee_pitch_joint" forcerange="-20 20" biastype="none" gainprm="1"/>
+    <general name="leg_right_ankle_pitch_joint" class="berkeley-humanoid-lite" joint="leg_right_ankle_pitch_joint" forcerange="-20 20" biastype="none" gainprm="1"/>
+    <general name="leg_right_ankle_roll_joint" class="berkeley-humanoid-lite" joint="leg_right_ankle_roll_joint" forcerange="-20 20" biastype="none" gainprm="1"/>
+  </actuator>
+
+  <sensor>
+    <jointpos joint="leg_left_hip_roll_joint" name="leg_left_hip_roll_pos"/>
+    <jointpos joint="leg_left_hip_yaw_joint" name="leg_left_hip_yaw_pos"/>
+    <jointpos joint="leg_left_hip_pitch_joint" name="leg_left_hip_pitch_pos"/>
+    <jointpos joint="leg_left_knee_pitch_joint" name="leg_left_knee_pitch_pos"/>
+    <jointpos joint="leg_left_ankle_pitch_joint" name="leg_left_ankle_pitch_pos"/>
+    <jointpos joint="leg_left_ankle_roll_joint" name="leg_left_ankle_roll_pos"/>
+    <jointpos joint="leg_right_hip_roll_joint" name="leg_right_hip_roll_pos"/>
+    <jointpos joint="leg_right_hip_yaw_joint" name="leg_right_hip_yaw_pos"/>
+    <jointpos joint="leg_right_hip_pitch_joint" name="leg_right_hip_pitch_pos"/>
+    <jointpos joint="leg_right_knee_pitch_joint" name="leg_right_knee_pitch_pos"/>
+    <jointpos joint="leg_right_ankle_pitch_joint" name="leg_right_ankle_pitch_pos"/>
+    <jointpos joint="leg_right_ankle_roll_joint" name="leg_right_ankle_roll_pos"/>
+    <jointvel joint="leg_left_hip_roll_joint" name="leg_left_hip_roll_vel"/>
+    <jointvel joint="leg_left_hip_yaw_joint" name="leg_left_hip_yaw_vel"/>
+    <jointvel joint="leg_left_hip_pitch_joint" name="leg_left_hip_pitch_vel"/>
+    <jointvel joint="leg_left_knee_pitch_joint" name="leg_left_knee_pitch_vel"/>
+    <jointvel joint="leg_left_ankle_pitch_joint" name="leg_left_ankle_pitch_vel"/>
+    <jointvel joint="leg_left_ankle_roll_joint" name="leg_left_ankle_roll_vel"/>
+    <jointvel joint="leg_right_hip_roll_joint" name="leg_right_hip_roll_vel"/>
+    <jointvel joint="leg_right_hip_yaw_joint" name="leg_right_hip_yaw_vel"/>
+    <jointvel joint="leg_right_hip_pitch_joint" name="leg_right_hip_pitch_vel"/>
+    <jointvel joint="leg_right_knee_pitch_joint" name="leg_right_knee_pitch_vel"/>
+    <jointvel joint="leg_right_ankle_pitch_joint" name="leg_right_ankle_pitch_vel"/>
+    <jointvel joint="leg_right_ankle_roll_joint" name="leg_right_ankle_roll_vel"/>
+    <jointactuatorfrc joint="leg_left_hip_roll_joint" name="leg_left_hip_roll_torque"/>
+    <jointactuatorfrc joint="leg_left_hip_yaw_joint" name="leg_left_hip_yaw_torque"/>
+    <jointactuatorfrc joint="leg_left_hip_pitch_joint" name="leg_left_hip_pitch_torque"/>
+    <jointactuatorfrc joint="leg_left_knee_pitch_joint" name="leg_left_knee_pitch_torque"/>
+    <jointactuatorfrc joint="leg_left_ankle_pitch_joint" name="leg_left_ankle_pitch_torque"/>
+    <jointactuatorfrc joint="leg_left_ankle_roll_joint" name="leg_left_ankle_roll_torque"/>
+    <jointactuatorfrc joint="leg_right_hip_roll_joint" name="leg_right_hip_roll_torque"/>
+    <jointactuatorfrc joint="leg_right_hip_yaw_joint" name="leg_right_hip_yaw_torque"/>
+    <jointactuatorfrc joint="leg_right_hip_pitch_joint" name="leg_right_hip_pitch_torque"/>
+    <jointactuatorfrc joint="leg_right_knee_pitch_joint" name="leg_right_knee_pitch_torque"/>
+    <jointactuatorfrc joint="leg_right_ankle_pitch_joint" name="leg_right_ankle_pitch_torque"/>
+    <jointactuatorfrc joint="leg_right_ankle_roll_joint" name="leg_right_ankle_roll_torque"/>
+    <framequat objtype="site" objname="imu" name="imu_quat"/>
+    <gyro site="imu" name="imu_gyro"/>
+    <accelerometer site="imu" name="imu_acc"/>
+    <framepos objtype="site" objname="imu" name="frame_pos"/>
+    <framelinvel objtype="site" objname="imu" name="frame_vel"/>
+  </sensor>
+
+  <keyframe>
+    <key name="stand" qpos="0 0 -0.0456458 0.99875 0 0.0499792 0 0 0 -0.2 0.4 -0.3 0 0 0 -0.2 0.4 -0.3 0"/>
+  </keyframe>
+</mujoco>

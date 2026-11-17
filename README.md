@@ -44,7 +44,6 @@ You need `git` and [uv](https://docs.astral.sh/uv/). Run from the repository roo
 
 ```bash
 git clone https://github.com/promaaa/firefighter-robot.git && cd firefighter-robot
-scripts/fetch_bhl_assets.sh   # Berkeley Humanoid Lite model and meshes
 uv sync --extra sim --extra dev
 uv run --extra sim --extra dev pytest
 ```

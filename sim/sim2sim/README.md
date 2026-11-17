@@ -11,7 +11,7 @@ and the real robot stop the walk). Both use the F3 parts on the torso (`--payloa
 Run these commands once, from the repository root:
 
 1. Install the Python environment: `uv sync`
-2. No model build is needed: the robot is the ASMR MJCF of `source/robot_models`. (The BHL meshes and `sim/payload/models.py` are only for `bhl_legacy.py`, which no script uses any more.)
+2. No model build is needed: the robot is the ASMR MJCF of `source/robot_models`.
 
 `run.py`, `hw_risks.py` and `gap_study.py` need neither the BHL meshes nor these models.
 
@@ -22,9 +22,7 @@ Run these commands once, from the repository root:
 | `run.py` | The ASMR runner: policy by name, joint order, standing pose, gains and limits from the MJCF, observation, payload option, one simulation run, video, self-check |
 | `hw_risks.py` | Sim-to-real risks of the course motor drives on the ASMR robot with the F3 parts |
 | `gap_study.py` | Sim-to-real gap study: payloads, one change at a time, combined cases |
-| `bhl_legacy.py` | The old BHL loop (BHL gains, pose and policy). No script uses it any more (the mission moved to the ASMR robot); it is deleted with `third_party/` and the BHL models in the last step of the model unification |
 | `baseline_detector.py` | Colour-threshold fire "detector" for simulated cameras. Not a real detector |
-| `policy_biped_25hz_a.onnx` | The shipped BHL walking policy, for `bhl_legacy.py` only |
 | `BHL_LICENCE` | The MIT licence of the BHL code, which the policy copy requires |
 | `results/hw_risks.md`, `.json`, `.png` | All tables, findings and the recommendation of `hw_risks.py` | (written by the run)
 | `results/gap_study.md`, `.json`, `.png` | Tables and figure of `gap_study.py` | (written by the run)
@@ -127,5 +125,4 @@ The real detector is `vision/detector.py`. To test a detector in full F2 mission
 ## Licence
 
 Code: MIT (root `LICENSE`). This README and the result files: CC BY-SA 4.0.
-`policy_biped_25hz_a.onnx` is a copy of BHL `checkpoints/policy_biped_25hz_a.onnx` (commit `984741a`, SHA-256 `65769d21…2fd94e`). It is under the MIT licence in [`BHL_LICENCE`](BHL_LICENCE).
-The BHL meshes and URDF are CC BY-SA 4.0. `scripts/fetch_bhl_assets.sh` fetches them. They are not in git.
+`BHL_LICENCE` is kept: the BHL code and policy were the starting point of this folder (the old BHL loop is in `archive/payload_bhl/`), and the MIT licence requires its notice to stay.

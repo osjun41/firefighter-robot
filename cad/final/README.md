@@ -81,7 +81,7 @@ The anchor top is at z 835 and its openings are at x −97, for this reason. Whe
 | `views.py` | Draws the labelled section views `out_f3/layout_views.png` |
 | `render.py` | Blender renders in `renders/`: `f3_*.jpg` and `turntable_f3.jpg` |
 | `out_f3/` | In the repository: `deck.json`, `kit.json`, `layout.json`, `layout_views.png` and `deck_f1.stl`. The steps below also write STEP files and reference shapes here. |
-| `out_f2/` | Design F2 with two R2 water tanks. `sim/payload/models.py` (F2 models), `sim/water/water.py` and `sim/mission/world.py` still read it. |
+| `out_f2/` | Design F2 with two R2 water tanks. `sim/water/water.py` still reads it (`sim/mission` and `sim/payload` no longer do; the F2 BHL models are in `archive/payload_bhl/models.py`). |
 
 `DESIGN=F2` in front of steps 1 to 5 builds the design F2 into `out_f2/` and `kit_f2/`. It overwrites the files that the simulations read, so do it only when F2 changes.
 `DESIGN=F1` builds the old design F1 (one tank inside the torso) into `out/` and `kit_f1/`.

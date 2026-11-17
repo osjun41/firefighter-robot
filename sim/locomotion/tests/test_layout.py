@@ -301,11 +301,11 @@ def test_drive_and_gap_studies_run_the_asmr_robot():
 
 
 def test_payload_check_runs_the_asmr_robot():
-    """final_check.py and torso_tank.py use the ASMR runner (run.py) and the payload options, not the BHL models."""
-    for name in ("final_check.py", "torso_tank.py", "analyze.py", "poses.py"):
+    """final_check.py and stability.py use the ASMR runner (run.py) and the payload options, not the BHL models."""
+    for name in ("final_check.py", "stability.py", "analyze.py", "poses.py"):
         text = (ROOT / "sim/payload" / name).read_text(encoding="utf-8")
         assert "bhl_legacy" not in text and "bhl_F" not in text and 'models.load' not in text, name
-    text = (ROOT / "sim/payload/torso_tank.py").read_text(encoding="utf-8")
+    text = (ROOT / "sim/payload/stability.py").read_text(encoding="utf-8")
     assert "import run as s2s" in text and "push=push" in text
     check = (ROOT / "sim/payload/final_check.py").read_text(encoding="utf-8")
     assert "--policy" in check and "final_f3" in check and '"f3"' in check
@@ -314,12 +314,14 @@ def test_payload_check_runs_the_asmr_robot():
 
 
 def test_no_script_uses_the_bhl_model():
-    """Only bhl_legacy.py and the BHL model builder models.py are left of the Berkeley simulation code, and nothing imports them."""
-    own = {"bhl_legacy.py", "models.py", "measured.py", "test_layout.py", "test_mission.py"}
+    """The Berkeley simulation code (bhl_legacy.py, the BHL model builder, the shipped BHL policy) is in archive/ or gone,
+    and no script outside archive/ and the Isaac Lab project names it."""
+    assert not (ROOT / "sim/sim2sim/bhl_legacy.py").exists() and not (ROOT / "sim/payload/models.py").exists()
+    assert not (ROOT / "sim/sim2sim/policy_biped_25hz_a.onnx").exists()
     for path in (ROOT / "sim").rglob("*.py"):
-        if path.name in own or ".venv" in path.parts or "locomotion" in path.parts:
+        if path.name in ("test_layout.py", "test_mission.py") or ".venv" in path.parts or "locomotion" in path.parts:
             continue
         text = path.read_text(encoding="utf-8")
-        assert "bhl_legacy" not in text and "payload/models" not in text and "bhl_F" not in text, path
+        assert "bhl_legacy" not in text and "payload/models" not in text and "bhl_F" not in text and "third_party" not in text, path
     mission = (ROOT / "sim/mission/mission.py").read_text(encoding="utf-8") + (ROOT / "sim/mission/world.py").read_text(encoding="utf-8")
     assert "bhl_" not in mission and "out_f2" not in mission and "payload/models" not in mission

@@ -163,9 +163,9 @@ The trolley tips about the line between its two front casters. The worst case: t
 
 ### 9.1 The trolley cannot catch a falling robot
 
-- The robot weighs 14.6 kg (143 N). Its centre of mass is 0.43 m high.
-- A line from the anchor needs 13 N to hold the robot at a 10° lean, and 27 N at 20°. The light trolley tips at 7 to 11 N.
-- To carry the robot weight at the boom tip, the trolley needs 26 kg of ballast on its base. To stop a fall with a jerk of twice the weight, it needs about 58 kg. The boom, its printed clamp and the hose barbs would break first.
+- The robot weighs 16.35 kg (160 N): the ASMR robot with the F3 parts. Its centre of mass is 0.49 m high (`sim/payload/final_check.py`, stand pose).
+- A line from the anchor needs 17 N to hold the robot at a 10° lean, and 34 N at 20°. The light trolley tips at 7 to 11 N.
+- To carry the robot weight at the boom tip, the trolley needs 30 kg of ballast on its base. To stop a fall with a jerk of twice the weight, it needs about 66 kg. The boom, its printed clamp and the hose barbs would break first.
 - **Warning:** never use the hose, the cable or the boom as a safety line. Use the gantry in the early tests.
 
 ## 10. Hose force on the robot
@@ -174,7 +174,7 @@ The trolley tips about the line between its two front casters. The worst case: t
 - While the hose is slack, it pulls the anchor down by about 0.10 N and back by less than 0.04 N. The robot also carries the 0.24 m of hose from the anchor to the nozzle, about 8 g with water.
 - When the slack is gone, the pull rises until the breakaway clip lets go at about 1.5 N. The pull points 34° above the horizontal, toward the boom tip. At the anchor height (0.835 m) this gives a backward pitch moment of 1.0 N·m.
 - If the clip does not let go, the pull rises until the trolley tips (7 to 11 N). The pitch moment is then 4.8 to 7.6 N·m. This can pull the robot over.
-- For comparison: F2 carried tanks, water and pump on the robot. F3 is 1.4 kg lighter (F3 model: 14.60 kg).
+- For comparison: F2 carried tanks, water and pump on the robot. F3 carries none of them (the ASMR robot with the F3 parts: 16.35 kg).
 - The gap study ([gap_study.md](../../archive/sim2sim_bhl/gap_study.md)) checked the walking policies with a hose pull. A constant 3 N pull adds 12 falls in 80 runs, and 20 falls in 40 together with the other realistic errors. A pull that changes between 0 and 3 N adds 2 falls. So the clip lets go at 1.5 N, and the person who pushes keeps the mean pull below 1 N.
 
 ## 11. Parts
@@ -231,6 +231,6 @@ The self-check runs in 1 s: `uv run python docs/hardware/trolley.py check`.
 
 - IV stand sizes: Clinton CL-IVS-352, 5-leg stainless IV pole: 23 in (0.58 m) base, 60 to 100 in high, 1 in and 3/4 in poles. https://www.universalmedicalinc.com/stainless-steel-5-leg-iv-pole-with-2-hook-top.html
 - Heavy stand mass: MidCentral MCM210, 22 lb (10 kg), quoted in a search summary. **Not verified.**
-- Robot mass and heights: `sim/payload/models/bhl_F3.xml` (F3 model, stand pose).
+- Robot mass and heights: the ASMR robot with the F3 parts, stand pose (`uv run python sim/payload/final_check.py`, statics table).
 
 Licence: this document and the drawing are CC BY-SA 4.0. `trolley.py` is MIT (root `LICENSE`).

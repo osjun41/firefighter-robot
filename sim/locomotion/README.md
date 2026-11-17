@@ -136,7 +136,6 @@ Do these on your own laptop before you push. Levels A and B need no GPU. **Only 
 **A. Layout and the robot software (any laptop, a few minutes).**
 
 ```bash
-scripts/fetch_bhl_assets.sh
 uv sync --locked --extra sim --extra dev                  # mujoco must be 3.15.0: another version fails legs/test_legs.py
 uv run --extra sim --extra dev pytest sim/locomotion/tests/test_layout.py -q    # paths, imports, policy files
 uv run --extra sim --extra dev pytest -q                  # aim, actuators, robot
@@ -169,7 +168,7 @@ Compare `policies/export_check/policy.onnx` (delete the folder afterwards) with 
 
 - **Observation size.** The robot software runs 45-observation policies only. The push-signal policies (46) are tested in MuJoCo with `eval_sustained_push_mujoco.py`. Switching from `baseline` to the Brace policy at a push is not implemented on the robot.
 - **Timing study.** `eval_timing_gap.py` has one scenario that copies the upstream BHL deployment loop (state read after the targets are sent). The loop of `legs/run_policy.py` is not modelled; its measured period is printed at the end of a run.
-- **Policy selection.** `--policy NAME` everywhere, default `baseline`; `Cfg.from_arguments()` (used by `play_mujoco.py`) takes it too. `sim/sim2sim/hw_risks.py` and `gap_study.py` use the ASMR robot and the named policy (`--policy NAME`, `--payload NAME`). `sim/mission` and `sim/payload/final_check.py` also use the ASMR robot and the named policy. Only `sim/sim2sim/bhl_legacy.py` and the BHL model builder `sim/payload/models.py` remain, with no user.
+- **Policy selection.** `--policy NAME` everywhere, default `baseline`; `Cfg.from_arguments()` (used by `play_mujoco.py`) takes it too. `sim/sim2sim/hw_risks.py` and `gap_study.py` use the ASMR robot and the named policy (`--policy NAME`, `--payload NAME`). `sim/mission` and `sim/payload/final_check.py` also use the ASMR robot and the named policy. The old BHL loop and model builder are in `archive/payload_bhl/` (no user).
 - **`mjcf_path` is required.** A deployment config without it makes the MuJoCo scripts stop with an error; use the configs of the course robot (`policies/*/policy.yaml`, `configs/policy_asmr_biped.yaml`).
 - **Recorded paths.** `policies/*/params/env.yaml` keep the absolute paths of the training computer. They are a record and are not read back.
 - **Not taken over from the SOBANG repository:** the BHL upper-body teleop (`scripts/teleop`), the BHL model comparison and mass sheets (`scripts/hardware`), and the C++/CAN drivers of the upstream lowlevel repo. The robot's drives are in `legs/` and `actuators/`.

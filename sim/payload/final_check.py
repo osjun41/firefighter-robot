@@ -23,7 +23,7 @@ for _i, _a in enumerate(sys.argv):  # --policy NAME is read before run.py loads 
 
 HERE = Path(__file__).resolve().parent
 sys.path[:0] = [str(HERE), str(HERE.parent / "sim2sim")]
-import torso_tank as tk  # noqa: E402
+import stability as tk  # noqa: E402
 
 OUT = HERE / "results"
 LIMITS = (None, 12.0)  # Nm cap on every joint: None = the effort limits of the MJCF (18 / 22.6 Nm), 12 Nm = 67 % of 18 Nm

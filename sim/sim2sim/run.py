@@ -150,7 +150,7 @@ def simulate(model, command, limit=None, seconds=20.0, frames=None, start="stand
              payload=None, seed=0):
     """Run the ASMR model and return tracking, fall and actuator saturation metrics.
     payload: payload option name (default: the --payload option of this run). push = (t0 s, impulse N s, direction rad in
-    the heading frame, 0 = forward): a horizontal force on the base for 0.1 s, as in sim/payload/torso_tank.py."""
+    the heading frame, 0 = forward): a horizontal force on the base for 0.1 s, as in sim/payload/stability.py."""
     if model not in (MODEL, "asmr2026", "asmr2026_humanoid"):
         raise ValueError(f"only {MODEL!r} is configured; got {model!r}")
     if start not in ("standing", "default"):

@@ -48,7 +48,7 @@ Compared with the SOBANG repository: every training and evaluation script is her
 - Stage 1 of the model unification: `sim/sim2sim/hw_risks.py` and `gap_study.py` now run the ASMR robot with the named policy (default `baseline`) and the selectable payload (default `f3`). Their results are **not regenerated yet** (long runs); the old BHL results are in `archive/sim2sim_bhl/`.
 - Stage 2: `sim/payload/final_check.py` (statics, walking, push test) runs the ASMR robot with `--policy NAME` and the payload options; its F2 results are in `archive/payload_f2/` and the new results are not generated yet.
 - Stage 3: `sim/mission` runs the ASMR robot with the F3 parts (pan-tilt, camera and nozzle from `aim/geometry.py` F3), the policy by name (`--policy NAME`, default `baseline`) and the jet of F3 (0.41 L/min, 9.6 m/s at 22.2 V, water on the trolley, not on the robot). Design `f2` is gone. No mission campaign has been run on the ASMR robot yet.
-- No script uses `bhl_legacy.py`, `third_party/` or the BHL models any more (see "Next").
+- Stage 4: no simulation uses the BHL robot any more. `bhl_legacy.py`, the BHL model builder `models.py`, `measured.py`/`masses.csv` and the BHL policy copy are in `archive/payload_bhl/` (or deleted); `torso_tank.py` is now `sim/payload/stability.py`; `docs/hardware/trolley.py` uses the ASMR+F3 robot mass. `third_party/` stays only for the CAD scripts (`cad/`), which draw on the BHL meshes.
 
 **Tasks and archive**
 
@@ -61,7 +61,6 @@ Compared with the SOBANG repository: every training and evaluation script is her
 
 - `--payload NAME` (`none`, `box_1kg` = default, `f3`) for `train.py`, `play.py`, `play_onnx.py`, `export_onnx.py` and `sim/sim2sim/run.py`. `f3` is the 47 CAD parts of the F3 design (4.14 kg), listed in `source/robot_models/robots/asmr2026_payload.py` from `cad/final/out_f3/layout.json`. The parts are rigid and have no collision: MuJoCo welds each as a body, Isaac Lab merges them into the base link (`mdp.add_body_payload` takes an `inertia`). Nothing is removed from the course torso, so F3 is an upper bound.
 - `f1_v1` and `f3_v1` (BHL model) moved from `archive/rl_f1/policies/` to `policies/`, with `info.json` (`trained_on`). The ASMR robot code warns about a policy trained on another model and still loads it. The robot keeps `baseline`.
-- `bhl_legacy.py` (BHL model with the BHL policy) is the last code marked `FIXME(policy)`; nothing uses it.
 - Exec bits restored for `scripts/fetch_bhl_assets.sh` and `robot/setup/install.sh`; stale `sim/rl` paths in the policy cards fixed.
 
 **Docs**
@@ -99,7 +98,7 @@ Fresh clone of this branch, mujoco 3.15.0 (the pinned version), models built fir
 
 ## Next (not in this PR)
 
-- Finish the unification: remove `third_party/`, `bhl_legacy.py`, `sim/payload/models.py` and the BHL models, rename `torso_tank.py`, run a mission campaign on the ASMR robot and the named policy, rerun `hw_risks`, `gap_study` and `power_calc.py` and write their findings.
+- Run a mission campaign on the ASMR robot and the named policy, rerun `hw_risks`, `gap_study`, `power_calc.py` and `final_check.py`, and write their findings (their result files still hold the old text until then).
 - Payload: water tank removed, spray device kept (water by IV drip, so no water payload). Measured leg masses (+677 g) and torso/IMU masses are applied with F3.
 
 ## Notes for reviewers
