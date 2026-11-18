@@ -6,7 +6,7 @@ This page tells each team member where to put their work and their results, so t
 
 | Workstream | Code | Results | Plan and test steps |
 |---|---|---|---|
-| Walking (policy, drives, IMU) | `legs/`, `sim/rl/`, `sim/sim2sim/` | `sim/rl/results/`, `sim/sim2sim/results/` | `legs/README.md` |
+| Walking (policy, drives, IMU) | `legs/`, `sim/sim2sim/`, `sim/locomotion/` (Isaac Lab training and evaluation) | `sim/sim2sim/results/`, `sim/locomotion/results/` | `legs/README.md`, `sim/locomotion/README.md` |
 | Aim and water jet | `aim/`, `sim/water/` | `sim/water/results/` | `aim/README.md` |
 | Fire detector and camera | `vision/` | `vision/results/` | `docs/plan/vision.md` |
 | Robot programs on the ROCK 3C | `robot/`, `actuators/` | `robot/results/` | `robot/README.md` (bring-up) |
@@ -38,11 +38,10 @@ A number without its status and its command does not go into a report.
 3. Run the tests before you commit. They are the same as the CI checks (`.github/workflows/`):
 
 ```sh
-scripts/fetch_bhl_assets.sh
 uv sync --locked --extra sim --extra dev
-uv run --extra sim --extra dev python sim/payload/models.py
 uv run --extra sim --extra dev pytest
 uv run --extra sim --extra dev pytest legs sim/mission/test_mission.py -q
+uv run --extra sim --extra dev pytest sim/locomotion/tests -q
 ```
 
 4. Write the commit message in the imperative ("Add the gantry test results"), with a short body that says what changed and why.

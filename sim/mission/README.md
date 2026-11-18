@@ -1,26 +1,27 @@
-# Mission simulation: the final robot F2 puts out fires
+# Mission simulation: the ASMR robot with the F3 parts puts out fires
 
-This folder simulates complete missions of the final design F2 in MuJoCo.
-The robot walks with an ONNX policy, sees the room with its camera, finds the fires with a detector, aims the pan-tilt and sprays water.
+This folder simulates complete missions of the final design F3 in MuJoCo: the ASMR robot of `source/robot_models` with the 47 F3 parts.
+The robot walks with an ONNX policy (by name, default `baseline`), sees the room with its camera, finds the fires with a detector, aims the pan-tilt and sprays water.
 The same random missions run for each configuration, so we can compare detectors, policies and settings.
 
 **Status:** tested in simulation. The software-in-the-loop mode (the real robot programs over UDP) is tested in simulation on the laptop.
+The mission results of the older design F2 (BHL robot, shipped BHL policy) are in `archive/mission_campaign/`; **no mission campaign has been run on the ASMR robot yet.**
 
-- **Assumed:** the jet in the mission model is 0.39 L/min and 9.2 m/s at 11.1 V. This is the gear-pump comparison of `sim/water`, which the campaign runs use.
-- **Open:** the KLP02 estimate is 0.42 L/min and 10.0 m/s at 22.2 V ([docs/hardware/water.md](../../docs/hardware/water.md)). The campaign must run again with these values.
+- **Assumed:** the jet in the mission model is 0.41 L/min and 9.6 m/s at 22.2 V (`aim/geometry.py` F3, `docs/hardware/water.md`), and it follows the 6S voltage (21.0 to 25.2 V) as v0 ~ V^0.73. That exponent is the one of the gear pump of `sim/water`, not measured for the KLP02.
+- **Assumed:** the water is in a bag on the trolley, not on the robot, so the mission model has no water mass. The 3 m hose pull on the robot is not simulated (`sim/sim2sim/gap_study.py` has it as case `hose`).
 - **Assumed:** the fire model and all model errors below are estimates. No fire test has checked them.
 
 ## What the simulation contains
 
 | Part | What it does |
 |---|---|
-| Robot | `sim/payload/models/bhl_F2.xml` (15.99 kg, tanks full). The ST3215 pan-tilt is two joints with position servos: 4.7 rad/s, 2.9 Nm, pan ±90°, tilt −40° to +45°. |
-| Walking | Any ONNX policy with the BHL interface (45 inputs, 12 outputs, 25 Hz). Default: the shipped BHL policy. |
-| Leg drives | Case 7 of `sim/sim2sim/hw_risks.py`: PD in the drive (K 20, D 2), 6 Nm limit, joint zero error ±2°, 10 ms command latency. Physics at 2 kHz. |
+| Robot | The ASMR MJCF with the F3 parts (16.35 kg, `source/robot_models`). The ST3215 pan-tilt is two joints with position servos: 4.7 rad/s, 2.9 Nm, pan ±90°, tilt −40° to +45°. |
+| Walking | Any ONNX policy of `policies/` with the ASMR interface (45 inputs, 12 outputs, 25 Hz), chosen with `--policy NAME` (default `baseline`). |
+| Leg drives | The position actuators of the ASMR MJCF (K 90 / 22, D 5.7 / 0.49, effort limits 18.1 / 22.6 Nm; `--limit NM` caps them), joint zero error ±2°, 10 ms command latency (as case 7 of `sim/sim2sim/hw_risks.py`, without its trap-trajectory and gear-play parts). Physics at 2 kHz. |
 | Camera | Arducam B0201 on the tilt head: 640 × 480, f = 476 px (67.8° horizontal, the lens calibration of 5 Nov), pinhole model, 10 Hz. The real lens sees 80° with its distortion. Mounting error ±1°, exposure ±15 %, pixel noise. |
 | Fire images | Animated flame sprites, drawn as billboards with a depth test against the MuJoCo depth buffer, plus a glow. `--flames real` uses clips of real fires (`sprites/`). |
 | Detector | Any module with `detect(rgb, t)`. Default: `sim/sim2sim/baseline_detector.py` (colour threshold). `oracle` gives the true flame boxes. 100 ms delay. |
-| Mission logic | `aim/controller.py` with the F2 values of `aim/geometry.py` |
+| Mission logic | `aim/controller.py` with the F3 values of `aim/geometry.py` |
 | Water | Droplets with gravity and air drag, 400 per second. Walls and furniture stop them. |
 | Odometry | Distance scale error ±10 %, gyro bias ±0.05 °/s. Roll and pitch are exact. |
 | Scenes | A random room (7 to 10 m × 6 to 8 m, a door, 2 to 4 pieces of furniture) or an outdoor area (25 % of missions). 1 to 3 round tray fires of 10 to 20 cm, 1.5 to 5 m from the start. 1 to 3 red or orange objects. A warm lamp in 70 % of missions. |
@@ -33,16 +34,16 @@ The same random missions run for each configuration, so we can compare detectors
 4. **SPRAY:** the aim point sweeps ±8 cm along the line of sight. The pump stays on for 4 s after the last detection. One spray lasts at most 11 s.
 5. **No response to water:** after 15 s of pump time, the flame box must shrink below 90 %. If not, the robot ignores this target and searches again.
 6. **VERIFY:** the pan-tilt holds for 5 s. If the fire shows again, the robot aims again.
-7. **DONE:** after a search with no fire, when the tank is empty (115 s of pump time), or at the 240 s time limit.
+7. **DONE:** after a search with no fire, when the water bag is empty (285 s of pump time, so in practice the time limit comes first), or at the 240 s time limit.
 8. **ABORT:** a torso tilt above 0.6 rad stops the pump and the walk. The leg drives then only damp (K = 0, D = 2).
 
 ## Fire and water model
 
-| Item | Value (design `f2` in `world.py`) |
+| Item | Value (design `f3` in `world.py`) |
 |---|---|
-| Jet | 0.39 L/min and v0 = 9.2 × (V / 11.1)^0.73 m/s, V = 10.5 to 12.6 V per mission. `aim/` gets the same v0. The true jet is within ±3 %. |
+| Jet | 0.41 L/min and v0 = 9.6 × (V / 22.2)^0.73 m/s, V = 21.0 to 25.2 V per mission. `aim/` gets the same v0. The true jet is within ±3 %. |
 | Drag | 0.11 1/m in `aim/`. The true jet has ±20 %. |
-| Usable water | 0.749 L of 0.781 L |
+| Water | 1.95 L in the bag on the trolley (not on the robot) |
 | Jet recoil on the tilt head | 0.3 to 1.3 N. This is a worst case: the jet gives only 0.06 N. |
 | Water to put out a full fire | 2.5 L per m² of tray |
 | Regrowth from 0 to full strength | 13 s, while the strength is above 0 |
@@ -54,7 +55,7 @@ With 70 % of the water on the tray, a tray above about 17 cm does not go out.
 
 ## How to run
 
-Run all commands from the repository root. First build the robot models once: `uv run python sim/payload/models.py`.
+Run all commands from the repository root. The robot model is the ASMR MJCF: no build step.
 
 1. Run the self-checks (about 10 s):
    ```
@@ -64,66 +65,31 @@ Run all commands from the repository root. First build the robot models once: `u
    ```
    MUJOCO_GL=egl uv run python sim/mission/mission.py --seed 1055
    ```
-3. Add a video: `--video mission_1055.mp4`. Other options: `--detector FILE` (or `oracle`), `--policy FILE`, `--limit 9`, `--flames real`, `--min-conf 0.3`, `--indoor`, `--outdoor`, `--json FILE`.
+3. Add a video: `--video mission_1055.mp4`. Other options: `--detector FILE` (or `oracle`), `--policy NAME`, `--limit 9`, `--flames real`, `--min-conf 0.3`, `--indoor`, `--outdoor`, `--json FILE`.
 4. Run the same mission with `aim/run.py` and `actuators/actuator_node.py --mock` as separate processes over UDP. It runs in real time.
    ```
    MUJOCO_GL=egl uv run python sim/mission/mission.py --seed 1055 --sil
    ```
-5. Run 50 missions of one configuration of `campaign.py` (3 processes). Each mission writes `~/runs/firefighter/mission/campaign/<configuration>/<seed>.json`, so a stopped run continues.
-   ```
-   MUJOCO_GL=egl uv run python sim/mission/campaign.py run f2_real_conf03 50
-   ```
-6. Make the tables and figures from all finished missions (`results/campaign.md`, `results/campaign.json`, `results/fig_*.png`):
-   ```
-   uv run python sim/mission/campaign.py report
-   ```
-7. Rebuild the real-fire sprites in `sprites/`. The script downloads the videos once (`sprites/SOURCES.md`).
+5. (Archived) The Monte Carlo campaign of 50 missions per configuration is in [archive/mission_campaign](../../archive/mission_campaign/campaign.py). It needs the BHL policy and the BHL model of F2 with water tanks, which are not in this repository state.
+6. Rebuild the real-fire sprites in `sprites/`. The script downloads the videos once (`sprites/SOURCES.md`).
    ```
    uv run python sim/mission/make_sprites.py
    ```
-8. Check the detection rate against distance (about 5 min, `results/sprite_check.md`):
+7. Check the detection rate against distance (about 5 min, `results/sprite_check.md`):
    ```
    MUJOCO_GL=egl uv run python sim/mission/sprite_check.py
    ```
 
 ## Results
 
-Status: tested in simulation. 50 missions per configuration, real-fire flames, shipped BHL policy, 6 Nm. Full tables: [results/campaign.md](results/campaign.md).
-
-| Configuration | Detector | Success | Fires out | Falls | Missions with a false spray | Water on a fire |
-|---|---|---|---|---|---|---|
-| `f2_kit_real` | colour baseline | 5 of 50 | 32 of 102 | 20 | 22 | 48 % |
-| `f2_real_conf03` | YOLO11n (`vision/detector.py`), `min_conf` 0.3 | 8 of 50 | 37 of 102 | 12 | 0 | 77 % |
-
-Success means every fire out, with no fall or ABORT.
-
-1. Falls and an empty tank end most missions. Falls end 12 to 20 missions of 50, an empty tank 15 to 19.
-2. No tray of 17.5 cm or more goes out (0 of 20 in both configurations). The jet and the fire model limit the tray size.
-3. The YOLO detector gives no false spray in 50 missions, and 77 % of its water hits a fire. The colour baseline sprays at red objects and lamps.
-4. The YOLO detector finds a visible fire in 53 to 75 % of the images at 1 to 5 m. The median largest detection distance is 3.3 m.
-
-Camera change on 6 Nov: these results use f = 476 px, the lens calibration of the B0201.
-Before, the simulation used the old model value f = 283 px, so the flames were 1.7 times too small.
-A control run on 6 Nov used the same code and the same 50 missions with f = 283 px.
-In it, the YOLO detector put out 25 fires of 102 instead of 37, and it found a fire at 4 to 5 m in 26 % of the images instead of 75 %.
-Mission by mission, f = 476 px puts out more fires in 12 missions and fewer in 1 (sign test, p = 0.003).
-The colour baseline also sees the red objects larger: 22 missions with a false spray instead of 16.
-The simulated camera has no lens distortion, so it sees 67.8° instead of the real 80°.
-
-![Fire position error, detection rate and time to put out all fires](results/fig_campaign.png)
-
-Figure 1. Fire position error and detection rate against distance, and the share of missions with all fires out against time.
-
-![Top view of the first 16 missions](results/fig_paths.png)
-
-Figure 2. The first 16 missions of `f2_kit_real`: room, furniture, fires (green: out), red or orange objects, lamp, and the path coloured by state. An X marks a fall.
+The campaign results (50 missions per configuration, shipped BHL policy, BHL robot, F2 with water tanks) moved to [archive/mission_campaign/campaign.md](../../archive/mission_campaign/campaign.md). They describe a design with water tanks, which is removed, and are kept for reference only.
 
 ### Detection rate check
 
 `sprite_check.py` renders 2840 robot camera images of one fire at 1 to 5 m. Full tables: [results/sprite_check.md](results/sprite_check.md).
 
 - With real-fire flames, YOLO11n at its own threshold (0.28) finds 46 to 74 % of the flames that are 12 to 32 px wide. At 3 to 5 m, it finds 34 to 91 % of the flames of the 10 to 30 cm trays (0 to 80 % with the old f = 283 px).
-- At a threshold of 0.5, it finds far fewer. The F2 controller uses `min_conf` 0.3 (`aim/geometry.py`).
+- At a threshold of 0.5, it finds far fewer. The F3 controller uses `min_conf` 0.3 (`aim/geometry.py`).
 - YOLO11n gives no false detection in these images. The colour baseline gives 0.63 per image.
 
 ![Detection rate against distance](results/fig_sprite_check.png)
@@ -135,16 +101,14 @@ Figure 3. Share of images with the fire detected, per tray size and distance. So
 | File | What it does |
 |---|---|
 | `world.py` | Random mission spec, scene XML, textures, flame sprites with the depth test, droplets, fire model |
-| `mission.py` | One mission: policy, leg drives, servos, camera, detector, `aim/` controller, water, fire. Video and SIL mode |
-| `campaign.py` | Monte Carlo runs in parallel (`run`) and the tables and figures (`report`) |
+| `mission.py` | One mission (ASMR robot, `--policy NAME`): policy, leg drives, servos, camera, detector, `aim/` controller, water, fire. Video and SIL mode |
 | `test_mission.py` | Self-checks: camera and nozzle against `aim/geometry.py`, leg drive, droplets, fire model, sprites |
 | `make_sprites.py`, `sprites/` | Real-fire flame clips from public videos. Sources and licences: [sprites/SOURCES.md](sprites/SOURCES.md) |
 | `sprite_check.py` | Detection rate against distance on rendered robot camera images |
-| `results/` | Campaign tables (`campaign.md`, `campaign.json`), figures and the sprite check |
+| `results/` | The sprite check |
 
 ## Open points and limits
 
-- **Open:** run the campaign again with the KLP02 jet. Falls are the largest problem: test 9 Nm after the gearbox check, or a policy that starts and stops safely.
 - **Open:** use test trays of 15 cm or less with this jet. Or raise the share of water on the tray (now 54 to 78 %).
 - **Not verified:** the flame sprites are flat and have no smoke. The camera has no lens distortion, motion blur or auto exposure.
 - **Not verified:** the fire model comes from literature values, not from a fire test. Water on the floor does not make it slippery.

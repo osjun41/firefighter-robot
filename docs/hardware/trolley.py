@@ -22,12 +22,12 @@ from matplotlib.patches import Circle, FancyBboxPatch, Polygon, Rectangle  # noq
 HERE = Path(__file__).resolve().parent
 G = 9.81
 
-# ---------------- robot side (sim/payload/models/bhl_F3.xml, stand pose) ----------------
+# ---------------- robot side (ASMR robot with the F3 parts, stand pose: sim/payload/final_check.py statics) ----------------
 NOZZLE_Z = 0.905         # nozzle over the floor at tilt 0 (cad/final/out_f2/layout.json nozzle_fitting)
 NOZZLE_LOW_Z = 0.855     # ASSUMED: nozzle at full tilt down (-40 deg)
 NOZZLE_FALLEN_Z = 0.10   # ASSUMED: the robot lies on the floor
 ANCHOR_Z = 0.835         # hose exit of the anchor at the rear of the deck (cad/final/out_f3/kit.json: legs at 835 mm)
-ROBOT_KG, ROBOT_CG_Z = 14.6, 0.43  # F3 model: 14.60 kg, centre of mass 0.43 m over the floor
+ROBOT_KG, ROBOT_CG_Z = 16.35, 0.49  # ASMR robot with the F3 parts: 16.35 kg, centre of mass 0.49 m over the floor
 
 # ---------------- stand: 5-leg IV stand (Clinton CL-IVS-352 class: 23 in base, 1 in and 3/4 in poles) ----------------
 LEG_R = 0.27             # caster stem circle radius
@@ -49,7 +49,7 @@ SILICONE = 1150.0        # kg/m3
 CABLE_KG_M = 0.010       # pump cable, 2 x 22 AWG (ASSUMED 5 g/m per wire)
 HOSE_KG_M = SILICONE * math.pi / 4 * (HOSE_OD ** 2 - HOSE_BORE ** 2) + 998 * math.pi / 4 * HOSE_BORE ** 2 + CABLE_KG_M
 BREAKAWAY_N = 1.5        # ASSUMED: the boom tip clip lets the hose go at this pull (set it with test TT2). The gap study
-                         # (sim/sim2sim/results/gap_study.md): a constant 3 N pull adds falls, so keep the pull low.
+                         # (archive/sim2sim_bhl/gap_study.md (old BHL run)): a constant 3 N pull adds falls, so keep the pull low.
 OFFSET = (0.1, 0.4)      # keep the boom tip this far behind the hose anchor (horizontal)
 
 # ---------------- masses: (kg, x, z of the centre), ASSUMED ----------------

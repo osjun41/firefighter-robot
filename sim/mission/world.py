@@ -1,8 +1,11 @@
-"""Mission world: random scene (room or outdoor), final robot F2 with an ST3215 pan-tilt, fire sprites, water jet and fire model.
+"""Mission world: random scene (room or outdoor), the ASMR robot with the F3 parts and an ST3215 pan-tilt, fire sprites,
+water jet and fire model.
 
-Frames: world x, y on the floor, z up, metres. The MuJoCo base frame of the BHL model is 0.039 m above the aim/ robot
-frame (feet on the floor): z_base = z_robot + 0.039 (the BHL start drop, sim/sim2sim/README.md).
+Frames: world x, y on the floor, z up, metres. The MuJoCo base frame of the ASMR model is 0.0398 m above the aim/ robot
+frame (feet on the floor) when the robot stands: z_base = z_robot + 0.0398 (STANDING_ROOT_HEIGHT; the base origin is at
+z = -0.0398 in the world).
 """
+import importlib.util
 import math
 import sys
 import xml.etree.ElementTree as ET
@@ -15,14 +18,30 @@ from scipy import ndimage
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
-sys.path[:0] = [str(ROOT / "aim")]
+sys.path[:0] = [str(ROOT), str(ROOT / "aim")]
 from geometry import CONCEPTS, T  # noqa: E402
+from source.robot_models.robots import asmr2026_payload as payloads  # noqa: E402
+from source.robot_models.robots.asmr2026_model import MJCF_SCENE_PATH  # noqa: E402
 
-CFG = CONCEPTS["F2"]  # pan-tilt, camera and nozzle of the final design F2
-MODELS = ROOT / "sim" / "payload" / "models"
+
+def _load_run():
+    """sim/sim2sim/run.py by path: aim/run.py has the same module name."""
+    spec = importlib.util.spec_from_file_location("sim2sim_run", ROOT / "sim" / "sim2sim" / "run.py")
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules["sim2sim_run"] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+s2s = _load_run()  # the ASMR runner: robot contract, policy and add_payload()
+
+CFG = CONCEPTS["F3"]  # pan-tilt, camera and nozzle of the final design F3 (the same as F2)
 PARTS = ROOT / "cad" / "parts" / "out_sts3215"
 CACHE = Path.home() / "runs" / "firefighter" / "mission" / "cache"
-DZ = 0.039  # m, MuJoCo base frame z minus robot frame z
+DZ = payloads.Z_LAYOUT_TO_BASE  # m, MuJoCo base frame z minus robot frame z (0.0398)
+# F3 parts that the moving pan-tilt replaces (they are in the payload as fixed boxes)
+TOP_PARTS = ("deck_f1", "pan_base", "pan_yoke", "tilt_u", "head_f1", "ref_pan_servo", "ref_tilt_servo", "ref_pan_bearing",
+             "camera_b0201", "nozzle_brass", "hose_clips")
 W, H = 640, 480
 K = CFG["cameras"]["rgb"]["K"]
 FOVY = math.degrees(2 * math.atan(H / 2 / K.fy))
@@ -30,7 +49,12 @@ PAN_LIM, TILT_LIM = CFG["pan_limits"], CFG["tilt_limits"]
 
 # ---------------- jet and fire model (ASSUMED values, see README "Fire and water model") ----------------
 # Water system and fire model. The mission spec stores the values, so a result file is self-contained.
-# "robot": the MuJoCo model sim/payload/models/bhl_<robot>.xml and the tank meshes.
+# "robot": the concept of aim/geometry.py. The MuJoCo model is the ASMR robot with the F3 parts (no water on the robot).
+# f3: final design F3, a pushed trolley carries the water bag and the pump, 1.95 L, 0.41 L/min, v0 9.6 m/s at 22.2 V
+#   (docs/hardware/water.md, aim/geometry.py F3). v0 ~ V^0.73 over the 6S range 21.0 to 25.2 V (the exponent is the gear pump's: ASSUMED
+#   for the KLP02). The fire model is the one of f2.
+# The older design F2 (two R2 tanks on the torso, 0.749 L, 0.39 L/min, 9.2 m/s) is not simulated any more: its tanks are not in the
+# ASMR payload. Its values were:
 # f2: final design F2, two R2 tanks outside the torso, 0.749 L usable of 0.781 L, 1.0 mm nozzle, drag 0.11 1/m.
 #   ASSUMED jet: 0.39 L/min and v0 = 9.2 m/s at 11.1 V, v0 ~ V^0.73 (3S voltage): the gear-pump comparison of
 #   sim/water/water.py, which the campaign runs use. The KLP02 estimate is 0.42 L/min and 10.0 m/s (docs/hardware/water.md).
@@ -38,7 +62,8 @@ PAN_LIM, TILT_LIM = CFG["pan_limits"], CFG["tilt_limits"]
 #   water_per_area / regrow = 0.19 L/(m^2 s) = 11.5 L/(m^2 min) (Saerdqvist: 9 to 15), and a 15 cm tray takes 13 s of
 #   spray at 100 % hits (10 to 30 s). Trays 10 to 20 cm: the flow can handle a 17 to 22 cm square.
 DESIGNS = {
-    "f2": dict(v0=9.2, drag=0.11, flow=0.39, tank=0.749, tray=(0.10, 0.20), water_per_area=2.5, regrow=13.0, robot="F2"),
+    "f3": dict(v0=9.6, v_nom=22.2, v_range=(21.0, 25.2), drag=0.11, flow=0.41, tank=1.95, tray=(0.10, 0.20), water_per_area=2.5,
+               regrow=13.0, robot="F3"),
 }
 SPREAD = math.radians(0.8)  # rad, 1 sigma angle spread of the droplets (jet break-up, ASSUMED)
 EMIT_HZ, EMIT_N = 100, 4  # droplet groups per second, droplets per group
@@ -93,7 +118,7 @@ NEUTRAL = [(0.45, 0.3, 0.2), (0.35, 0.35, 0.37), (0.25, 0.3, 0.45), (0.7, 0.66, 
 DISTRACTORS = ("red_box", "cone", "extinguisher", "ball", "poster")
 
 
-def random_spec(seed, outdoor=None, design="f2", flames="procedural"):
+def random_spec(seed, outdoor=None, design="f3", flames="procedural"):
     """One random mission. Everything that changes between runs comes from this dict (and its seed).
     flames: "procedural" (default) or "real" (clips from real fire videos, sprites/SOURCES.md). It uses no random numbers."""
     rng = np.random.default_rng(seed)
@@ -171,9 +196,10 @@ def random_spec(seed, outdoor=None, design="f2", flames="procedural"):
         pan_zero=float(np.radians(rng.uniform(-1, 1))), tilt_zero=float(np.radians(rng.uniform(-1, 1))),
         cam_pitch_err=float(np.radians(rng.uniform(-1, 1))),
         odo_scale=float(rng.uniform(0.9, 1.1)), gyro_bias=float(np.radians(rng.uniform(-0.05, 0.05))),
-        design=design, flames=flames, drag_aim=dz["drag"], **{k: v for k, v in dz.items() if k not in ("tray", "drag")},
-        # supply voltage of the pump: the jet speed and the flow follow it (v0 ~ V^0.73). aim/ gets the matching v0.
-        volts=float(rng.uniform(10.5, 12.6)),
+        design=design, flames=flames, drag_aim=dz["drag"], **{k: v for k, v in dz.items() if k not in ("tray", "drag", "v_range")},
+        # supply voltage of the pump (6S pack, 3.5 to 4.2 V per cell): the jet speed and the flow follow it (v0 ~ V^0.73,
+        # the exponent of the gear pump of sim/water: ASSUMED for the KLP02). aim/ gets the matching v0.
+        volts=float(rng.uniform(*dz["v_range"])),
     )
 
 
@@ -183,11 +209,12 @@ def _sub(parent, tag, **kw):
 
 
 def build_xml(spec):
-    """bhl_F2.xml (read-only) with the pan-tilt as two joints, the camera, the nozzle, and the scene."""
+    """The ASMR MJCF with the F3 parts, the pan-tilt as two joints, the camera, the nozzle, and the scene."""
     tex = textures()
-    robot = spec.get("robot", "F2")
-    root = ET.parse(MODELS / f"bhl_{robot}.xml").getroot()
-    root.find("compiler").set("meshdir", str((MODELS / root.find("compiler").get("meshdir")).resolve()))
+    spec_m = mujoco.MjSpec.from_file(str(MJCF_SCENE_PATH))
+    s2s.add_payload(spec_m, "f3", skip=["payload_" + n for n in TOP_PARTS])  # the F3 parts, without the parts of the pan-tilt
+    root = ET.fromstring(spec_m.to_xml())
+    root.find("compiler").set("meshdir", str((Path(MJCF_SCENE_PATH).parent / spec_m.meshdir).resolve()))
     vis = _sub(root, "visual")
     _sub(vis, "headlight", ambient=(0.12, 0.12, 0.12), diffuse=(0.15, 0.15, 0.15), specular=(0, 0, 0))
     _sub(vis, "global", offwidth=1280, offheight=720)
@@ -203,12 +230,9 @@ def build_xml(spec):
     _sub(asset, "material", name="wall", texture="wall", texrepeat=(4, 1))
     _sub(asset, "material", name="bulb", rgba=(1, 0.72, 0.35, 1), emission=1)
     for n in ("deck", "pan_base", "pan_yoke", "tilt_u"):
-        _sub(asset, "mesh", name=f"pt_{n}", file=str((ROOT / "cad/final/out_f2/deck_f1.stl") if n == "deck" else PARTS / f"{n}.stl"), scale=(0.001,) * 3)
+        _sub(asset, "mesh", name=f"pt_{n}", file=str((ROOT / "cad/final/out_f3/deck_f1.stl") if n == "deck" else PARTS / f"{n}.stl"), scale=(0.001,) * 3)
     for n in ("pan_servo", "tilt_servo"):
         _sub(asset, "mesh", name=f"pt_{n}", file=str(PARTS / "ref" / f"ref_{n}.stl"), scale=(0.001,) * 3)
-    tanks = [ROOT / f"cad/final/out_f2/tank_{s}.stl" for s in ("left", "right")]
-    for i, f in enumerate(tanks):
-        _sub(asset, "mesh", name=f"tank{i}", file=str(f), scale=(0.001,) * 3)
 
     world = root.find("worldbody")
     floor = world.find("geom[@name='floor']")
@@ -262,25 +286,16 @@ def build_xml(spec):
         _sub(world, "light", name=f"fire{i}", pos=(f["x"], f["y"], 0.15 + f["d"]), dir=(0, 0, -1), cutoff=170, diffuse=(1, 0.55, 0.2),
              attenuation=(0.2, 0.3, 1.5), castshadow="false")
 
-    # the robot: recolour the payload boxes (red-orange would look like fire), add the tank, deck and pan-tilt
+    # the robot: recolour the payload boxes (red-orange would look like fire), add the deck and the pan-tilt
     base = world.find("body[@name='base']")
     for b in base.findall("body"):
         if b.get("name", "").startswith("payload_"):
             for g in b.findall("geom"):
-                g.set("rgba", "0.25 0.25 0.27 1" if "water" not in b.get("name") else "0.3 0.55 0.9 0.5")
-                g.set("group", "3")  # hidden: the tank meshes on the side faces show instead
-    # replaced by the moving pan-tilt below: the lumped top of the first layout, or the parts of the cad/final kit
-    m_top = 0.0
-    for n in ("top_module", "nozzle_fitting", "camera_b0201", "deck_f1", "pan_base", "pan_yoke", "tilt_u", "head_f1",
-              "ref_pan_servo", "ref_tilt_servo", "ref_pan_bearing", "nozzle_brass", "hose_clips"):
-        b = base.find(f"body[@name='payload_{n}']")
-        if b is not None:
-            m_top += float(b.find("inertial").get("mass"))
-            base.remove(b)
+                g.set("rgba", "0.25 0.25 0.27 1")
+    # the parts of the pan-tilt are left out of the payload above: their mass goes to the moving bodies below
+    m_top = sum(p["mass"] for p in payloads.parts("f3") if p["name"] in ["payload_" + n for n in TOP_PARTS])
     k = m_top / 0.607  # the split below is for the 0.607 kg lumped top: scale it, so the robot keeps its mass
     viz = dict(contype=0, conaffinity=0, group=2, mass=0)
-    for i in range(len(tanks)):
-        _sub(base, "geom", type="mesh", mesh=f"tank{i}", pos=(0, 0, DZ), rgba=(0.85, 0.85, 0.8, 0.5), **viz)
     _sub(base, "geom", type="mesh", mesh="pt_deck", pos=(0, 0, DZ), rgba=(0.2, 0.2, 0.22, 1), **viz)
     top = T + DZ  # torso top, base frame
     for n in ("pan_base", "pan_servo"):
@@ -313,12 +328,9 @@ def build_xml(spec):
     _sub(tilt, "geom", type="cylinder", pos=(cx - 0.008, cy, cz), size=(0.008, 0.0055), zaxis=(math.cos(p), 0, math.sin(p)), rgba=(0.05, 0.05, 0.05, 1), **viz)
     _sub(tilt, "camera", name="rgb", pos=c["pos"], fovy=f"{FOVY:.4f}", xyaxes=(0, -1, 0, -math.sin(p), 0, math.cos(p)))
     act = root.find("actuator")
-    for a in act.findall("general"):  # hw_risks case 7 drive: K 20, D 2, 6 Nm. ctrl = goal - zero error (set by the loop)
-        a.attrib.update(biastype="affine", gainprm="20", biasprm="0 -20 -2", forcerange="-6 6", forcelimited="true", ctrllimited="false")
+    # the 12 leg actuators keep the gains and effort limits of the ASMR MJCF. ctrl = goal - zero error (set by the loop)
     for j, lim in (("pan", PAN_LIM), ("tilt", TILT_LIM)):  # ST3215 position servo: 2.9 Nm stall torque (30 kg cm at 12 V)
         _sub(act, "position", name=j, joint=j, kp=30, kv=0.3, ctrlrange=lim, forcerange=(-2.9, 2.9))
-    key = root.find("keyframe/key")
-    key.set("qpos", key.get("qpos") + " 0 0")
     return ET.tostring(root, encoding="unicode")
 
 
@@ -607,7 +619,7 @@ class Water:
 
 def jet_v0(spec):
     """Exit speed at the mission's pump voltage (v0 ~ V^0.73)."""
-    return spec["v0"] * (spec["volts"] / 11.1) ** 0.73
+    return spec["v0"] * (spec["volts"] / spec["v_nom"]) ** 0.73
 
 
 def fire_step(fires, strengths, water_kg, dt, spec):

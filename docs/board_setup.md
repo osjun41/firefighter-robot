@@ -162,3 +162,27 @@ After the checks and calibration pass, test the walking policy with the robot su
 ```sh
 .venv/bin/python legs/run_policy.py --vx 0 --vy 0 --yaw 0 --seconds 10
 ```
+
+## Put a new policy on the robot
+
+A policy is trained on a GPU computer ([sim/locomotion](../sim/locomotion/README.md)) and reaches the robot as files. Only 45-observation policies work with the robot software today.
+
+1. On the laptop, copy `policy.onnx`, `policy.yaml`, `model_*.pt` and `params/` into `policies/<name>/` and commit them.
+2. In `robot/config.toml`, set `policy` under `[legs]` to `<name>` (the folder name, not a path; empty means `baseline`). This is the only place that names the network. To try another policy once: `legs/run_policy.py --policy <name>`.
+3. Check the network on the laptop: `uv run --extra sim python legs/run_policy.py --check [--policy <name>]` (45 observations, 12 actions, no CAN), then `uv run --extra sim python legs/run_policy.py --fake --seconds 10` (fake drives on the MuJoCo model).
+4. On the board: `git pull`, then `.venv/bin/python legs/run_policy.py --check`.
+5. Test it on the gantry as in [step 10](#10-test-the-walking-policy-on-the-gantry). Do not walk the robot on the floor before that.
+
+## Laptop or robot?
+
+The robot runs only the folders marked "robot". Simulation, training and CAD stay on the laptop. The board environment is `uv sync --extra board` and needs no MuJoCo or Isaac Sim (`robot/setup/install.sh` does it).
+
+| Folder | Where it runs | Needed on the robot |
+|---|---|---|
+| `robot/`, `legs/`, `actuators/`, `aim/`, `vision/` | the ROCK 3C | yes |
+| `source/robot_models/`, `policies/policy_select.py`, `policies/<name>/` | the ROCK 3C (the model, the policy selector and the policy in use) | yes |
+| `sim/sim2sim/` | laptop and CI | only for `--fake` runs and the tests |
+| `sim/` (all other folders), `sim/locomotion/` | laptop; `sim/locomotion/` needs an NVIDIA GPU | no |
+| `cad/`, `docs/`, `scripts/` | laptop | no |
+
+The robot and laptop settings meet in two places only: `robot/config.toml` (ports, devices, limits, the policy name) and `policies/` (the trained networks).

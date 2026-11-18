@@ -36,20 +36,9 @@ At the demo, the robot must find a candle, walk to it, aim and put it out.
 | Walking | tested in simulation | Policy trained in Isaac Lab, checked in MuJoCo. Not tried on the real robot yet. |
 | Aiming and full missions | tested in simulation | All fires out in 8 of 50 random missions, 37 of 102 fires out. |
 | Water jet | tested in simulation | The model gives 9.6 m/s at the 1.0 mm nozzle, a reach of 2.7 to 5.1 m and 4.8 min of spray from a 2 L bag. |
-| Water trolley | planned | Drawing below. |
+| Water trolley | planned | 2 L bag, pump and battery on a pushed pole, a hose to the fixed nozzle. |
 | Torso CAD for the trolley design | planned | The team is updating the CAD files. The old renders still show water in the torso. |
 | Real fire test, walking on the real robot | planned | |
-
-<details>
-<summary><b>The water trolley</b></summary>
-
-<br/>
-
-<img src="docs/hardware/trolley_side.png" alt="Side view drawing of the water trolley: a 2 L bag hangs on an IV pole, the pump box and the kill switch sit on the pole, and a boom at 1.45 m carries the hose down to the anchor at the rear of the robot." width="100%"/>
-
-The bag hangs at 1.90 m. The Kamoer KLP02 pump, its controller and its own battery sit on the pole. A breakaway clip lets the hose go at about 1.5 N, so the robot cannot pull the trolley over. A kill switch on the push handle cuts the pump. Details: [trolley.md](docs/hardware/trolley.md).
-
-</details>
 
 ## How it works
 
@@ -78,7 +67,7 @@ The detector on real fire clips. Each line is the best confidence in one frame, 
 
 Sixteen random missions in the MuJoCo simulation. Grey is search and blue is approach. Green dots are fires that went out, red dots are fires still burning, and a black cross is a fall.
 
-<img src="sim/mission/results/fig_paths.png" alt="Sixteen top-down room maps with the robot path in each. Three missions end with all fires out. Others end with a fall, an empty tank or no fire found." width="100%"/>
+<img src="archive/mission_campaign/fig_paths.png" alt="Sixteen top-down room maps with the robot path in each. Three missions end with all fires out. Others end with a fall, an empty tank or no fire found." width="100%"/>
 
 These missions used the old design with water tanks on the torso ([sim/mission](sim/mission/README.md)).
 
@@ -90,7 +79,6 @@ You need `git` and [uv](https://docs.astral.sh/uv/). These commands run on a lap
 
 ```bash
 git clone https://github.com/promaaa/firefighter-robot.git && cd firefighter-robot
-scripts/fetch_bhl_assets.sh                                        # Berkeley Humanoid Lite model and meshes
 uv sync --extra sim --extra dev                                    # Python 3.12 environment with MuJoCo
 uv run --extra sim --extra dev pytest                              # robot software tests: aim, actuators, robot
 uv run --extra sim --extra dev python sim/sim2sim/run.py --check   # the robot stands 5 s in MuJoCo
@@ -110,7 +98,7 @@ To run the real robot, follow [docs/board_setup.md](docs/board_setup.md): SSH, i
 | [actuators](actuators/README.md) | Pan-tilt and pump node, walk command bridge |
 | [vision](vision/README.md) | Fire detector: data, training, export, board models, camera tests |
 | [sim](sim/README.md) | Robot models, missions, walking, water jet |
-| [scripts/isaaclab](scripts/isaaclab/README.md), [policies](policies/README.md) | Walking policy training in Isaac Lab, and the trained policies |
+| [sim/locomotion](sim/locomotion/README.md), [policies](policies/README.md) | Walking policy training in Isaac Lab, and the trained policies |
 | [ASMR_Actuator_Test](ASMR_Actuator_Test/README.md) | Leg actuator bench tests, drive setup records, sim-versus-real GUI |
 | [cad](cad/README.md) | CAD scripts, print kit, renders |
 

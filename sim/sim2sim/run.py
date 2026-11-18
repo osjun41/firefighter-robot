@@ -1,6 +1,8 @@
-"""Run the ASMR 2026 baseline walking policy in MuJoCo.
+"""Run an ASMR 2026 walking policy from policies/ in MuJoCo (default: baseline).
 
     uv run python sim/sim2sim/run.py                 one ASMR model x commands -> results/results.md
+    uv run python sim/sim2sim/run.py --policy brace_m4   another policy, by folder name in policies/
+    uv run python sim/sim2sim/run.py --payload f3     the F3 parts on the torso (none, box_1kg = default, f3) -> results_f3.md
     uv run python sim/sim2sim/run.py --noise          the same commands with training observation noise
     uv run python sim/sim2sim/run.py --check          self-check: stand for 5 s
     MUJOCO_GL=egl uv run python sim/sim2sim/run.py --video 'vx 0.3' out.mp4
@@ -10,6 +12,7 @@ source/robot_models/robots/asmr2026_model.py. The MJCF defines joint limits,
 per-joint position actuator gains and effort limits.
 """
 
+import os
 import subprocess
 import sys
 from multiprocessing import Pool
@@ -22,6 +25,8 @@ import onnxruntime as ort
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
+from policies import policy_select  # noqa: E402
+from source.robot_models.robots import asmr2026_payload as payloads  # noqa: E402
 from source.robot_models.robots import asmr2026_policy as policy_contract  # noqa: E402
 from source.robot_models.robots.asmr2026_model import (  # noqa: E402
     LEG_JOINTS,
@@ -36,7 +41,8 @@ OUT.mkdir(exist_ok=True)
 
 MODEL = ROBOT_ID
 MODEL_PATH = MJCF_SCENE_PATH
-POLICY = ROOT / "policies" / "baseline" / "policy.onnx"
+# --policy NAME is passed through the environment so Pool workers (spawn re-imports this module) use the same policy.
+POLICY = policy_select.onnx(os.environ.get("SIM2SIM_POLICY"), robot="asmr2026")
 JOINTS = list(LEG_JOINTS)
 DEFAULT = policy_contract.DEFAULT
 DEFAULT_BASE_POSITION = np.array([0.0, 0.0, STANDING_ROOT_HEIGHT], dtype=np.float32)
@@ -54,10 +60,9 @@ assert np.allclose(KP, policy_contract.KP) and np.allclose(KD, policy_contract.K
 assert np.allclose(JOINT_LIMITS, policy_contract.JOINT_LIMITS)
 assert np.allclose(EFFORT_LIMITS, policy_contract.EFFORT_LIMITS)
 
-# Baseline task payload: 1 kg, centered on the upper torso plate.
-PAYLOAD_MASS = 1.0
-PAYLOAD_POSITION = (0.0, 0.0, 0.8838)
-PAYLOAD_SIZE = (0.10, 0.10, 0.10)
+# Payload on the torso: none, box_1kg (the baseline task's 1 kg box on the upper plate) or f3 (the F3 parts), see
+# source/robot_models/robots/asmr2026_payload.py. --payload NAME is passed to the Pool workers like the policy.
+PAYLOAD = payloads.check(os.environ.get("SIM2SIM_PAYLOAD") or payloads.DEFAULT)
 
 COMMANDS = {
     "stand": (0.0, 0.0, 0.0),
@@ -71,31 +76,26 @@ NOISE = np.r_[
 ]
 
 
-def _box_inertia(mass, size):
-    sx, sy, sz = size
-    return [
-        mass / 12 * (sy * sy + sz * sz),
-        mass / 12 * (sx * sx + sz * sz),
-        mass / 12 * (sx * sx + sy * sy),
-    ]
-
-
-def add_payload(spec):
-    """Attach the baseline task's nominal payload to an ASMR MJCF spec."""
-    payload = spec.body("base").add_body(name="payload_upper", pos=PAYLOAD_POSITION)
-    payload.mass = PAYLOAD_MASS
-    payload.ipos = [0.0, 0.0, 0.0]
-    payload.inertia = _box_inertia(PAYLOAD_MASS, PAYLOAD_SIZE)
-    payload.explicitinertial = True
-    payload.add_geom(
-        name="payload_upper_visual",
-        type=mujoco.mjtGeom.mjGEOM_BOX,
-        size=[v / 2 for v in PAYLOAD_SIZE],
-        contype=0,
-        conaffinity=0,
-        mass=0,
-        rgba=[0.85, 0.2, 0.1, 1.0],
-    )
+def add_payload(spec, payload=None, skip=()):
+    """Weld the parts of a payload option (default: PAYLOAD) to the base of an ASMR MJCF spec, one body per part.
+    skip: names of parts to leave out (sim/mission replaces the pan-tilt parts by moving bodies)."""
+    for part in payloads.parts(payload or PAYLOAD):
+        if part["name"] in skip:
+            continue
+        body = spec.body("base").add_body(name=part["name"], pos=part["position"])
+        body.mass = part["mass"]
+        body.ipos = [0.0, 0.0, 0.0]
+        body.inertia = payloads.box_inertia(part["mass"], part["size"]).tolist()
+        body.explicitinertial = True
+        body.add_geom(
+            name=part["name"] + "_visual",
+            type=mujoco.mjtGeom.mjGEOM_BOX,
+            size=[v / 2 for v in part["size"]],
+            contype=0,
+            conaffinity=0,
+            mass=0,
+            rgba=[0.85, 0.2, 0.1, 1.0],
+        )
 
 
 def configure_torque_actuators(model, torque_limits):
@@ -112,10 +112,10 @@ def configure_torque_actuators(model, torque_limits):
     model.actuator_forcerange[:, 1] = limits
 
 
-def load_model(torque_limit=None):
-    """Load the ASMR MJCF scene and attach the policy's nominal payload."""
+def load_model(torque_limit=None, payload=None):
+    """Load the ASMR MJCF scene and attach a payload option (default: PAYLOAD)."""
     spec = mujoco.MjSpec.from_file(str(MODEL_PATH))
-    add_payload(spec)
+    add_payload(spec, payload)
     model = spec.compile()
     model.opt.timestep = PHYSICS_DT
     if torque_limit is not None:
@@ -146,15 +146,18 @@ def _imu_frame_transform(model, data):
     return imu_rotation_in_base, base_quat_in_imu
 
 
-def simulate(model, command, limit=None, seconds=20.0, frames=None, start="standing", noise=False):
-    """Run the ASMR model and return tracking, fall and actuator saturation metrics."""
+def simulate(model, command, limit=None, seconds=20.0, frames=None, start="standing", noise=False, push=None,
+             payload=None, seed=0):
+    """Run the ASMR model and return tracking, fall and actuator saturation metrics.
+    payload: payload option name (default: the --payload option of this run). push = (t0 s, impulse N s, direction rad in
+    the heading frame, 0 = forward): a horizontal force on the base for 0.1 s, as in sim/payload/stability.py."""
     if model not in (MODEL, "asmr2026", "asmr2026_humanoid"):
         raise ValueError(f"only {MODEL!r} is configured; got {model!r}")
     if start not in ("standing", "default"):
         raise ValueError("ASMR sim2sim supports start='standing' or 'default'")
 
-    rng = np.random.default_rng(0)
-    m = load_model(torque_limit=limit)
+    rng = np.random.default_rng(seed)
+    m = load_model(torque_limit=limit, payload=payload)
     d = mujoco.MjData(m)
     d.qpos[:3] = DEFAULT_BASE_POSITION
     d.qpos[7:19] = DEFAULT
@@ -163,7 +166,7 @@ def simulate(model, command, limit=None, seconds=20.0, frames=None, start="stand
     assert [m.joint(j).qposadr[0] for j in JOINTS] == list(range(7, 19)), "joint order differs from the policy"
     assert [m.actuator(i).name for i in range(m.nu)] == JOINTS, "actuator order differs from the policy"
     if not POLICY.exists():
-        raise FileNotFoundError(f"baseline network not found: {POLICY}")
+        raise FileNotFoundError(f"policy network not found: {POLICY}")
     policy = ort.InferenceSession(str(POLICY), providers=["CPUExecutionProvider"])
     base = m.body("base").id
     imu_rotation_in_base, base_quat_in_imu = _imu_frame_transform(m, d)
@@ -186,6 +189,10 @@ def simulate(model, command, limit=None, seconds=20.0, frames=None, start="stand
 
         for _ in range(substeps):
             d.ctrl[:] = target
+            d.xfrc_applied[base, :2] = 0.0
+            if push and push[0] <= d.time < push[0] + 0.1:
+                heading = np.arctan2(d.xmat[base][3], d.xmat[base][0]) + push[2]
+                d.xfrc_applied[base, :2] = push[1] / 0.1 * np.array([np.cos(heading), np.sin(heading)])
             mujoco.mj_step(m, d)
             tau = d.actuator_force.copy()
             sat += np.any(np.abs(tau) >= effort_limits * 0.999)
@@ -240,7 +247,8 @@ def run_all(noise=False):
     ]
     lines.extend(row(result, names[result["command"]]) for result in results)
     report = "\n".join(lines) + "\n"
-    (OUT / ("results_noise.md" if noise else "results.md")).write_text(report)
+    suffix = ("" if PAYLOAD == payloads.DEFAULT else f"_{PAYLOAD}") + ("_noise" if noise else "")
+    (OUT / f"results{suffix}.md").write_text(report, encoding="utf-8")
     print(report)
 
 
@@ -283,6 +291,17 @@ def check():
 
 
 if __name__ == "__main__":
+    if "--policy" in sys.argv:
+        index = sys.argv.index("--policy")
+        os.environ["SIM2SIM_POLICY"] = sys.argv[index + 1]
+        del sys.argv[index:index + 2]
+        POLICY = policy_select.onnx(os.environ["SIM2SIM_POLICY"], robot="asmr2026")  # fail early with the list of names
+    if "--payload" in sys.argv:
+        index = sys.argv.index("--payload")
+        os.environ["SIM2SIM_PAYLOAD"] = sys.argv[index + 1]
+        del sys.argv[index:index + 2]
+        PAYLOAD = payloads.check(os.environ["SIM2SIM_PAYLOAD"])
+        print(payloads.describe(PAYLOAD))
     if "--check" in sys.argv:
         check()
     elif "--video" in sys.argv:

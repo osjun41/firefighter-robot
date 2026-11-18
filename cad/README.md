@@ -22,7 +22,7 @@ Status: the CAD and the print kit are **built**. The checks are **tested in simu
 
 Run the commands from the repository root. The first `uv run` installs the environment in `cad/.venv`.
 
-1. When the `third_party/` folder is missing, fetch the BHL meshes and URDF:
+1. The CAD scripts draw parts on the BHL meshes. When the `third_party/` folder is missing, fetch the BHL meshes and URDF (no simulation needs them):
 
 ```
 scripts/fetch_bhl_assets.sh

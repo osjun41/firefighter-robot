@@ -24,7 +24,8 @@ def model(seed=4, **over):
     spec = {**world.random_spec(seed), **over}
     m = mujoco.MjModel.from_xml_string(world.build_xml(spec))
     d = mujoco.MjData(m)
-    mujoco.mj_resetDataKeyframe(m, d, 0)
+    d.qpos[:3] = world.s2s.DEFAULT_BASE_POSITION  # standing on the floor
+    d.qpos[7:19] = world.s2s.DEFAULT
     return spec, m, d
 
 
@@ -37,7 +38,7 @@ def place(m, d, x, y, yaw, pan, tilt):
 
 
 def test_sim_camera_and_nozzle_match_aim_geometry():
-    """The MuJoCo camera and nozzle of the scene are where aim/geometry.py (F2) puts them: same pixel, same jet axis."""
+    """The MuJoCo camera and nozzle of the scene are where aim/geometry.py (F3) puts them: same pixel, same jet axis."""
     spec, m, d = model(cam_pitch_err=0.0)
     cam = m.camera("rgb").id
     for pan, tilt in [(0.0, 0.0), (0.6, -0.3), (-1.2, 0.4)]:
@@ -52,14 +53,16 @@ def test_sim_camera_and_nozzle_match_aim_geometry():
         assert np.allclose(d.xmat[m.body("tilt").id].reshape(3, 3)[:, 0], dvec, atol=1e-6)
 
 
-def test_leg_drive_is_the_hw_risks_pd():
-    """Leg actuators: tau = clip(20 (goal - measured) - 2 qd, +-6 Nm), with ctrl = goal - zero error (hw_risks case 7)."""
+def test_leg_drive_is_the_asmr_pd():
+    """Leg actuators: tau = clip(K (goal - measured) - D qd, +-limit) with the K, D and effort limits of the ASMR MJCF,
+    and ctrl = goal - zero error (hw_risks case 7)."""
     _, m, d = model()
     rng = np.random.default_rng(0)
     d.qvel[6:18] = rng.uniform(-3, 3, 12)
-    d.ctrl[:12] = d.qpos[7:19] + rng.uniform(-0.4, 0.4, 12)
+    d.ctrl[:12] = d.qpos[7:19] + rng.uniform(-0.1, 0.1, 12)
     mujoco.mj_forward(m, d)
-    want = np.clip(20 * (d.ctrl[:12] - d.qpos[7:19]) - 2 * d.qvel[6:18], -6, 6)
+    s2s = world.s2s
+    want = np.clip(s2s.KP * (d.ctrl[:12] - d.qpos[7:19]) - s2s.KD * d.qvel[6:18], -s2s.EFFORT_LIMITS, s2s.EFFORT_LIMITS)
     assert np.allclose(d.actuator_force[:12], want, atol=1e-9)
 
 
@@ -95,12 +98,21 @@ def test_fire_model():
     assert 9 <= sp["water_per_area"] / sp["regrow"] * 60 <= 15
 
 
-def test_spec_is_self_contained_and_the_robot_is_f2():
-    """A mission spec stores its jet and fire model, and its scene model keeps the 15.99 kg of bhl_F2 (full tanks)."""
+def test_spec_is_self_contained_and_the_robot_is_asmr_with_f3():
+    """A mission spec stores its jet and fire model, and its scene model keeps the mass of the ASMR robot plus the F3 parts
+    (the pan-tilt parts are moving bodies, no mass is lost). The robot has no water on board."""
     sp = world.random_spec(1086)
-    assert sp["robot"] == "F2" and all(sp[k] == v for k, v in world.DESIGNS["f2"].items() if k not in ("tray", "drag"))
+    assert sp["robot"] == "F3" and all(sp[k] == v for k, v in world.DESIGNS["f3"].items() if k not in ("tray", "drag", "v_range"))
     m = mujoco.MjModel.from_xml_string(world.build_xml(sp))
-    assert abs(m.body_subtreemass[1] - 15.99) < 0.05, m.body_subtreemass[1]
+    bare = world.s2s.load_model(payload="none").body_subtreemass[1]
+    assert abs(m.body_subtreemass[1] - (bare + 4.14)) < 0.01, m.body_subtreemass[1]
+    assert not any(m.body(i).name == "payload_water" for i in range(m.nbody))
+
+
+def test_mission_uses_the_asmr_runner_and_a_named_policy():
+    """mission.py takes the robot contract and the policy from sim/sim2sim/run.py (--policy NAME), not from bhl_legacy.py."""
+    text = (HERE / "mission.py").read_text(encoding="utf-8")
+    assert "bhl_legacy" not in text and "world.s2s" in text and "SIM2SIM_POLICY" in text
 
 
 @pytest.mark.parametrize("kind", ["procedural", "real"])

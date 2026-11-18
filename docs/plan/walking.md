@@ -6,7 +6,7 @@ Review it at every weekly meeting.
 
 Status: **planned**. The numbers come from the simulation (**tested in simulation**), unless a line says otherwise.
 
-- **Not verified:** The gap study (`sim/sim2sim/gap_study.py`) and f3_v1 use the BHL model of the F3 robot (`sim/sim2sim/bhl_legacy.py`). The robot runtime now uses the ASMR 2026 model and its baseline policy (`policies/baseline`). The study has not been run again on the ASMR model.
+- **Not verified:** The gap study (`sim/sim2sim/gap_study.py`) now runs the ASMR 2026 model with the F3 parts and the baseline policy (`policies/baseline`), but it has not been run again: the numbers in this file come from the old study on the BHL model (`archive/sim2sim_bhl/`). f3_v1 was trained on the BHL model.
 
 ## Why walking is hard for us
 
@@ -17,7 +17,7 @@ Status: **planned**. The numbers come from the simulation (**tested in simulatio
 
 ## What the simulation says
 
-The gap study runs the shipped BHL policy and our policies f1_v1 and f3_v1 on F3 with one error at a time, then with several errors together ([gap_study.md](../../sim/sim2sim/results/gap_study.md)).
+The gap study runs the shipped BHL policy and our policies f1_v1 and f3_v1 on F3 with one error at a time, then with several errors together ([gap_study.md](../../archive/sim2sim_bhl/gap_study.md)).
 Each case has 40 runs of 20 s per policy, or 20 runs per policy in the combined cases.
 The ranking below counts the shipped policy and f1_v1. f3_v1 trained with these errors (point 7).
 
@@ -38,7 +38,7 @@ The ranking below counts the shipped policy and f1_v1. f3_v1 trained with these 
 4. **A hose pull that changes is easy, a constant one is not.** A pull from 0 to 3 N that changes every 4 s adds 2 falls. A constant 3 N pull adds 12.
 5. **With every error at its worst value (case P), every run falls.** With a 9 N·m torque limit, 77 of 80 runs still fall in P, but R drops from 5 to 1 fall in 40.
 6. The common thread is the knee torque. In the worst R cases, the knee is at its limit 40 to 57 % of the time.
-7. **Our new policy f3_v1 handles these errors in the simulation.** It starts from f1_v1 and trains with the ranges of the gap study ([sim/rl](../../sim/rl/README.md#f3-the-trolley-version-and-the-policy-f3_v1)).
+7. **Our new policy f3_v1 handles these errors in the simulation.** It starts from f1_v1 and trains with the ranges of the gap study ([archive/rl_f1](../../archive/rl_f1/README.md#f3-the-trolley-version-and-the-policy-f3_v1), policy in `policies/f3_v1`).
    - It does not fall in R. It falls once in the 240 runs of R with one value at its worst.
    - With four drive errors together (inertia, friction, torque, latency), it falls in 1 of 40 runs. The shipped policy falls in 29, f1_v1 in 21.
    - It walks at 0.20 m/s at a 0.3 m/s command. The shipped policy walks at 0.25 m/s.

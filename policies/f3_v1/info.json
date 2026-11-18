@@ -1,0 +1,5 @@
+{
+ "trained_on": "bhl",
+ "observation_size": 45,
+ "note": "Trained for F3 on the BHL biped model with wide ranges (sim/payload/models.py). Joint convention, default pose (hip -0.2, knee 0.4, ankle -0.3) and gains follow BHL, not the ASMR contract of the robot runtime. Never run on the robot."
+}

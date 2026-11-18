@@ -112,7 +112,7 @@ def kit_parts():
 
 # Removed from the BHL base link mass (the URDF base includes them): the BHL 6S pack and the Beelink PC.
 BHL_REMOVED = [("bhl_battery", 603, (1.5, 11.5, 608.0)), ("bhl_pc", 280, (-0.5, 0.0, 659.0))]
-BARE_KG = 11.34267   # bare biped: sum of <mass> in the BHL biped URDF (as sim/payload/models.py)
+BARE_KG = 11.34267   # bare biped: sum of <mass> in the BHL biped URDF (as archive/payload_bhl/models.py)
 
 LEG_PARTS = ("lipo_6s_a", "lipo_6s_b", "battery_holder", "pod_cover", "estop_head", "brake_resistor_1",
              "brake_resistor_2", "pump_dwp385")
@@ -154,7 +154,7 @@ def gap(a, b):
 
 def lump(parts):
     """One box with the mass, centre and the Ixx, Iyy, Izz about that centre of several boxes (dicts in m), for the
-    simulation: sim/payload and sim/rl expect one "water" body. Sizes give the same inertia as the parts."""
+    simulation: sim/payload expects one "water" body. Sizes give the same inertia as the parts."""
     m = sum(p["mass_kg"] for p in parts)
     c = sum(p["mass_kg"] * np.array(p["com_m"]) for p in parts) / m
     second = np.zeros(3)                       # sum m (s^2 / 12 + d^2) along each axis

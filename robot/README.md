@@ -49,17 +49,7 @@ All ports, devices, pins, ids and limits are in one file: `config.toml`. The por
 Run all commands from the repository root. Do steps 1 to 3 once.
 
 1. Install the laptop development environment with `uv sync --extra sim --extra dev`.
-2. Fetch the Berkeley Humanoid Lite (BHL) model files into `third_party/`:
-
-```sh
-bash scripts/fetch_bhl_assets.sh
-```
-
-3. Build the MuJoCo models. The fake legs use `sim/payload/models/bhl_biped.xml`.
-
-```sh
-uv run --extra sim --extra dev python sim/payload/models.py
-```
+2. No model build and no BHL file is needed. The fake legs use the ASMR MJCF of `source/robot_models` (with the F3 parts).
 
 4. Run the fast tests of `aim/`, `actuators/` and `robot/` (about 30 s):
 

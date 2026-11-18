@@ -118,7 +118,7 @@ def record(joint, out, fake=False, mode="swing", size=SIZE):
         raise SystemExit("No log: the test did not start")
     meta = {"joint": joint, "motor": rb.JOINTS[i][2], "mode": mode, "K": np.asarray(rb.KP).tolist(), "D": np.asarray(rb.KD).tolist(),
             "torque_limit": rb.TORQUE_LIMIT, "targets": [float(v) for v in rest], "pose": [round(float(v), 5) for v in pose],
-            "release_t": release,
+            "release_t": None if release is None else round(release, 5),   # as the logged times: a NaN row is never before the release
             "rate_hz": LOG_HZ, "fake": fake}
     with open(out, "w", newline="") as f:
         f.write("# " + json.dumps(meta) + "\n")
@@ -165,6 +165,7 @@ def simulate(meta, data, armature, friction, scale):
             d.qpos[7 + i], d.qvel[6 + i], released = SIGN[i] * data[k_rel, 2], SIGN[i] * data[k_rel, 3], True
         if not released:
             goal[i] = target[max(0, np.searchsorted(t_log, d.time, side="right") - 1)]
+            assert np.isfinite(goal[i]), "the log has no target before the release"
         d.ctrl[:] = SIGN * np.clip(K * (goal - SIGN * d.qpos[7:19]) - D * SIGN * d.qvel[6:18], -lim, lim)
         if released:
             d.ctrl[i] = 0.0                                  # drive off: the link swings freely
