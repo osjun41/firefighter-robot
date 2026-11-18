@@ -1,0 +1,15 @@
+﻿Category,Item,Description,Quantity,Cost USD,Total Cost USD,US Link,Cost KRW,Total Cost KRW,KOR Link
+Bearing,MR106-2RS,"Bearing between input shaft and cycloidal disk, and between input shaft and output shaft",13.0,,,,350.0,4550.0,https://bearingstore.co.kr/product/중국산-미니어쳐-베어링-mr106-676zz/4257/
+,6701-2RS,Bearing between cycloidal disk and output shaft,2.0,,,,540.0,1080.0,https://bearingstore.co.kr/product/중국산-6700-계열-zz/712/
+,6811ZZ,Bearing between output shaft and housing,2.0,,,,20920.0,41840.0,https://bearingstore.co.kr/product/일제-일본-nsk-ntn-6800-계열-zz/730/category/102/display/1/
+Fastener,M3 x 55 mm,Mounting housing,8.0,,,,540.0,4320.0,https://itempage3.auction.co.kr/DetailView.aspx?itemno=D331615464
+,M3 x 30 mm,Mounting output shaft,6.0,,,,70.0,420.0,https://riwootool.com/product/스텐-육각-렌치볼트/337/
+,M3 x 4 x 5 mm insert,M3 threaded insert,24.0,,,,60.0,1440.0,https://smartstore.naver.com/shipdiy/products/12116193781?nl-ts-pid=jqsbNsqpsObwUEOGd7K-490110&n_media=8753&n_query=M3X4X5인서트너트&n_rank=3&n_ad_group=grp-a001-02-000000051742683&n_ad=nad-a001-02-000000398932365&n_campaign_type=2&n_mall_id=carled&n_mall_pid=12116193781&n_ad_group_type=2&n_match=3&NaPm=ct%3Dmtsodxv8%7Cci%3DERfe8cf763%2Dab84%2D11f1%2Db915%2D56305bda6a30%7Ctr%3Dpla%7Chk%3D4c8841b858bb7d2dd11ae4f45a8fb36c9a1863de%7Cnacn%3DSUUGBEB6kKGr
+,M4 x 15 mm hex stand,input shaft stiffener,1.0,,,,166.7,166.7,https://www.coupang.com/vp/products/7461183277?itemId=19447667205&vendorItemId=86558516482&q=M4%28%EA%B5%AD%EC%82%B0%29+%EC%A7%80%EC%A7%80%EB%8C%80%EB%84%88%ED%8A%B8+15&searchId=70e8850e1583684&sourceType=search&itemsCount=60&searchRank=8&rank=8&traceId=mtsnkeei
+Motor,MAD Components M6C12 150KV,,1.0,129.0,129.0,Link,,,
+Structural,PLA,"3D print filament, in kg",0.2,,,,19800.0,3960.0,Link
+Electrical,XDrive Mini,Motor controller,1.0,,,,86900.0,86900.0,Link
+,Misc,Cables & connectors,,,,,,,
+,,,,,,,,,
+Total,,,,,=SUM(F2:F12),,,=SUM(I2:I12),
+,,,,,,,,,

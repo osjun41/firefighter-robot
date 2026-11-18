@@ -1,0 +1,45 @@
+﻿Category,Item,Description,Quantity,Cost USD,Total Cost USD,US Link,Cost KRW,Total Cost KRW,Korea Link,comments
+Base,PC,RK3566 radxa 3C,1.0,,,,91300.0,91300.0,Link,한팀은 Jetson orin nano
+,PC storage,삼성 마이크로 SD카드 64기가,1.0,,,,71500.0,71500.0,Link,
+,IMU,IMU Grove - 6-Axis,1.0,,,,,,Link,
+Actuator,Actuator-M6C12,,8.0,,,,='Actuator-M6C12'!I15,,,
+,Actuator-5010,,4.0,,,,='Actuator-5010'!I15,,,
+Bearing,6803-2RS,"Bearing between the linkage on the pitch actuators on legs
+",6.0,,,,2330.0,13980.0,Link,
+Battery,LiPo battery 3S,11.1V (12V DC) for PC,1.0,,,,76400.0,76400.0,Link,"EC5 Plug
+Graphene 11.1V 6000mAh 80C"
+,LiPo battery 6S,22.2V (24V DC) for Motors,2.0,,,Link,125000.0,250000.0,Link,"EC5 Plug
+Zeee 6S 5000mAh 22.2V 120C
+for US link"
+,DC/DC converter,"HAM5925
+DC/DC step up boost converter",1.0,,,,7590.0,7590.0,https://icbanq.com/P017179148,"IN 10-32V OUT 12-35V 10A CV CC
+12V to 24V"
+,E-Stop button,"Contact Block (NC)
+A20-E01P",1.0,,,,,,,"from ASMR2024
+NC 3 blocks stacked (24V DC available)"
+,Diode,다이오드 [MD110-16],1.0,,,,30000.0,30000.0,Link,
+,Power Relay,파워릴레이 ALEV100,1.0,,,,79900.0,79900.0,Link,
+CAN,USB to CAN,CANable V2.0 Pro,2.0,,,,49500.0,99000.0,https://www.devicemart.co.kr/goods/view?no=15775527,signal isolation ✔
+Controller,Gamepad,8BitDo 얼티메이트 2C 컨트롤러,1.0,,,,39800.0,39800.0,Link,
+Connectors,XT 30,,,,,,,,,
+,XT 60,,,,,,,,,
+,XT 90,,,,,,,,,
+,EC5 connector,male side wire (battery: female),4.0,,,,3000.0,12000.0,Link,
+,DC5525,Connect to PC,1.0,,,,,,,
+,CAN connector wire,,,,,,,,,구매하지 않을 예정
+Screws,,M3x12,,,,,,,,
+,,M3x15,,,,,,,,
+,,M3x20,,,,,,,,
+,,M3x25,,,,,,,,
+,,M3x30,,,,,,,,
+,,M3x55,,,,,,,,
+,,M3x60,,,,,,,,
+Others,wire,"14, 18 AWG Red, Black",,,,,,,,
+,wire,"24AWG Green, Yellow",,,,,,,,
+,ST-Link V2,programmer for STM32 microcontroller,1.0,,,,47500.0,47500.0,Link,
+,Acrylic plate (5T),B4 size,1.0,,,,8320.0,8320.0,Link,
+,Aluminum profile 2020,200mm,2.0,,,,1540.0,3080.0,Link,
+,spring nut,,,,,,,,,
+,Profile endcap,,8.0,,,,,,,
+,Bolt M4x10,,,,,,,,,따로 구매하지 않을 예정
+Total,,,,,,,,=SUM(I2:I36),,
