@@ -1,9 +1,9 @@
 """Blender renders of the top module: assembled, exploded, and on the robot.
 
-blender -b --factory-startup -P cad/parts/render_module.py -- <bhl_dir> <out_dir> [assembled exploded robot]
+blender -b --factory-startup -P sim/firescenes/render_module.py -- <bhl_dir> <out_dir> [assembled exploded robot]
 
 Reads the STLs and out/assembly.json written by top_module.py (PARTS_DIR=out_sts3215: top_module_sts3215.py).
-Uses the helpers in cad/bhl.py. cad/final/render.py imports this file.
+Uses the helpers in bhl.py.
 """
 import json
 import math
@@ -14,13 +14,13 @@ import bpy
 from mathutils import Matrix, Vector
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.dirname(HERE))
+sys.path.insert(0, HERE)
 import bhl  # noqa: E402
 
 args = sys.argv[sys.argv.index("--") + 1:]
 BHL, OUT = args[0], args[1]
 WHICH = args[2:] or ["assembled", "exploded", "robot", "adapters", "concept"]
-PARTS = os.path.join(HERE, os.environ.get("PARTS_DIR", "out"))   # PARTS_DIR=out_sts3215 for the STS3215 variant
+PARTS = os.path.join(HERE, os.environ.get("PARTS_DIR", "parts_out"))   # PARTS_DIR=out_sts3215 for the STS3215 variant
 NAME = os.environ.get("RENDER_NAME", "module_assembled")
 INFO = json.load(open(os.path.join(PARTS, "assembly.json")))
 T, Z0 = 0.791, 0.039          # torso frame top and foot offset

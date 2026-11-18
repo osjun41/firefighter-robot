@@ -6,7 +6,7 @@
     MUJOCO_GL=egl uv run python sim/payload/final_check.py video   # results/final_f3_walk.mp4, final_f3_push.mp4 (ffmpeg)
 
 The robot is the MJCF of source/robot_models (run.py) with a payload option: none, box_1kg (the training default) or
-f3 (the 47 parts of cad/final/out_f3/layout.json). The three are compared in each table. The drive model (gains,
+f3 (the 47 parts of source/robot_models/data/f3_layout.json). The three are compared in each table. The drive model (gains,
 latency, current limit) is in sim/sim2sim/hw_risks.py, the motor battery time in docs/hardware/power_calc.py.
 """
 import json
@@ -37,7 +37,7 @@ def tables(res):
     s2s = tk.s2s
     L = ["# ASMR robot with the F3 parts: payload check (tested in simulation)", "",
          f"Robot: `{s2s.MODEL}` (MJCF of `source/robot_models`) with the payload options of "
-         "`source/robot_models/robots/asmr2026_payload.py`. F3: the 47 parts of `cad/final/out_f3/layout.json` (4.14 kg). "
+         "`source/robot_models/robots/asmr2026_payload.py`. F3: the 47 parts of `source/robot_models/data/f3_layout.json` (4.14 kg). "
          f"Policy: `{s2s.POLICY.parent.name}` (`{s2s.POLICY.name}`), the PD gains of the MJCF.", "",
          "## Statics", "", "Joint torques that hold the pose, feet flat. The single-leg pose sways the pelvis over the stance "
          "foot as far as the hip roll range allows (the CoM must stay on the sole: `ok`).", "",

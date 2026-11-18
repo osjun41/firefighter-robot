@@ -20,7 +20,7 @@ The training code started from the open-source [Berkeley Humanoid Lite](https://
 
 ```bash
 scripts/fetch_bhl_assets.sh        # BHL robot model and meshes (commit fc90fed) into third_party/; CC BY-SA 4.0
-                                   # only cad/ reads it (the CAD scripts draw parts on the BHL meshes); no simulation and no locomotion script does
+                                   # only archive/cad/ reads it (the CAD scripts draw parts on the BHL meshes); no simulation and no locomotion script does
 
 git clone https://github.com/HybridRobotics/Berkeley-Humanoid-Lite.git && git -C Berkeley-Humanoid-Lite checkout edc4738
 git clone https://github.com/HybridRobotics/Berkeley-Humanoid-Lite-Lowlevel.git && git -C Berkeley-Humanoid-Lite-Lowlevel checkout 652777c

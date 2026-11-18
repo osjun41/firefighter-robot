@@ -23,10 +23,10 @@ HERE = Path(__file__).resolve().parent
 G = 9.81
 
 # ---------------- robot side (ASMR robot with the F3 parts, stand pose: sim/payload/final_check.py statics) ----------------
-NOZZLE_Z = 0.905         # nozzle over the floor at tilt 0 (cad/final/out_f2/layout.json nozzle_fitting)
+NOZZLE_Z = 0.905         # nozzle over the floor at tilt 0 (archive/cad/final/out_f2/layout.json nozzle_fitting)
 NOZZLE_LOW_Z = 0.855     # ASSUMED: nozzle at full tilt down (-40 deg)
 NOZZLE_FALLEN_Z = 0.10   # ASSUMED: the robot lies on the floor
-ANCHOR_Z = 0.835         # hose exit of the anchor at the rear of the deck (cad/final/out_f3/kit.json: legs at 835 mm)
+ANCHOR_Z = 0.835         # hose exit of the anchor at the rear of the deck (archive/cad/final/out_f3/kit.json: legs at 835 mm)
 ROBOT_KG, ROBOT_CG_Z = 16.35, 0.49  # ASMR robot with the F3 parts: 16.35 kg, centre of mass 0.49 m over the floor
 
 # ---------------- stand: 5-leg IV stand (Clinton CL-IVS-352 class: 23 in base, 1 in and 3/4 in poles) ----------------

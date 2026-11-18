@@ -1,6 +1,6 @@
 # ASMR robot with the F3 parts: payload check (tested in simulation)
 
-Robot: `asmr2026_humanoid_v1` (MJCF of `source/robot_models`) with the payload options of `source/robot_models/robots/asmr2026_payload.py`. F3: the 47 parts of `cad/final/out_f3/layout.json` (4.14 kg). Policy: `baseline` (`policy.onnx`), the PD gains of the MJCF.
+Robot: `asmr2026_humanoid_v1` (MJCF of `source/robot_models`) with the payload options of `source/robot_models/robots/asmr2026_payload.py`. F3: the 47 parts of `source/robot_models/data/f3_layout.json` (4.14 kg). Policy: `baseline` (`policy.onnx`), the PD gains of the MJCF.
 
 ## Statics
 

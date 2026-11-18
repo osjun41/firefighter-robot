@@ -11,7 +11,7 @@ This page tells each team member where to put their work and their results, so t
 | Fire detector and camera | `vision/` | `vision/results/` | `docs/plan/vision.md` |
 | Robot programs on the ROCK 3C | `robot/`, `actuators/` | `robot/results/` | `robot/README.md` (bring-up) |
 | Mission simulation | `sim/mission/` | `sim/mission/results/` | `sim/README.md` |
-| Mechanics and wiring | `cad/`, `docs/hardware/` | `cad/final/renders/` | `docs/design.md`, `docs/hardware/` |
+| Mechanics and wiring | `cad/` (hardware team), `docs/hardware/` | `docs/hardware/` | `docs/design.md`, `docs/hardware/` |
 
 - One place for each setting: ports, devices, pins and limits are in `robot/config.toml`. Do not copy a value into the code.
 - Large or generated files (datasets, checkpoints, logs, camera recordings) stay out of git. Put them in `~/runs/` or on the team drive and write their location in the README of the workstream.

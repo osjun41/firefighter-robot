@@ -13,7 +13,7 @@ Design F3: the robot carries no water. A water trolley behind the robot carries 
 | [order_list.md](order_list.md) | Parts to order that are not in the course BOM, with shops and prices |
 | [power_calc.py](power_calc.py) | Power numbers from the simulation, the robot and trolley battery time, and the harness check. Output: [power_calc.md](power_calc.md) |
 
-The mechanical design and the print kit are in [cad/final/](../../cad/final/README.md).
+The mechanical design and the print kit are in [archive/cad/final/](../../archive/cad/final/README.md).
 
 Check the wiring after every change:
 

@@ -6,7 +6,7 @@ Design F3 (team decision of 2026-10-29): the water bag, the pump and its battery
 
 - **Not verified:** The KLP02 pump curve is an estimate from two datasheet points: 0.7 L/min free flow and 30 m of head at zero flow. Both are minimum values. The fitting losses, the nozzle coefficients, the jet break-up length and the drag of the drops are also estimates. The bench tests in section 9 measure them.
 - **Assumed:** The pump speed follows its supply voltage. All numbers are at 22.2 V, the nominal voltage of the 6S pack on the trolley. The pack goes from 21.0 V (low) to 25.2 V (full).
-- **Assumed:** The delivery hose is 3.0 m long (section 3.1). The nozzle sits 0.905 m above the floor (`cad/final/out_f2/layout.json`).
+- **Assumed:** The delivery hose is 3.0 m long (section 3.1). The nozzle sits 0.905 m above the floor (`archive/cad/final/out_f2/layout.json`).
 - **Assumed:** The stopped pump lets water through. Two check valves in series hold the water of the bag (section 3.3).
 - **Open:** The DMC-101 datasheet is not available yet. We do not know its input voltage range, its control input or whether it changes the pump speed.
 - **Open:** Kamoer does not publish the KLP02 size or port size. The pump box layout and the tube adapters wait until the pump arrives and we measure it.

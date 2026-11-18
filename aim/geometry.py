@@ -28,13 +28,13 @@ def intrinsics_from_fov(width, height, hfov_deg):
     return Intrinsics(f, f, width / 2, height / 2, width, height)
 
 
-# Geometry from the CAD unless noted (cad/final for F2). Positions in metres. "pivot" is the tilt pivot, on the pan axis.
+# Geometry from the CAD unless noted (archive/cad/final for F2). Positions in metres. "pivot" is the tilt pivot, on the pan axis.
 # Camera "mount": "tilt" = moves with pan and tilt (pos in the tilting frame), "body" = fixed (pos in the robot frame).
 # Camera "pitch"/"yaw": extra rotation of the camera in its mount, radians. Bore-sight calibration sets them.
 # Intrinsics are placeholders (RGB 640 x 480, 90 deg; thermal 160 x 120, 56 deg): measure the real cameras.
-# Camera poses of the earlier designs A, B and E come from their CAD studies (cad/parts and older studies).
+# Camera poses of the earlier designs A, B and E come from their CAD studies (archive/cad/parts and older studies).
 CONCEPTS = {
-    "A": dict(  # water gun on a 2-servo pan-tilt. Source: cad/parts/out/assembly.json and cad/parts/README.md (DS3218 version)
+    "A": dict(  # water gun on a 2-servo pan-tilt. Source: archive/cad/parts/out/assembly.json and archive/cad/parts/README.md (DS3218 version)
         pivot=(-0.038, 0.0, T + 0.0723),  # pan axis x = -38 mm, tilt axis 72.3 mm above the torso top (63.0 mm with STS3215)
         nozzle=(0.248, 0.0, 0.084),  # ESTIMATE: CAD gun box (centre 22 mm behind the axis, 78.5 mm above it) + the CAD barrel
         pan_limits=(-math.radians(90), math.radians(90)),
@@ -44,16 +44,16 @@ CONCEPTS = {
     ),
     "B": dict(  # head with cameras and nozzle on a pan-tilt
         pivot=(0.0, 0.0, T + 0.075),
-        nozzle=(0.145, 0.0, -0.050),  # centred, 62 mm under the cameras (cad/parts/README.md, head_b)
+        nozzle=(0.145, 0.0, -0.050),  # centred, 62 mm under the cameras (archive/cad/parts/README.md, head_b)
         pan_limits=(-math.radians(90), math.radians(90)),
         tilt_limits=(-math.radians(40), math.radians(45)),
         cameras={
-            # head_b: RGB 21 mm right (-y), thermal 21 mm left (+y), both 15 deg down (cad/parts/README.md)
+            # head_b: RGB 21 mm right (-y), thermal 21 mm left (+y), both 15 deg down (archive/cad/parts/README.md)
             "rgb": dict(mount="tilt", pos=(0.059, -0.021, 0.012), pitch=-math.radians(15), yaw=0.0, K=intrinsics_from_fov(640, 480, 90)),
             "thermal": dict(mount="tilt", pos=(0.059, 0.021, 0.012), pitch=-math.radians(15), yaw=0.0, K=intrinsics_from_fov(160, 120, 56)),
         },
     ),
-    "F1": dict(  # final design F1 (cad/final/README.md): nozzle and Arducam B0201 camera on an ST3215 pan-tilt (cad/parts/out_sts3215)
+    "F1": dict(  # final design F1 (archive/cad/final/README.md): nozzle and Arducam B0201 camera on an ST3215 pan-tilt (sim/mission/meshes)
         pivot=(-0.038, 0.0, T + 0.0630),  # assembly.json: pan axis x = -38 mm, tilt axis 63.0 mm above the torso top
         nozzle=(0.100, 0.0, 0.040),  # ESTIMATE: nozzle tip at the front of the tilt plate (plate top 30 mm above the axis), 10 mm above it
         pan_limits=(-math.radians(90), math.radians(90)),
@@ -77,7 +77,7 @@ CONCEPTS = {
                         tank_time=0.571 / (0.40 / 60), search_time=30.0, mission_time=240.0, respond_time=15.0),
     ),
 }
-# Final design F2 (cad/final/README.md): F1 with two R2 tanks on the torso posts. Same pan-tilt, camera and nozzle.
+# Final design F2 (archive/cad/final/README.md): F1 with two R2 tanks on the torso posts. Same pan-tilt, camera and nozzle.
 # Pump: Kamoer KLP02 24 V with the DMC-101 controller, on the motor bus. Jet model (docs/hardware/water.md): 1.0 mm nozzle,
 # 0.42 L/min, v0 = 10.0 m/s at 22.2 V (10.6 m/s at 24 V), drag 0.11 1/m. Not measured: the jet test (robot/bench.py pump)
 # gives the real v0 for robot/config.toml [aim.controller]. Tanks: 0.749 L usable of 0.781 L / 0.42 L/min = 107 s of pump time.

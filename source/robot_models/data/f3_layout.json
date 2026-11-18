@@ -1,6 +1,6 @@
 {
  "design": "F3",
- "note": "F3 layout, robot frame in m. Sizes from cad/final/parts.json, positions from cad/final/layout.py. F3: no water on the robot. hose_anchor, hose_and_water and signal_plug are the end of the trolley hose.",
+ "note": "F3 layout, robot frame in m. Sizes from archive/cad/final/parts.json, positions from archive/cad/final/layout.py. F3: no water on the robot. hose_anchor, hose_and_water and signal_plug are the end of the trolley hose.",
  "items": [
   {
    "name": "shelf_acrylic",

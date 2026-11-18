@@ -38,7 +38,7 @@ Run these commands from the repository root.
 
 ## Key numbers
 
-- F3 weighs 14.60 kg. Its centre of mass is 0.432 m high. F2 weighed 15.99 kg with full tanks (`payload/`, `cad/final`).
+- F3 weighs 14.60 kg. Its centre of mass is 0.432 m high. F2 weighed 15.99 kg with full tanks (`payload/`, `archive/cad/final`).
 - On F3, the shipped policy walks at 0.25 m/s for a 0.3 m/s command at 6 Nm. On F2 it walked at 0.22 m/s (`sim2sim/`).
 - The real torque per amp, the torso centre of mass, a constant hose pull, the IMU mounting tilt and the latency cause most falls in the gap study. The motor inertia and the joint friction matter little (`sim2sim/`).
 - Our policy f3_v1 trained with these errors. With all of them at their middle value and one at its worst, it falls once in 240 runs. The shipped policy falls 123 times (`archive/rl_f1/`, `sim2sim/`).

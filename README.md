@@ -100,7 +100,7 @@ To run the real robot, follow [docs/board_setup.md](docs/board_setup.md): SSH, i
 | [sim](sim/README.md) | Robot models, missions, walking, water jet |
 | [sim/locomotion](sim/locomotion/README.md), [policies](policies/README.md) | Walking policy training in Isaac Lab, and the trained policies |
 | [ASMR_Actuator_Test](ASMR_Actuator_Test/README.md) | Leg actuator bench tests, drive setup records, sim-versus-real GUI |
-| [cad](cad/README.md) | CAD scripts, print kit, renders |
+| [cad](cad/README.md) | CAD files of the hardware team |
 
 [CONTRIBUTING.md](CONTRIBUTING.md) says where to put new code and results.
 

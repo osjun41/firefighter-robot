@@ -194,7 +194,7 @@ def test_payload_options():
     task = (ROOT / "sim/locomotion/packages/berkeley_humanoid_lite/berkeley_humanoid_lite/tasks/locomotion/velocity/"
             "config/asmr_biped/env_cfg.py").read_text(encoding="utf-8")
     assert "TORSO_TOP_Z_M = 0.8338" in task and "PAYLOAD_MASS_KG = 1.0" in task  # the box above is the task's
-    layout = json.loads((ROOT / "cad/final/out_f3/layout.json").read_text(encoding="utf-8"))
+    layout = json.loads((ROOT / "source/robot_models/data/f3_layout.json").read_text(encoding="utf-8"))
     f3 = payloads.parts("f3")
     assert len(f3) == len(layout["items"]) > 40
     mass, centre, inertia = payloads.combined("f3")
