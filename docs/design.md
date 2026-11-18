@@ -1,7 +1,7 @@
 # Design F3: the robot and its water trolley
 
 <p align="center">
-  <img src="../cad/final/renders/f3_front.jpg" alt="Design F3, front" width="320">
+  <img src="../archive/cad/final/renders/f3_front.jpg" alt="Design F3, front" width="320">
 </p>
 
 Sobang-I is the course Berkeley Humanoid Lite biped with a fire camera and a nozzle on a pan-tilt on top of the torso. A teammate pushes a trolley behind the robot, like a hospital IV stand. The trolley carries the water bag, the pump and the pump battery. Only the hose and a thin pump cable come down from the trolley to the robot.
@@ -12,7 +12,7 @@ Status: the CAD and the print kit are **built**. Walking, aiming and the water j
 
 | Item | Value | Details |
 |---|---|---|
-| Mass | 14.60 kg (bare biped 11.34 kg, old design F2 with full tanks 15.99 kg) | [cad/final](../cad/final/README.md) |
+| Mass | 14.60 kg (bare biped 11.34 kg, old design F2 with full tanks 15.99 kg) | [archive/cad/final](../archive/cad/final/README.md) |
 | Legs | 12 cycloidal actuators on XDrive MINI drives, 2 CAN buses | [legs](../legs/README.md) |
 | Computer | Radxa ROCK 3C (RK3566, NPU) | [robot](../robot/README.md) |
 | Batteries on the robot | 2 × 6S 5000 mAh (motors), 1 × 3S 6000 mAh (computer, relays, servos) | [electrical.md](hardware/electrical.md) |
@@ -33,9 +33,9 @@ Status: the CAD and the print kit are **built**. Walking, aiming and the water j
 | Rear pod (outside the frame) | ROCK 3C, OR diode, shunt, relay K2, 3S pack, CAN adapters, 5 V buck, meters and switches |
 | Bottom | the two 6S packs, the brake resistors on the front rail |
 
-![Section views](../cad/final/out_f3/layout_views.png)
+![Section views](../archive/cad/final/out_f3/layout_views.png)
 
-The print kit has 26 printed pieces (about 0.77 kg of PETG and 45 h of printing) and a 74-step assembly guide: [cad/final/kit](../cad/final/kit/README.md). Do not print the F2 tanks.
+The print kit has 26 printed pieces (about 0.77 kg of PETG and 45 h of printing) and a 74-step assembly guide: [archive/cad/final/kit](../archive/cad/final/kit/README.md). Do not print the F2 tanks.
 
 ## Water trolley
 

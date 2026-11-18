@@ -4,7 +4,7 @@ The camera pose is the RGB camera of aim/geometry.py CONCEPTS["A"] (an older pan
 blender -b --factory-startup -P sim/firescenes/firescenes.py -- samples FIRST COUNT
 blender -b --factory-startup -P sim/firescenes/firescenes.py -- sequence
 blender -b --factory-startup -P sim/firescenes/firescenes.py -- sheet
-blender -b --factory-startup -P sim/firescenes/firescenes.py -- gunsamples FIRST COUNT   (needs cad/parts/render_module.py and cad/parts/out/)
+blender -b --factory-startup -P sim/firescenes/firescenes.py -- gunsamples FIRST COUNT   (needs the concept A part STLs in sim/firescenes/parts_out/, not in git)
 
 Sample i always gives the same scene (seed = i).
 """
@@ -24,7 +24,7 @@ from mathutils import Matrix, Vector
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
-sys.path[:0] = [os.path.join(ROOT, "cad"), os.path.join(ROOT, "aim")]
+sys.path[:0] = [HERE, os.path.join(ROOT, "aim")]
 import bhl  # noqa: E402
 import geometry as G  # noqa: E402
 
@@ -242,10 +242,9 @@ def sun(strength, elev, azim, color=(1, 0.97, 0.9)):
 
 
 def gun_module(pose, ambient):
-    """Concept A top module (cad/parts STLs) and the stand-in gun of cad/parts/render_module.py at the default tilt.
+    """Concept A top module (part STLs) and the stand-in gun of render_module.py at the default tilt.
     The USB camera's own mount is left out, because the lens sits inside it."""
-    sys.path.insert(0, os.path.join(ROOT, "cad", "parts"))
-    import render_module as rm  # reads cad/parts/out/assembly.json
+    import render_module as rm  # reads parts_out/assembly.json
     rm.TILT_DEG = -math.degrees(TILT0)
     mats = rm.materials()
     objs = rm.load_module(mats, (0, 0, G.T), gun=False) + rm.gun_standin(mats, (0, 0, G.T), rm.TILT_DEG)

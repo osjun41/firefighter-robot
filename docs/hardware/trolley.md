@@ -5,7 +5,7 @@ Status: **planned**. The numbers come from `trolley.py` and `sim/water/water.py`
 The team decided on 2026-10-29 to take the water off the robot. A person pushes a trolley like a hospital IV stand behind the robot. The water bag, the pump and its battery ride on the trolley. Only the hose and a 2-wire pump cable come down from a boom to the robot. The two pan-tilt servos still aim the nozzle. This design F3 replaces the two side tanks R2 of design F2.
 
 - **Assumed:** all sizes and masses in this document. We do not have the stand yet. The light stand type (4 kg) is the worst case for tipping.
-- **Assumed:** the hose leaves the anchor at the rear of the deck 0.835 m high, going up. The anchor holds the plug J10. These values come from the F3 CAD in progress (`cad/final/out_f3/kit.json`).
+- **Assumed:** the hose leaves the anchor at the rear of the deck 0.835 m high, going up. The anchor holds the plug J10. These values come from the F3 CAD in progress (`archive/cad/final/out_f3/kit.json`).
 - **Not verified:** the release force of the breakaway clip (1.5 N). Test TT2 sets it.
 - **Open:** the DMC-101 datasheet. The pump stop needs a control input that runs the pump only while the opto-isolator conducts ([electrical.md](electrical.md), section 5).
 - **Open:** the printed parts (pole clamps, breakaway clip, hose clips, pump box brackets) are not drawn yet.

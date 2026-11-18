@@ -36,7 +36,7 @@ def _load_run():
 s2s = _load_run()  # the ASMR runner: robot contract, policy and add_payload()
 
 CFG = CONCEPTS["F3"]  # pan-tilt, camera and nozzle of the final design F3 (the same as F2)
-PARTS = ROOT / "cad" / "parts" / "out_sts3215"
+PARTS = Path(__file__).resolve().parent / "meshes"
 CACHE = Path.home() / "runs" / "firefighter" / "mission" / "cache"
 DZ = payloads.Z_LAYOUT_TO_BASE  # m, MuJoCo base frame z minus robot frame z (0.0398)
 # F3 parts that the moving pan-tilt replaces (they are in the payload as fixed boxes)
@@ -230,7 +230,7 @@ def build_xml(spec):
     _sub(asset, "material", name="wall", texture="wall", texrepeat=(4, 1))
     _sub(asset, "material", name="bulb", rgba=(1, 0.72, 0.35, 1), emission=1)
     for n in ("deck", "pan_base", "pan_yoke", "tilt_u"):
-        _sub(asset, "mesh", name=f"pt_{n}", file=str((ROOT / "cad/final/out_f3/deck_f1.stl") if n == "deck" else PARTS / f"{n}.stl"), scale=(0.001,) * 3)
+        _sub(asset, "mesh", name=f"pt_{n}", file=str(PARTS / ("deck_f1.stl" if n == "deck" else f"{n}.stl")), scale=(0.001,) * 3)
     for n in ("pan_servo", "tilt_servo"):
         _sub(asset, "mesh", name=f"pt_{n}", file=str(PARTS / "ref" / f"ref_{n}.stl"), scale=(0.001,) * 3)
 
@@ -301,7 +301,7 @@ def build_xml(spec):
     for n in ("pan_base", "pan_servo"):
         _sub(base, "geom", type="mesh", mesh=f"pt_{n}", pos=(0, 0, top), rgba=(0.12, 0.12, 0.13, 1), **viz)
     # fixed part of the top module (deck, pan base, pan servo, bearing): 0.25 kg. Moving: 0.12 kg pan, 0.237 kg tilt.
-    # Total 0.607 kg = top module + camera + nozzle (ASSUMED split, from cad/parts/out_sts3215/assembly.json part masses).
+    # Total 0.607 kg = top module + camera + nozzle (ASSUMED split, from sim/mission/meshes/assembly.json part masses).
     fixed = _sub(base, "body", name="pt_fixed", pos=(-0.035, 0, top + 0.01))
     _sub(fixed, "inertial", pos=(0, 0, 0), mass=0.25 * k, diaginertia=(4e-4, 4e-4, 6e-4))
     px, py, pz = CFG["pivot"]
@@ -309,7 +309,7 @@ def build_xml(spec):
     pan = _sub(base, "body", name="pan", pos=piv)
     _sub(pan, "inertial", pos=(0.0, 0, -0.03), mass=0.12 * k, diaginertia=(1e-4, 1e-4, 8e-5))
     _sub(pan, "joint", name="pan", type="hinge", axis=(0, 0, 1), range=PAN_LIM, damping=0.05, armature=0.003, frictionloss=0.01)
-    off = (-px, -py, top - piv[2])  # mesh frame (cad/parts, z from the torso top) to the pan and tilt body frames
+    off = (-px, -py, top - piv[2])  # mesh frame (archive/cad/parts, z from the torso top) to the pan and tilt body frames
     _sub(pan, "geom", type="mesh", mesh="pt_pan_yoke", pos=off, rgba=(0.2, 0.2, 0.22, 1), **viz)
     _sub(pan, "geom", type="mesh", mesh="pt_tilt_servo", pos=off, rgba=(0.12, 0.12, 0.13, 1), **viz)
     tilt = _sub(pan, "body", name="tilt")

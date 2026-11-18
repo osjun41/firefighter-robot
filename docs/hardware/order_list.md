@@ -6,7 +6,7 @@ Status: planned. We read the prices on 2026-10-15, the trolley prices on 2026-10
 
 **Assumed:** where a shop shows the price without VAT, we added 10 % VAT. Devicemart ships free above 66,000 KRW.
 
-The reference designators (U2, F20 …) are the ones of the [electrical drawings](electrical.md). The printed parts and the screws of the print kit are in [cad/final/kit/hardware.md](../../cad/final/kit/hardware.md).
+The reference designators (U2, F20 …) are the ones of the [electrical drawings](electrical.md). The printed parts and the screws of the print kit are in [archive/cad/final/kit/hardware.md](../../archive/cad/final/kit/hardware.md).
 
 ## Totals
 
@@ -90,7 +90,7 @@ The F2 tank parts are marked **not needed (F3)**. They are the M5 tank barbs, th
 |---|---|---|---|---|---|---|---|
 | M1 | Brass insert M3 × 5 × 5 mm (pump holder, buck, modules) | 30 | 88 | 2,640 | eleparts | https://www.eleparts.co.kr/goods/view?no=11045755 | shop page. Check that it is a heat-set insert. |
 | M2 | Stainless hex socket screw kit NT-KIT-LS012, M3–M5, 6–30 mm | 1 | 18,000 | 18,000 | devicemart | https://www.devicemart.co.kr/goods/catalog?code=001500070037 | search result |
-| M3 | Spring nut M5 for 20-series profile. F3 needs 24 (cad/final/kit/hardware.md lists 32, with 8 for the tanks). 20 already ordered: order 4 more. | 4 | 286 | 1,144 | devicemart | https://www.devicemart.co.kr/goods/view?no=12530574 | search result |
+| M3 | Spring nut M5 for 20-series profile. F3 needs 24 (archive/cad/final/kit/hardware.md lists 32, with 8 for the tanks). 20 already ordered: order 4 more. | 4 | 286 | 1,144 | devicemart | https://www.devicemart.co.kr/goods/view?no=12530574 | search result |
 | M4 | ~~Stainless socket head screw M5 × 55 with washer (tanks to the post side slots)~~ **Not needed (F3):** no tanks | 0 | — | — | devicemart |  | |
 | M5 | ~~Hook-and-loop strap 20 × 250 mm (pump)~~ **Not needed (F3):** the pump is in the trolley box | 0 | — | — |  |  | |
 | | **Subtotal of the priced rows** | | | **21,784** | | | |

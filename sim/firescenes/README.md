@@ -59,7 +59,7 @@ Blender 5.2 and an NVIDIA GPU (Cycles OptiX) are necessary. Run the commands fro
 - Sample number i always gives the same scene, because i is the random seed.
 - One sample takes 10 to 13 s on an RTX 3090. To run two batches at the same time, give them different number ranges.
 - When one sample fails, the batch continues and the log shows `SAMPLE FAILED <number>`.
-- `firescenes.py` uses the Blender helpers of `cad/bhl.py` and the camera model of `aim/geometry.py`.
+- `firescenes.py` uses the Blender helpers of `bhl.py` and the camera model of `aim/geometry.py`.
 
 ## Output files
 

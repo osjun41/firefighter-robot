@@ -2,7 +2,7 @@
 
     none      no payload (the bare course robot, 12.21 kg)
     box_1kg   one 1 kg, 10 cm box on the torso top plate. The default: the baseline policy trained with it.
-    f3        the parts of our F3 design, one rigid box each (mass, centre, size), from cad/final/out_f3/layout.json:
+    f3        the parts of our F3 design, one rigid box each (mass, centre, size), from source/robot_models/data/f3_layout.json:
               batteries, computer, CAN adapters, IMU, relays, pan-tilt servos, camera, nozzle, the printed pod and
               the end of the hose. About 4.1 kg. There is no torso frame: the parts are separate pieces.
 
@@ -27,7 +27,7 @@ import numpy as np
 from .asmr2026_model import STANDING_ROOT_HEIGHT
 
 ROOT = Path(__file__).resolve().parents[3]
-F3_LAYOUT = ROOT / "cad" / "final" / "out_f3" / "layout.json"
+F3_LAYOUT = Path(__file__).resolve().parents[1] / "data" / "f3_layout.json"
 NAMES = ("none", "box_1kg", "f3")
 DEFAULT = "box_1kg"
 Z_LAYOUT_TO_BASE = -STANDING_ROOT_HEIGHT  # m, base-frame z of the floor in the standing pose
