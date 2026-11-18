@@ -1,228 +1,125 @@
-# Sobang-I · firefighting humanoid
+<div align="center">
 
-<p align="center">
-  <img src="cad/final/renders/f3_front.jpg" alt="Design F3" width="300">
-</p>
+<a href="https://www.snu.ac.kr"><picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/snu-dark.svg">
+  <img src="docs/img/snu.svg" alt="Seoul National University emblem" height="72">
+</picture></a>
 
-Sobang-I finds a small fire with its camera, walks to it and puts it out with a water jet. It is built on the legs of the open-source [Berkeley Humanoid Lite](https://github.com/HybridRobotics/Berkeley-Humanoid-Lite). A teammate pushes its water trolley behind it.
+# Sobang-I
 
-Team SOBANG · Seoul National University · ASMR 2026.
+**Our course prototype: a small humanoid that finds a candle fire, walks to it and sprays water on it.**
 
-## Documentation
+Team SOBANG · Seoul National University · ASMR 2026 · final demo on 10 December 2026
 
-| Topic | Where |
-|---|---|
-| Plan, milestones, who does what next | [docs/plan](docs/plan/README.md) |
-| Walking on the real robot | [docs/plan/walking.md](docs/plan/walking.md) |
-| Vision tests with the camera and the board | [docs/plan/vision.md](docs/plan/vision.md) |
-| Design and print kit | [docs/design.md](docs/design.md), [cad/final/kit](cad/final/kit/README.md) |
-| Electrical drawings and power-on tests | [docs/hardware/electrical.md](docs/hardware/electrical.md) |
-| Water trolley and jet | [docs/hardware/trolley.md](docs/hardware/trolley.md), [docs/hardware/water.md](docs/hardware/water.md) |
-| Robot software on the ROCK 3C | [robot](robot/README.md), [legs](legs/README.md), [aim](aim/README.md) |
-| Leg actuator bench tests, drive setup records, sim-vs-real GUI (laptop) | [ASMR_Actuator_Test](ASMR_Actuator_Test/README.md) |
-| Fire detector | [vision](vision/README.md) |
-| Simulations | [sim](sim/README.md) |
-| Locomotion policy training and evaluation | [sim/locomotion](sim/locomotion/README.md), [policies](policies/README.md) |
+[![Board](https://img.shields.io/badge/ROCK%203C-RK3566%20NPU-2f6690?style=flat-square)](docs/board_setup.md)
+[![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white)](pyproject.toml)
+[![License MIT](https://img.shields.io/badge/code-MIT-6e7781?style=flat-square)](LICENSE)
 
-## Laptop or robot?
+[Design](docs/design.md) &nbsp;·&nbsp; [Run it on the robot](docs/board_setup.md)
 
-The robot runs only the folders marked "robot". Simulation, training and CAD stay on the laptop. The board environment is `uv sync --extra board` and needs no MuJoCo or Isaac Sim (`robot/setup/install.sh` does it).
+</div>
 
-| Folder | Where it runs | Needed on the robot |
+## About
+
+This repository holds the code, models and documents of our ASMR 2026 course project. We build a prototype and show it at the final demo. It is not a product.
+
+The robot uses our own legs, inspired by the Berkeley Humanoid Lite, a small open-source biped. On top, we add a torso with the computer and the batteries. The camera and the water nozzle are fixed on the robot at a set angle, so the robot turns its whole body to aim. The water and the pump stay on a small trolley that a teammate pushes behind the robot. A thin hose goes from the trolley to the nozzle. A potentiometer on the trolley sets the pump speed by hand.
+
+At the demo, the robot must find a candle, walk to it, aim and put it out.
+
+## Current state
+
+| Part | Status | Numbers |
 |---|---|---|
-| `robot/`, `legs/`, `actuators/`, `aim/`, `vision/` | the ROCK 3C | yes |
-| `source/robot_models/`, `policies/policy_select.py`, `policies/<name>/` | the ROCK 3C (the model, the policy selector and the policy in use) | yes |
-| `sim/sim2sim/` | laptop and CI | only for `--fake` runs and the tests |
-| `sim/` (all other folders), `sim/locomotion/` | laptop; `sim/locomotion/` needs an NVIDIA GPU | no |
-| `cad/`, `docs/`, `scripts/` | laptop | no |
+| Fire detector | measured on board | YOLO11n in INT8 on the RK3566 NPU: 21 fps. Flame found in 267 of 267 frames of a candle video on a screen (11 Nov). mAP50 0.809 on 13 919 test images (laptop). |
+| Leg drives over CAN | measured on laptop | All 12 drives answer. Direction and zero are set for 12 joints, and 11 joints move on command (13 Nov). |
+| Walking | tested in simulation | Policy trained in Isaac Lab, checked in MuJoCo. Not tried on the real robot yet. |
+| Aiming and full missions | tested in simulation | All fires out in 8 of 50 random missions, 37 of 102 fires out. |
+| Water jet | tested in simulation | The model gives 9.6 m/s at the 1.0 mm nozzle, a reach of 2.7 to 5.1 m and 4.8 min of spray from a 2 L bag. |
+| Water trolley | planned | 2 L bag, pump and battery on a pushed pole, a hose to the fixed nozzle. |
+| Torso CAD for the trolley design | planned | The team is updating the CAD files. The old renders still show water in the torso. |
+| Real fire test, walking on the real robot | planned | |
 
-The robot and laptop settings meet in two places only: `robot/config.toml` (ports, devices, limits, the policy name) and `policies/` (the trained networks).
+## How it works
 
-## Quick start on laptop simulation
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/pipeline-dark.svg">
+  <img src="docs/img/pipeline.svg" alt="Block diagram. Camera sends the image I to the fire detector, which sends the fire boxes b to aiming. These three run at 15 Hz and 10 Hz. Aiming sends a walk speed v and turn rate omega z to the walking policy. The IMU sends the angular rate omega and gravity g to the policy. The policy and the IMU run at 25 Hz. The policy sends the joint targets q star to the legs." width="100%"/>
+</picture>
 
-You need `git` and [uv](https://docs.astral.sh/uv/). Run from the repository root:
+1. **See.** [`robot/camera_node.py`](robot/camera_node.py) reads the Arducam B0201 at 640 × 480 and 15 fps. The lens is calibrated: f = 476 px, 80° horizontal view.
+2. **Detect.** [`vision/detector.py`](vision/detector.py) runs YOLO11n at 416 × 320. On the board it uses the INT8 model on the NPU. On a laptop it uses the ONNX model on the CPU.
+3. **Aim.** [`aim/run.py`](aim/run.py) puts the bottom of each box on the floor and follows the fire over time. It needs 3 detections in 0.6 s before it treats a box as a fire. At 10 Hz, it sends a walk speed and a turn rate that bring the robot to the fire and turn it to face the fire.
+4. **Walk.** [`legs/run_policy.py`](legs/run_policy.py) runs the walking network at 25 Hz. It reads the IMU and the 12 joint angles, and it sends 12 joint targets over 2 CAN buses.
+5. **Spray.** The nozzle points where the robot faces. The pump on the trolley is not controlled by the software. The potentiometer sets its speed.
+6. **Check.** The robot watches the fire for 5 s. If a box does not get smaller after 15 s, the robot ignores it, because it is probably a lamp.
+
+[`robot/launch.py`](robot/launch.py) starts all programs and stops all of them when one fails. The robot e-stop cuts the leg drives.
+
+<details>
+<summary><b>Test results</b></summary>
+
+<br/>
+
+The detector on real fire clips. Each line is the best confidence in one frame, and the red line is the threshold. The LED candles stay below it. The tea light drops below it when it goes out.
+
+<img src="vision/results/video_timeline.png" alt="Six plots of detector confidence against time: a close candle, a tea light blown out at 12 s, a burning bottle and a far campfire stay mostly above the threshold. Two LED candles stay below it." width="80%"/>
+
+Sixteen random missions in the MuJoCo simulation. Grey is search and blue is approach. Green dots are fires that went out, red dots are fires still burning, and a black cross is a fall.
+
+<img src="archive/mission_campaign/fig_paths.png" alt="Sixteen top-down room maps with the robot path in each. Three missions end with all fires out. Others end with a fall, an empty tank or no fire found." width="100%"/>
+
+These missions used the old design with water tanks on the torso ([sim/mission](sim/mission/README.md)).
+
+</details>
+
+## Quick start
+
+You need `git` and [uv](https://docs.astral.sh/uv/). These commands run on a laptop, without the robot.
 
 ```bash
 git clone https://github.com/promaaa/firefighter-robot.git && cd firefighter-robot
-uv sync --extra sim --extra dev
-uv run --extra sim --extra dev pytest
+uv sync --extra sim --extra dev                                    # Python 3.12 environment with MuJoCo
+uv run --extra sim --extra dev pytest                              # robot software tests: aim, actuators, robot
+uv run --extra sim --extra dev python sim/sim2sim/run.py --check   # the robot stands 5 s in MuJoCo
 ```
 
-## Run on the robot computer (ROCK 3C)
+To run the real robot, follow [docs/board_setup.md](docs/board_setup.md): SSH, install, CAN and camera checks, leg calibration, then the walking policy on the gantry.
 
-This is the hardware-team entry point. Detailed wiring and bring-up procedures are in [robot/README.md](robot/README.md) and [legs/README.md](legs/README.md).
+## Repository
 
-### 1. Connect a laptop to the board by SSH
+| Path | Role |
+|---|---|
+| [docs](docs/README.md) | Design, wiring drawings, trolley |
+| [docs/board_setup.md](docs/board_setup.md) | Step-by-step setup of the ROCK 3C and the first hardware tests |
+| [robot](robot/README.md) | Launcher, camera node, pump, bench tests, board installer |
+| [legs](legs/README.md) | CAN driver, calibration, IMU, walking policy loop, joint identification |
+| [aim](aim/README.md) | Fire position, jet arc, mission states |
+| [actuators](actuators/README.md) | Pan-tilt and pump node, walk command bridge |
+| [vision](vision/README.md) | Fire detector: data, training, export, board models, camera tests |
+| [sim](sim/README.md) | Robot models, missions, walking, water jet |
+| [sim/locomotion](sim/locomotion/README.md), [policies](policies/README.md) | Walking policy training in Isaac Lab, and the trained policies |
+| [ASMR_Actuator_Test](ASMR_Actuator_Test/README.md) | Leg actuator bench tests, drive setup records, sim-versus-real GUI |
+| [cad](cad/README.md) | CAD scripts, print kit, renders |
 
-1. Connect the ROCK 3C to the router with an Ethernet cable and power it on. Connect the laptop to the same network. If a monitor and keyboard are available, connect them to the ROCK 3C.
+[CONTRIBUTING.md](CONTRIBUTING.md) says where to put new code and results.
 
-2. Find the board's username and IP address:
+## Team
 
-   - **With a monitor and keyboard:** Open a terminal on the ROCK 3C and run:
+- **Marc Duboc** ([@promaaa](https://github.com/promaaa)): software, vision.
+- **오상준**: hardware.
+- **Merwan Picout**: hardware.
+- **권오성**: software.
+- **김태환**: hardware.
+- **유동주**: hardware.
+- **이철희** ([@poiuy45987](https://github.com/poiuy45987)): software.
+- **이해우**: hardware.
+- **이호영**: hardware, circuit engineering.
+- **하홍준**: hardware.
+- **허근영** ([@GeunYoung-Heo](https://github.com/GeunYoung-Heo)): software, control engineering, simulation.
 
-     ```sh
-     whoami  # Show the username
-     ip a    # Show the IP address
-     ```
+Team SOBANG builds Sobang-I at Seoul National University for the ASMR 2026 course. *Sobang* (소방) means firefighting in Korean.
 
-     Use the IP address assigned to the network interface connected to the router.
+## License
 
-   - **Without a monitor and keyboard:** Follow Radxa's [remote access guide](https://docs.radxa.com/en/rock3/rock3c/radxa-os/remote-access) to find the board's IP address. The default username is `radxa`, unless it has been changed.
-
-3. On the laptop, open a terminal and connect to the ROCK 3C:
-
-   ```sh
-   ssh <username>@<board-ip-address>
-   ```
-
-### 2. Password
-
-- Default login ID/PW: `radxa` / `radxa`
-
-### 3. Download the code
-
-```sh
-sudo apt update
-sudo apt install -y git
-git clone https://github.com/promaaa/firefighter-robot.git
-cd firefighter-robot
-```
-
-### 4. Identify and configure CAN and camera devices
-
-After downloading the code on the ROCK 3C, connect the CAN adapters and camera, then edit `robot/config.toml`.
-
-1. **CAN adapters:** List connected USB devices and CAN interfaces. Note the serial numbers of both CAN adapters:
-
-   ```sh
-   bash robot/setup/install.sh --list-usb
-   ```
-
-   Unplug the adapter connected to the right leg and run the command again. The serial that disappears is the right adapter; the one that remains is the left adapter. Reconnect it, then enter both serials under `[can]` in `robot/config.toml`:
-
-   ```toml
-   [can]
-   left_serial = "<left CAN adapter serial>"
-   right_serial = "<right CAN adapter serial>"
-   ```
-
-2. **Camera USB ID:** Find the camera in the same output and copy its `vendor:product` ID. If unclear, unplug and reconnect the camera and compare the output. Enter the ID under `[camera] usb` in `robot/config.toml`:
-
-   ```toml
-   [camera]
-   usb = "<camera vendor:product>"
-   ```
-
-3. **Camera detector:** `detector` is a code-file path, not a USB ID. Leave `detector = ""` to select `vision/detector.py`, which uses `vision/models/fire_yolo11n_416x320.onnx` by default. Set a path only when intentionally selecting another detector.
-
-### 5. Install the board setup
-
-After editing `robot/config.toml`, set up the board environment and hardware configuration.
-
-First, preview the planned changes:
-
-```sh
-bash robot/setup/install.sh --dry-run
-```
-
-Check the following items:
-
-1. **`0. Check the computer`** — Confirm that the system is a ROCK 3C running `aarch64`.
-2. **`3. uv and the Python environment (with the board extra: gpiod)`** — Confirm that the `uv sync` command includes `--extra board`.
-3. **`4. udev rules`** — Confirm that the camera USB ID and both CAN adapter serial numbers appear in the rules. If any are missing, add them to `robot/config.toml` and run the dry run again.
-
-If all the checks pass, run the installer and then reboot:
-
-```sh
-bash robot/setup/install.sh
-sudo reboot
-```
-
-The installer configures board packages, CAN networking, device permissions, the IMU UART and systemd services. It creates the board Python environment with `uv sync --extra board`; MuJoCo and simulation extras are not required for hardware operation.
-
-### 6. Check the board and policy
-
-After reboot, SSH back into the board and change to the repository directory:
-```sh
-cd firefighter-robot
-```
-
-Run the board preflight and policy checks:
-```sh
-.venv/bin/python robot/bench.py preflight
-.venv/bin/python legs/run_policy.py --check
-```
-Fix any FAIL items reported by preflight before continuing. The policy check verifies that the ONNX model loads; it does not connect to CAN or move motors.
-
-### 7. Check CAN communication
-
-With the CAN adapters and configured, powered drives connected, run these checks in order:
-
-First, list the drives and check their encoder replies:
-```sh
-.venv/bin/python legs/bringup.py scan
-```
-Expect six drives and `300 of 300` encoder replies on each CAN bus.
-
-Then check that CAN communication stays healthy during the policy-rate test:
-```sh
-.venv/bin/python robot/bench.py can
-```
-Both buses should show `ERROR-ACTIVE`, all 12 drives should respond, and encoder replies should keep up with the 25 Hz check.
-
-Both commands only check communication; they do not move the motors. If a check reports a problem, fix it before continuing.
-
-### 8. Calibrate the leg zero
-
-With the robot supported on the gantry, run the one-time leg calibration. Follow the prompts to move each joint by hand to its calibration stop; press Ctrl+C after all joints have been recorded. This creates `legs/calibration.json` for this robot.
-
-```sh
-.venv/bin/python legs/bringup.py calibrate
-```
-
-Verify the calibration before continuing. Put the legs in the zero pose, run the check, move each joint by hand to its calibration stop again, then press Ctrl+C. Each stop error should be less than 3°; if the output reports `WRONG ZERO`, repeat the calibration and check.
-
-```sh
-.venv/bin/python legs/bringup.py check
-```
-
-### 9. Run the hardware test menu
-
-Start the menu from the repository root:
-
-```sh
-.venv/bin/python robot/test_menu.py
-```
-
-Choose the desired test from the menu. It includes motor, camera/fire detector, pump, pan/tilt, IMU and e-stop guidance. The motor test requires the drives to already have the low test current limits (2 N·m at the joint). The repository CAN commands cannot read that setting, so run the motor test only if it is confirmed in the drive setup record; otherwise skip that option. For a leg motor test, suspend the robot from the gantry with the feet clear of the floor and keep the selected limb clear. Pan/tilt and pump tests can also move hardware or spray water; keep people and electronics clear of the spray area.
-
-### 10. Test the walking policy on the gantry
-
-The policy current limits for a 6 N·m joint torque limit are:
-
-| Drive motors | ODrive `current_lim` |
-|---|---:|
-| 6512 hip and knee motors | 5.97 A |
-| 5010 ankle motors | 4.78 A |
-
-The repository's CAN commands cannot read the stored `current_lim` value. Confirm the configured values from the drive setup record; do not assume the 2 N·m motor-test limits are suitable for walking. A joint torque limit and a motor current limit are related but have different units: the current limit caps motor torque, and the gear ratio converts that to the joint torque limit. If the policy values are not documented, do not start the walking policy until they are confirmed.
-
-After the checks and calibration pass, test the walking policy with the robot supported by the gantry and the area clear:
-
-```sh
-.venv/bin/python legs/run_policy.py --vx 0 --vy 0 --yaw 0 --seconds 10
-```
-
-## Put a new policy on the robot
-
-A policy is trained on a GPU computer ([sim/locomotion](sim/locomotion/README.md)) and reaches the robot as files. Only 45-observation policies work with the robot software today.
-
-1. On the laptop, copy `policy.onnx`, `policy.yaml`, `model_*.pt` and `params/` into `policies/<name>/` and commit them.
-2. In `robot/config.toml`, set `policy` under `[legs]` to `<name>` (the folder name, not a path; empty means `baseline`). This is the only place that names the network. To try another policy once: `legs/run_policy.py --policy <name>`.
-3. Check the network on the laptop: `uv run --extra sim python legs/run_policy.py --check [--policy <name>]` (45 observations, 12 actions, no CAN), then `uv run --extra sim python legs/run_policy.py --fake --seconds 10` (fake drives on the MuJoCo model).
-4. On the board: `git pull`, then `.venv/bin/python legs/run_policy.py --check`.
-5. Test it on the gantry as in [step 10](#10-test-the-walking-policy-on-the-gantry). Do not walk the robot on the floor before that.
-
-## Licence
-
-Code: [MIT](LICENSE). CAD files and documents: [CC BY-SA 4.0](LICENSES/CC-BY-SA-4.0.txt). [vision/](vision/LICENSE): AGPL-3.0, because it uses Ultralytics YOLO. The Berkeley Humanoid Lite model and meshes are CC BY-SA 4.0 and the renders show them. Please cite the Berkeley Humanoid Lite paper: Y. Chi et al., RSS 2025, [arXiv:2504.17249](https://arxiv.org/abs/2504.17249).
+Code: [MIT](LICENSE). CAD files and documents: [CC BY-SA 4.0](LICENSES/CC-BY-SA-4.0.txt). [vision/](vision/LICENSE): AGPL-3.0, because it uses Ultralytics YOLO. The Berkeley Humanoid Lite model and meshes are CC BY-SA 4.0. Please cite the Berkeley Humanoid Lite paper: Y. Chi et al., RSS 2025, [arXiv:2504.17249](https://arxiv.org/abs/2504.17249). The SNU emblem belongs to Seoul National University.
